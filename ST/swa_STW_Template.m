@@ -1,48 +1,5 @@
 %% swa_STW_Template
 
-%% Load EEG
-[dataFile, dataPath] = uigetfile('*.set', 'Please Select Data File');
-EEG = pop_loadset([dataPath, dataFile]);
-
-% Select only a certain data range
-% EEG = pop_select(EEG, 'point', [233875+308876, 233875+308876+330785]);
-% EEG = eeg_checkset( EEG );
-
-% For Francesca's Dream Data
-EEG.data(257,:)=[];
-EEG = eeg_checkset( EEG );
-
-% Load Channel Information (And put Cz reference separate)
-EEG = pop_chanedit( EEG, 'load',{'C:\MATLAB\Toolboxes\fieldtrip-20130929\template\electrode\GSN-HydroCel-257.sfp' 'filetype' 'autodetect'},'delete',1,'delete',1,'delete',1,'changefield',{257 'datachan' 0});
-EEG = eeg_checkset( EEG );
-
-% Resample to 150Hz
-EEG = pop_resample( EEG, 150);
-EEG = eeg_checkset( EEG );
-
-% Filter the data
-% EEG = pop_eegfiltnew(EEG, 0.3, 30); 
-% EEG = eeg_checkset( EEG );
-
-% Average reference
-% EEG = pop_reref( EEG, [],'refloc',EEG.chaninfo.nodatchans(1));
-% EEG = eeg_checkset( EEG );
-
-% Mastoid reference [55/98 A1/A2 for 129... // 90/190 for 256]
-% EEG = pop_reref( EEG, [90 190] ,'refloc', EEG.chaninfo.nodatchans(1)); % Bring back Cz from the nodatachans
-% EEG = pop_reref( EEG, [55 98] ,'refloc', EEG.chaninfo.nodatchans(1)); % Bring back Cz from the nodatachans
-% EEG = pop_reref( EEG, [90 190]); % Bring back Cz from the nodatachans
-EEG = pop_reref( EEG, [55 98]); % Bring back Cz from the nodatachans
-
-% EEG = eeg_checkset( EEG );
-
-Info.EEG_Filename = dataFile;
-Info.Electrodes = EEG.chanlocs;
-Info.sRate = EEG.srate;
-Info.Reference = 'Mastoid';
-% Info.Reference = 'Average';
-Data.REM = double(EEG.data);
-
 %% -- Setting Parameters -- %%
 
 Info.Parameters.Ref_Method      = [];  % 'Envelope'/'MDC'/'Central'/'Midline'
