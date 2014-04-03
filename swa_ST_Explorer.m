@@ -9,13 +9,25 @@ DefineInterface
 
 function DefineInterface
 %% Create Figure
+
+% Dual monitors creates an issue in Linux environments whereby the two
+% screens are seen as one long screen, so always use first one
+sd = java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment.getScreenDevices;
+if length(sd) > 1
+    bounds = sd(2).getDefaultConfiguration.getBounds;
+    figPos = [bounds.x bounds.y bounds.width bounds.height];
+else
+    bounds = sd(1).getDefaultConfiguration.getBounds;
+    figPos = [bounds.x bounds.y bounds.width bounds.height];
+end
+
 handles.Figure = figure(...
     'Name',         'Travelling Waves:',...
     'NumberTitle',  'off',...
     'Color',        'w',...
     'MenuBar',      'none',...
-    'Units',        'normalized',...
-    'Outerposition',[0 0.04 1 0.96]);
+    'Units',        'pixels',...
+    'Outerposition',figPos);
 
 %% Menus
 handles.menu.File = uimenu(handles.Figure, 'Label', 'File');
@@ -488,8 +500,6 @@ else
     
     set(handles.ax_SWPlot, 'YLim', [-50, 50])
 
-    
-    
 end
 
 function handles = update_SWDelay(handles, nFigure)
@@ -589,18 +599,22 @@ guidata(hObject, handles);
 SpinnerUpdate([],[], hObject);
 
 
-function edit_SWPlot(hObject, eventdata)
+function edit_SWPlot(hObject, ~)
 handles = guidata(hObject);
 nSW = handles.java.Spinner.getValue();
 win = round(0.5*handles.Info.sRate);
+
+% Dual screen compatibility for linux machines
+% sd = java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment.getScreenDevices;
+% bounds = sd(1).getDefaultConfiguration.getBounds;
 
 SW_Handles.Figure = figure(...
     'Name',         'Edit Detected Slow Wave',...
     'NumberTitle',  'off',...
     'Color',        'w',...
     'MenuBar',      'none',...
-    'Units',        'normalized',...
-    'Outerposition',[0 0.04 1 0.96]);
+    'Units',        'pixels',...
+    'Outerposition',[200 200 900 600]);
 
 SW_Handles.Axes = axes(...
     'Parent',   SW_Handles.Figure,...
@@ -613,16 +627,22 @@ SW_Handles.Axes = axes(...
     'XLim',     [1, win*2+1],...
     'YDir',     get(handles.ax_SWPlot, 'YDir'));
 
-SW_Handles.Plot_Ch = plot(SW_Handles.Axes, handles.Data.REM(:,handles.SW(nSW).Ref_NegativePeak-win:handles.SW(nSW).Ref_NegativePeak+win)',...
-    'Color', [0.7 0.7 0.7],...
-    'LineWidth', 0.5);
+% Plot the data with the reference negative peak centered %
+SW_Handles.Plot_Ch = plot(SW_Handles.Axes,...
+     handles.Data.REM(:,handles.SW(nSW).Ref_NegativePeak-win:handles.SW(nSW).Ref_NegativePeak+win)',...
+    'Color', [0.8 0.8 0.8],...
+    'LineWidth', 0.5,...
+    'LineStyle', ':');
 set(SW_Handles.Plot_Ch, 'ButtonDownFcn', {@Channel_Selected, handles.Figure, SW_Handles});
-set(SW_Handles.Plot_Ch(handles.SW(nSW).Channels_Active), 'Color', 'k', 'LineWidth', 1);
-set(SW_Handles.Plot_Ch(handles.SW(nSW).Travelling_Delays<1), 'Color', 'b', 'LineWidth', 2);
+set(SW_Handles.Plot_Ch(handles.SW(nSW).Channels_Active), 'Color', 'k', 'LineWidth', 1, 'LineStyle', '-');
+set(SW_Handles.Plot_Ch(handles.SW(nSW).Travelling_Delays<1), 'Color', 'b', 'LineWidth', 2, 'LineStyle', '-');
 
-handles.SWPlot.Ref = plot(SW_Handles.Axes, handles.Data.STRef(handles.SW(nSW).Ref_Region(1),handles.SW(nSW).Ref_NegativePeak-win:handles.SW(nSW).Ref_NegativePeak+win)','Color', 'r', 'linewidth', 3);
+handles.SWPlot.Ref = plot(SW_Handles.Axes,...
+    handles.Data.STRef(handles.SW(nSW).Ref_Region(1),handles.SW(nSW).Ref_NegativePeak-win:handles.SW(nSW).Ref_NegativePeak+win)',...
+    'Color', 'r',...
+    'LineWidth', 3);
 
-function Channel_Selected(hObject, eventdata, FigureHandle, SW_Handles)
+function Channel_Selected(hObject, ~ , FigureHandle, SW_Handles)
 handles = guidata(FigureHandle);
 % a = get(handles.Figure, 'SelectionType');
 
@@ -631,12 +651,12 @@ nCh = find(SW_Handles.Plot_Ch == hObject);
 
 if ~handles.SW(nSW).Channels_Active(nCh)
     handles.SW(nSW).Channels_Active(nCh) = true;
-    set(SW_Handles.Plot_Ch(nCh), 'Color', 'k', 'LineWidth', 1)
-    set(handles.SWPlot.All(nCh), 'Color', 'k', 'LineWidth', 1)
+    set(SW_Handles.Plot_Ch(nCh), 'Color', 'k', 'LineWidth', 1, 'LineStyle', '-')
+    set(handles.SWPlot.All(nCh), 'Color', [0.6 0.6 0.6], 'LineWidth', 1, 'LineStyle', '-', 'Visible', 'on')
 else
     handles.SW(nSW).Channels_Active(nCh) = false;
-    set(SW_Handles.Plot_Ch(nCh), 'Color', [0.6 0.6 0.6], 'LineWidth', 0.5)
-    set(handles.SWPlot.All(nCh), 'Color', [0.6 0.6 0.6], 'LineWidth', 0.5)
+    set(SW_Handles.Plot_Ch(nCh), 'Color', [0.8 0.8 0.8], 'LineWidth', 0.5, 'LineStyle', ':')
+    set(handles.SWPlot.All(nCh), 'Color', [0.6 0.6 0.6], 'LineWidth', 0.5, 'LineStyle', '-', 'Visible', 'off')
 end
 
 guidata(handles.Figure, handles);
