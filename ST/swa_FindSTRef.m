@@ -46,8 +46,8 @@ for refWave = 1:size(Data.STRef,1)
     
     %% --Continuous Wavelet Transform -- %%
     FreqRange   = Info.Parameters.CWT_hPass:Info.Parameters.CWT_lPass;
-    Scale_theta  = frq2scal(FreqRange, 'morl', 1/Info.sRate);       % Own Function!
-    Scale_alpha  = frq2scal(8:12, 'morl', 1/Info.sRate);            % Own Function!
+    Scale_theta  = swa_frq2scal(FreqRange, 'morl', 1/Info.sRate);       % Own Function!
+    Scale_alpha  = swa_frq2scal(8:12, 'morl', 1/Info.sRate);            % Own Function!
     
     Data.CWT{1}(refWave,:) = mean(cwt(Data.STRef(refWave,:), Scale_theta, 'morl'));
     Data.CWT{2}(refWave,:) = mean(cwt(Data.STRef(refWave,:), Scale_alpha, 'morl'));
@@ -86,22 +86,23 @@ for refWave = 1:size(Data.STRef,1)
     for i = 1:length(MNP) - 1
         
         % Use this when looking for a specific wave not found...
-%         if refWave == 3 && MPP(i) > 5024
+%         if refWave == 1 && MPP(i) > 71130
 %             x = 1;
 %         end
         
         %% -- Wavelength/Time Criteria -- %%
         % MPP -> MNP Hard Time Criteria
-        if abs(MNP(i)-MPP(i)) > (1/(Info.Parameters.CWT_hPass-0.5)/2)*Info.sRate || abs(MNP(i)-MPP(i)) < (1/(Info.Parameters.CWT_lPass+0.5)/2)*Info.sRate
+        if abs(MPP(i)-MNP(i)) > (1/(Info.Parameters.CWT_hPass-0.5)/2)*Info.sRate || abs(MPP(i)-MNP(i)) < (1/(Info.Parameters.CWT_lPass+0.5)/2)*Info.sRate
             Info.Failed.FailedAtLength = Info.Failed.FailedAtLength + 1;
             continue;
         end
 
         % MPP -> MNP Soft Time Criteria (Must pass additional MNP Amplitude Test)  
-        if abs(MNP(i)-MPP(i)) > (1/(Info.Parameters.CWT_hPass-0.1)/2)*Info.sRate || abs(MNP(i)-MPP(i)) < (1/(Info.Parameters.CWT_lPass+0.1)/2)*Info.sRate
+        if abs(MPP(i)-MNP(i)) > (1/(Info.Parameters.CWT_hPass-0.1)/2)*Info.sRate || abs(MPP(i)-MNP(i)) < (1/(Info.Parameters.CWT_lPass+0.1)/2)*Info.sRate
             if Data.CWT{1}(refWave, MNP(i)) > -Info.Parameters.CWT_AmpThresh(refWave)*2
                 Info.Failed.FailedAtLength = Info.Failed.FailedAtLength + 1;
                 continue;
+                
             end
         end        
         
@@ -122,19 +123,45 @@ for refWave = 1:size(Data.STRef,1)
         %% -- Amplitude Criteria -- %%
         % Test MPP->MNP Amplitude
         MPP2MNP = Data.CWT{1}(refWave, MPP(i)) - Data.CWT{1}(refWave,MNP(i));
-        if MPP2MNP < Info.Parameters.CWT_AmpThresh(refWave)*2
-            Info.Failed.FailedAtAmp  = Info.Failed.FailedAtAmp+1;
-            continue;
-        end        
+        
+        % Check for burst here in order to temporarily lower the threshold...
+        if STCount > 1
+            if abs(ST(STCount).CWT_End-MPP(i)) < Info.sRate*Info.Parameters.Burst_Length
+                % if there is a previous wave...
+                if MPP2MNP < Info.Parameters.CWT_AmpThresh(refWave)*1.8
+                    Info.Failed.FailedAtAmp  = Info.Failed.FailedAtAmp+1;
+                    continue;
+                end
+            else
+                % if the wave is isolated...
+                if MPP2MNP < Info.Parameters.CWT_AmpThresh(refWave)*2
+                    Info.Failed.FailedAtAmp  = Info.Failed.FailedAtAmp+1;
+                    continue;
+                end
+            end
+        end
         
         % Test MNP->MPP Amplitude
         MNP2MPP = Data.CWT{1}(refWave,MPP(i+1)) - Data.CWT{1}(refWave, MNP(i));
-        if  MNP2MPP < Info.Parameters.CWT_AmpThresh(refWave)*2
-            Info.Failed.FailedAtAmp  = Info.Failed.FailedAtAmp+1;
-            continue;
+        
+                % Check for burst here in order to temporarily lower the threshold...
+        if STCount > 1
+            if abs(ST(STCount).CWT_End-MPP(i)) < Info.sRate*Info.Parameters.Burst_Length
+                % if there is a previous wave...
+                if  MNP2MPP < Info.Parameters.CWT_AmpThresh(refWave)*1.8
+                    Info.Failed.FailedAtAmp  = Info.Failed.FailedAtAmp+1;
+                    continue;
+                end
+            else
+                % if the wave is isolated...
+                if  MNP2MPP < Info.Parameters.CWT_AmpThresh(refWave)*2
+                    Info.Failed.FailedAtAmp  = Info.Failed.FailedAtAmp+1;
+                    continue;
+                end
+            end
         end
         
-        % Test Theta/Alpha Ratio
+        % Test Theta/Alpha Amplitude Ratio
         AlphaAmp = max(Data.CWT{2}(refWave, MPP(i):MPP(i+1)))-min(Data.CWT{2}(refWave,MPP(i):MPP(i+1)));
         ThetaAlpha = max(MPP2MNP,MNP2MPP)/AlphaAmp;
         if ThetaAlpha < Info.Parameters.CWT_ThetaAlpha
