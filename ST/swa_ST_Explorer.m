@@ -463,21 +463,16 @@ function handles = update_SWPlot(handles)
 nSW = handles.java.Spinner.getValue();
 win = round(0.5*handles.Info.sRate);
 
+range = handles.SW(nSW).Ref_NegativePeak-win:handles.SW(nSW).Ref_NegativePeak+win;
+range(range<1) = [];
+
 if ~isfield(handles, 'SWPlot') % in case plot doesn't already exist
     cla(handles.ax_SWPlot);
     
-    if handles.SW(nSW).Ref_NegativePeak < win
-        handles.SWPlot.All      = plot(handles.ax_SWPlot, handles.Data.REM(:,1:handles.SW(nSW).Ref_NegativePeak+win)','Color', [0.6 0.6 0.6], 'linewidth', 0.5, 'Visible', 'off');        
-        handles.SWPlot.Ref      = plot(handles.ax_SWPlot, handles.Data.STRef(handles.SW(nSW).Ref_Region(1),1:handles.SW(nSW).Ref_NegativePeak+win)','Color', 'r', 'linewidth', 3);        
-        handles.SWPlot.CWT(1)   = plot(handles.ax_SWPlot, handles.Data.CWT{1}(handles.SW(nSW).Ref_Region(1),1:handles.SW(nSW).Ref_NegativePeak+win)','Color', 'b', 'linewidth', 2);                
-        handles.SWPlot.CWT(2)   = plot(handles.ax_SWPlot, handles.Data.CWT{2}(handles.SW(nSW).Ref_Region(1),1:handles.SW(nSW).Ref_NegativePeak+win)','Color', 'g', 'linewidth', 2);
-
-    else
-        handles.SWPlot.All      = plot(handles.ax_SWPlot, handles.Data.REM(:,handles.SW(nSW).Ref_NegativePeak-win:handles.SW(nSW).Ref_NegativePeak+win)','Color', [0.6 0.6 0.6], 'linewidth', 0.5, 'Visible', 'off');
-        handles.SWPlot.Ref      = plot(handles.ax_SWPlot, handles.Data.STRef(handles.SW(nSW).Ref_Region(1),handles.SW(nSW).Ref_NegativePeak-win:handles.SW(nSW).Ref_NegativePeak+win)','Color', 'r', 'linewidth', 3);
-        handles.SWPlot.CWT(1)   = plot(handles.ax_SWPlot, handles.Data.CWT{1}(handles.SW(nSW).Ref_Region(1),handles.SW(nSW).Ref_NegativePeak-win:handles.SW(nSW).Ref_NegativePeak+win)','Color', 'b', 'linewidth', 2);
-        handles.SWPlot.CWT(2)   = plot(handles.ax_SWPlot, handles.Data.CWT{2}(handles.SW(nSW).Ref_Region(1),handles.SW(nSW).Ref_NegativePeak-win:handles.SW(nSW).Ref_NegativePeak+win)','Color', 'g', 'linewidth', 2);
-    end
+    handles.SWPlot.All      = plot(handles.ax_SWPlot, handles.Data.REM(:,range)','Color', [0.6 0.6 0.6], 'linewidth', 0.5, 'Visible', 'off');
+    handles.SWPlot.Ref      = plot(handles.ax_SWPlot, handles.Data.STRef(handles.SW(nSW).Ref_Region(1), range)','Color', 'r', 'linewidth', 3);
+    handles.SWPlot.CWT(1)   = plot(handles.ax_SWPlot, handles.Data.CWT{1}(handles.SW(nSW).Ref_Region(1),range)','Color', 'b', 'linewidth', 2);
+    handles.SWPlot.CWT(2)   = plot(handles.ax_SWPlot, handles.Data.CWT{2}(handles.SW(nSW).Ref_Region(1),range)','Color', 'g', 'linewidth', 2);
     
     set(handles.SWPlot.All(handles.SW(nSW).Channels_Active), 'Color', [0.6 0.6 0.6], 'LineWidth', 1, 'Visible', 'on');
 %     set(handles.SWPlot.All(handles.SW(nSW).Travelling_Delays<1), 'Color', 'b', 'LineWidth', 2, 'Visible', 'on');
@@ -487,15 +482,15 @@ if ~isfield(handles, 'SWPlot') % in case plot doesn't already exist
 else
     for i = 1:size(handles.Data.REM,1) % faster than total replot...
          set(handles.SWPlot.All(i),...
-             'yData', handles.Data.REM(i,handles.SW(nSW).Ref_NegativePeak-win:handles.SW(nSW).Ref_NegativePeak+win),...
+             'yData', handles.Data.REM(i,range),...
              'Color', [0.6 0.6 0.6], 'linewidth', 0.5, 'Visible', 'off');
     end
     set(handles.SWPlot.All(handles.SW(nSW).Channels_Active), 'Color', [0.6 0.6 0.6], 'LineWidth', 1, 'Visible', 'on');
 %     set(handles.SWPlot.All(handles.SW(nSW).Travelling_Delays<1), 'Color', 'b', 'LineWidth', 2, 'Visible', 'on');
-    set(handles.SWPlot.Ref, 'yData', handles.Data.STRef(handles.SW(nSW).Ref_Region(1),handles.SW(nSW).Ref_NegativePeak-win:handles.SW(nSW).Ref_NegativePeak+win));
+    set(handles.SWPlot.Ref, 'yData', handles.Data.STRef(handles.SW(nSW).Ref_Region(1),range));
     
-    set(handles.SWPlot.CWT(1), 'yData', handles.Data.CWT{1}(handles.SW(nSW).Ref_Region(1),handles.SW(nSW).Ref_NegativePeak-win:handles.SW(nSW).Ref_NegativePeak+win));
-    set(handles.SWPlot.CWT(2), 'yData', handles.Data.CWT{2}(handles.SW(nSW).Ref_Region(1),handles.SW(nSW).Ref_NegativePeak-win:handles.SW(nSW).Ref_NegativePeak+win));
+    set(handles.SWPlot.CWT(1), 'yData', handles.Data.CWT{1}(handles.SW(nSW).Ref_Region(1),range));
+    set(handles.SWPlot.CWT(2), 'yData', handles.Data.CWT{2}(handles.SW(nSW).Ref_Region(1),range));
     
     
     set(handles.ax_SWPlot, 'YLim', [-50, 50])
@@ -604,12 +599,13 @@ handles = guidata(hObject);
 nSW = handles.java.Spinner.getValue();
 win = round(0.5*handles.Info.sRate);
 
-% Dual screen compatibility for linux machines
-% sd = java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment.getScreenDevices;
-% bounds = sd(1).getDefaultConfiguration.getBounds;
+range = round((handles.SW(nSW).Ref_NegativePeak-win):(handles.SW(nSW).Ref_NegativePeak+win));
+range(range<1) = [];
+xaxis = range./handles.Info.sRate;
 
+%% Prepare Figure
 SW_Handles.Figure = figure(...
-    'Name',         'Edit Detected Slow Wave',...
+    'Name',         'Edit Detected Wave',...
     'NumberTitle',  'off',...
     'Color',        'w',...
     'MenuBar',      'none',...
@@ -618,29 +614,71 @@ SW_Handles.Figure = figure(...
 
 SW_Handles.Axes = axes(...
     'Parent',   SW_Handles.Figure,...
-    'Position', [0.05 0.05 0.9 0.9],...
+    'Position', [0.05 0.05 0.92 0.9],...
     'NextPlot', 'add',...
     'FontName', 'Century Gothic',...
     'FontSize', 8,...
     'box',      'off',...
-    'Xtick',    [],...
-    'XLim',     [1, win*2+1],...
+    'XLim',     [xaxis(1), xaxis(end)],...
     'YDir',     get(handles.ax_SWPlot, 'YDir'));
 
-% Plot the data with the reference negative peak centered %
+%% Add buttons
+iconZoom = fullfile(matlabroot,'/toolbox/matlab/icons/tool_zoom_in.png');
+iconArrow = fullfile(matlabroot,'/toolbox/matlab/icons/tool_pointer.png'); 
+iconTravel = fullfile(matlabroot,'/toolbox/matlab/icons/tool_text_arrow.png'); 
+
+% Just add javacomponent buttons...
+[j_pbArrow,SW_Handles.pb_Arrow] = javacomponent(javax.swing.JButton);
+set(SW_Handles.pb_Arrow,...
+    'Parent',   SW_Handles.Figure,...      
+    'Units',    'normalized',...
+    'Position', [0.80 0.05 0.05 0.07]);
+% >> j_pbZoom.set [then tab complete to find available methods]
+j_pbArrow.setIcon(javax.swing.ImageIcon(iconArrow))
+set(j_pbArrow, 'ToolTipText', 'Select Channel'); 
+set(j_pbArrow, 'MouseReleasedCallback', 'zoom off');
+
+[j_pbZoom,SW_Handles.pb_Zoom] = javacomponent(javax.swing.JButton);
+set(SW_Handles.pb_Zoom,...
+    'Parent',   SW_Handles.Figure,...      
+    'Units',    'normalized',...
+    'Position', [0.85 0.05 0.05 0.07]);
+% >> j_pbZoom.set [then tab complete to find available methods]
+j_pbZoom.setIcon(javax.swing.ImageIcon(iconZoom))
+set(j_pbZoom, 'ToolTipText', 'Zoom Mode'); 
+set(j_pbZoom, 'MouseReleasedCallback', 'zoom on');
+
+[j_pbTravel,SW_Handles.pb_Travel] = javacomponent(javax.swing.JButton);
+set(SW_Handles.pb_Travel,...
+    'Parent',   SW_Handles.Figure,...      
+    'Units',    'normalized',...
+    'Position', [0.92 0.05 0.05 0.07]);
+% >> j_pbZoom.set [then tab complete to find available methods]
+j_pbTravel.setIcon(javax.swing.ImageIcon(iconTravel))
+set(j_pbTravel, 'ToolTipText', 'Recalculate Travelling'); 
+set(j_pbTravel, 'MouseReleasedCallback', {@UpdateTravelling, handles.Figure});
+
+%% Plot the data with the reference negative peak centered %
 SW_Handles.Plot_Ch = plot(SW_Handles.Axes,...
-     handles.Data.REM(:,handles.SW(nSW).Ref_NegativePeak-win:handles.SW(nSW).Ref_NegativePeak+win)',...
+     xaxis, handles.Data.REM(:,range)',...
     'Color', [0.8 0.8 0.8],...
     'LineWidth', 0.5,...
     'LineStyle', ':');
 set(SW_Handles.Plot_Ch, 'ButtonDownFcn', {@Channel_Selected, handles.Figure, SW_Handles});
-set(SW_Handles.Plot_Ch(handles.SW(nSW).Channels_Active), 'Color', 'k', 'LineWidth', 1, 'LineStyle', '-');
-set(SW_Handles.Plot_Ch(handles.SW(nSW).Travelling_Delays<1), 'Color', 'b', 'LineWidth', 2, 'LineStyle', '-');
+set(SW_Handles.Plot_Ch(handles.SW(nSW).Channels_Active), 'Color', [0.6 0.6 0.6], 'LineWidth', 1, 'LineStyle', '-');
+% set(SW_Handles.Plot_Ch(handles.SW(nSW).Travelling_Delays<1), 'Color', 'b', 'LineWidth', 2, 'LineStyle', '-');
 
 handles.SWPlot.Ref = plot(SW_Handles.Axes,...
-    handles.Data.STRef(handles.SW(nSW).Ref_Region(1),handles.SW(nSW).Ref_NegativePeak-win:handles.SW(nSW).Ref_NegativePeak+win)',...
+    xaxis, handles.Data.STRef(handles.SW(nSW).Ref_Region(1),range)',...
     'Color', 'r',...
     'LineWidth', 3);
+
+handles.SWPlot.CWT = plot(SW_Handles.Axes,...
+    xaxis, handles.Data.CWT{1}(handles.SW(nSW).Ref_Region(1), range)',...
+    'Color', 'b',...
+    'LineWidth', 3);
+
+
 
 function Channel_Selected(hObject, ~ , FigureHandle, SW_Handles)
 handles = guidata(FigureHandle);
@@ -651,8 +689,8 @@ nCh = find(SW_Handles.Plot_Ch == hObject);
 
 if ~handles.SW(nSW).Channels_Active(nCh)
     handles.SW(nSW).Channels_Active(nCh) = true;
-    set(SW_Handles.Plot_Ch(nCh), 'Color', 'k', 'LineWidth', 1, 'LineStyle', '-')
-    set(handles.SWPlot.All(nCh), 'Color', [0.6 0.6 0.6], 'LineWidth', 1, 'LineStyle', '-', 'Visible', 'on')
+    set(SW_Handles.Plot_Ch(nCh), 'Color', [0.6 0.6 0.6], 'LineWidth', 1, 'LineStyle', '-')
+    set(handles.SWPlot.All(nCh), 'Color', [0.7 0.7 0.7], 'LineWidth', 1, 'LineStyle', '-', 'Visible', 'on')
 else
     handles.SW(nSW).Channels_Active(nCh) = false;
     set(SW_Handles.Plot_Ch(nCh), 'Color', [0.8 0.8 0.8], 'LineWidth', 0.5, 'LineStyle', ':')
@@ -660,6 +698,39 @@ else
 end
 
 guidata(handles.Figure, handles);
+
+function UpdateTravelling(hObject, ~ , FigureHandle)
+handles = guidata(FigureHandle);
+
+nSW = handles.java.Spinner.getValue();
+
+% Recalculate the Travelling_Delays parameter before running...
+Window = round(handles.Info.Parameters.Channels_WinSize*handles.Info.sRate);
+wData = (handles.SW(nSW).CWT_NegativePeak-Window):(handles.SW(nSW).CWT_NegativePeak+Window);  
+
+Data.REM = handles.Data.REM(handles.SW(nSW).Channels_Active, wData);
+
+FreqRange   = handles.Info.Parameters.CWT_hPass:handles.Info.Parameters.CWT_lPass;
+Scale_theta  = swa_frq2scal(FreqRange, 'morl', 1/handles.Info.sRate);    % Own Function!
+
+Channels_Theta = zeros(size(Data.REM));
+WaitHandle = waitbar(0,'Please wait...', 'Name', 'Calculating Wavelets');
+for i = 1:size(Data.REM,1)
+    waitbar(i/size(Data.REM,1),WaitHandle,sprintf('Channel %d of %d',i, size(Data.REM,1)))
+    Channels_Theta(i,:) = mean(cwt(Data.REM(i,:),Scale_theta,'morl'));
+end
+delete(WaitHandle);
+
+[Ch_Min, Ch_Id] = min(Channels_Theta, [],2);
+
+handles.SW(nSW).Travelling_Delays = nan(size(handles.Data.REM,1),1);
+handles.SW(nSW).Travelling_Delays(handles.SW(nSW).Channels_Active) = Ch_Id-min(Ch_Id);
+
+[handles.Info, handles.SW] = swa_FindSTTravelling(handles.Info, handles.SW, nSW);
+
+handles = update_SWDelay(handles, 0);
+guidata(handles.Figure, handles);
+
 
 function Butterfly_Context(hObject, ~, Direction)
 handles = guidata(hObject);
