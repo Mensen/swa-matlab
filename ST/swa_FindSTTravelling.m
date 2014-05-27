@@ -1,5 +1,6 @@
-function [Info, ST] = swa_FindSTTravelling(Info, ST)
+function [Info, ST] = swa_FindSTTravelling(Info, ST, indST)
 % Calculate the streamlines for each slow wave
+% Use a third input to simply recalculate the travelling parameters for a single wave in ST but remember to change the Travelling_Delays parameter first...
 
 if ~isfield(Info.Parameters, 'Travelling_GS');
     Info.Parameters.Travelling_GS = 20; % size of interpolation grid
@@ -8,8 +9,10 @@ if ~isfield(Info.Parameters, 'Travelling_GS');
 end
 
 %% Check Electrodes for 2D locations (match to grid)
-Info.Electrodes = swa_add2dlocations(Info.Electrodes, Info.Parameters.Travelling_GS);
-fprintf(1,'Calculation: 2D electrode projections (placed in Info.Electrodes). \n');
+if ~isfield(Info.Electrodes, 'x')
+    Info.Electrodes = swa_add2dlocations(Info.Electrodes, Info.Parameters.Travelling_GS);
+    fprintf(1,'Calculation: 2D electrode projections (placed in Info.Electrodes). \n');
+end
 
 xloc = [Info.Electrodes.x]; xloc=xloc(:);
 yloc = [Info.Electrodes.y]; yloc=yloc(:);
@@ -18,11 +21,26 @@ yloc = [Info.Electrodes.y]; yloc=yloc(:);
 GS = Info.Parameters.Travelling_GS;
 XYrange = linspace(1, GS, GS);
 XYmesh = XYrange(ones(GS,1),:);
-F = TriScatteredInterp(xloc,yloc,ST(1).Travelling_Delays(:), 'natural');      % No speed difference in methods...
 
+% Check Matlab version for interpolant...
+if exist('scatteredInterpolant', 'file')
+    % If its available use the newest function
+    F = scatteredInterpolant(xloc,yloc,ST(1).Travelling_Delays(:), 'natural', 'none');
+    ver = 2;
+else
+    % Use the old function
+    F = TriScatteredInterp(xloc,yloc,ST(1).Travelling_Delays(:), 'natural');
+    ver = 1;
+end
 %% Loop for each ST
-h = waitbar(0,'Please wait...', 'Name', 'Finding Streams...');
-for nST = 1:length(ST)
+if nargin == 3
+    loopRange = indST;    
+else
+    loopRange = 1:length(ST);
+    h = waitbar(0,'Please wait...', 'Name', 'Finding Streams...');
+end
+
+for nST = loopRange
     
     Delays      = ST(nST).Travelling_Delays;
     
@@ -33,34 +51,33 @@ for nST = 1:length(ST)
     
     %% Interpolate delay map [zeros or nans above...]
     Delays = Delays(:);            % Ensure data is in column format
-    F.V = Delays;                  % Put new data into the interpolant
+    
+    % Different inputs for scatteredInterpolant and TriScatteredInterp
+    if ver == 1
+        F.V = Delays;                  % Put new data into the interpolant
+    else
+        F.Values = Delays;
+    end
+    
     ST(nST).Travelling_DelayMap = F(XYmesh, XYmesh'); % Delay map (with zeros)
     [u,v] = gradient(ST(nST).Travelling_DelayMap);
 
     %% Define Starting Point(s) on the GSxGS grid...
-    sx = xloc(ST(nST).Travelling_Delays<2);
-    sy = yloc(ST(nST).Travelling_Delays<2);
+    sx = xloc(ST(nST).Channels_Active);
+    sy = yloc(ST(nST).Channels_Active);
       
     %% Find Streamline(s)
-    % stream2 results in NaN values in streams and also tiny repetitions of coordinates.
-%     ST(nST).Vector = stream2(XY,XY',u,v,sx,sy, [0.2, 100]); % max stepsize 100 to avoid too many NaNs
-    
-    % But mmstream2 is 4 times slower and still leaves NaNs (stream2 uses mex)!
-%     ST(nST).Vector = mmstream2(XY,XY',u,v,sx,sy, 'start', 0.2); % max stepsize 100 to avoid too many NaNs
-    
-    % Use adstream2
+
+    % Use adstream2 (should optimise by coding entirely in c)
     Streams         = cell(1,length(sx));
     Distances       = cell(1,length(sx));
     for i = 1:length(sx)
-        [Streams{i},Distances{i},~] = adstream2b(XYrange,XYrange,u,v,sx(i),sy(i), cosd(45), 0.1, 1000);
+        [StreamsBack, DistancesBack,~] = adstream2b(XYrange,XYrange,-u,-v,sx(i),sy(i), cosd(45), 0.1, 1000);
+        [StreamsForw, DistancesForw,~] = adstream2b(XYrange,XYrange,u,v,sx(i),sy(i), cosd(45), 0.1, 1000);
+        Streams{i}      = [fliplr(StreamsBack), StreamsForw];
+        Distances{i}    = [fliplr(DistancesBack), DistancesForw];
     end
-       
-    % Problems
-    % P: Border origins are not calculable because border u/v gradients are NaN
-    % A1: Make neighbour channels -1 and recalculate
-    % A2: Edit adstream to make it more compatible
-    % P: Streams stop at zero gradients
-       
+             
     %% Process and save streamlines...
     Streams(cellfun(@isempty, Streams)) = []; %Remove empty streams
     Distances(cellfun(@isempty, Distances)) = []; %Remove empty streams
@@ -93,52 +110,14 @@ for nST = 1:length(ST)
         ST(nST).Travelling_Streams{end+1} = Streams{maxAngleId};
     end
     
-    %% Plot Functions
-
-%     H.Figure    = figure('color','w'); % set axes CLim to 0.5 to avoid all white delay = 1
-%     H.Contour   = contourf(XYmesh,XYmesh',ST(nST).Delay_Map,10, 'edgecolor', 'none');
-%     camroll(90) % rotate counter-clockwise
-%     
-% %     H.Image     = imagesc(ST(nST).Delay_Map);
-%     
-%     hold on
-%     axis ij % invert the y axis
-%     axis square
-%     axis off
-%     hold on
-%     colormap(flipud(hot))
-%     % channel plot
-%     H.Channels = plot(xloc,yloc,'k.');
-%     H.Starts   = plot(sx,sy,'ko', 'linewidth', 2);
-% 
-% %     H.Streams = plot(ST(nST).Vector{1}(1,:), ST(nST).Vector{1}(2,:));
-% %     set(H.Streams,'color','k', 'linewidth', 4);
-%     
-% %     for i = 1:length(ST(nST).Vector)
-% %         if ~isempty(ST(nST).Vector{i})
-% %             H.Streams(i) = plot(ST(nST).Vector{i}(1,:), ST(nST).Vector{i}(2,:));
-% %         end
-% %     end
-% %     set(H.Streams(H.Streams>0), 'color','k', 'linewidth', 2);
-%     
-%     % Plot Patches for Streams
-%     H.PStream = [];
-%     for i = 1:length(ST(nST).Streams)
-%         if ~isempty(ST(nST).Streams{i})
-%             pad = linspace(0,Info.Stream_Parameters.GS/50,length(ST(nST).Streams{i}));
-%             xp = [ST(nST).Streams{i}(1,:)-pad, fliplr(ST(nST).Streams{i}(1,:)+pad)];
-%             yp = [ST(nST).Streams{i}(2,:)+pad, fliplr(ST(nST).Streams{i}(2,:)-pad)];
-%             H.PStream(i) = patch(xp,yp,'w');
-%         end
-%     end
-%     set(H.PStream(H.PStream>0),...
-%         'linewidth',    2,...
-%         'edgecolor',    'w',...
-%         'facecolor',    'b',...
-%         'facealpha',    0.5);%     set(H.Streams(1),'color','k', 'linewidth', 4);
-
-    %% Update waitbar
-    waitbar(nST/length(ST),h,sprintf('Slow Wave %d of %d',nST, length(ST)))
-
+    
+    % Update waitbar (if there is one)
+    if exist('h', 'var')
+        waitbar(nST/length(ST),h,sprintf('Slow Wave %d of %d',nST, length(ST)))
+    end
+    
 end
-delete(h)       % DELETE the waitbar; don't try to CLOSE it.
+
+if exist('h', 'var')
+    delete(h)       % DELETE the waitbar; don't try to CLOSE it.
+end
