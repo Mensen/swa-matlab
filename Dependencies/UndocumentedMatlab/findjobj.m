@@ -1,4 +1,4 @@
-function [handles,levels,parentIdx,listing] = findjobj(container,varargin)
+function [handles,levels,parentIdx,listing] = findjobj(container,varargin) %#ok<*CTCH,*ASGLU,*MSNU,*NASGU>
 %findjobj Find java objects contained within a specified java container or Matlab GUI handle
 %
 % Syntax:
@@ -88,6 +88,9 @@ function [handles,levels,parentIdx,listing] = findjobj(container,varargin)
 %    Please send to Yair Altman (altmany at gmail dot com)
 %
 % Change log:
+%    2014-01-04: Minor fix for R2014a; check for newer FEX version up to twice a day only
+%    2013-12-29: Only check for newer FEX version in non-deployed mode; handled case of invisible figure container
+%    2013-10-08: Fixed minor edge case (retrieving multiple scroll-panes)
 %    2013-06-30: Additional fixes for the upcoming HG2
 %    2013-05-15: Fix for the upcoming HG2
 %    2013-02-21: Fixed HG-Java warnings
@@ -135,7 +138,7 @@ function [handles,levels,parentIdx,listing] = findjobj(container,varargin)
 % referenced and attributed as such. The original author maintains the right to be solely associated with this work.
 
 % Programmed and Copyright by Yair M. Altman: altmany(at)gmail.com
-% $Revision: 1.39 $  $Date: 2013/06/30 22:34:52 $
+% $Revision: 1.42 $  $Date: 2014/01/04 20:41:54 $
 
     % Ensure Java AWT is enabled
     error(javachk('awt'));
@@ -155,6 +158,7 @@ function [handles,levels,parentIdx,listing] = findjobj(container,varargin)
         hg_parentIdx = [];
         nomenu = false;
         menuBarFoundFlag = false;
+        hFig = [];
 
         % Force an EDT redraw before processing, to ensure all uicontrols etc. are rendered
         drawnow;  pause(0.02);
@@ -298,7 +302,7 @@ function [handles,levels,parentIdx,listing] = findjobj(container,varargin)
             if ~isempty(container)
                 presentObjectTree();
             else
-                warnInvisible;
+                warnInvisible(varargin{:});
             end
 
         % Display the listing, if this was specifically requested yet no relevant output arg was specified
@@ -314,7 +318,7 @@ function [handles,levels,parentIdx,listing] = findjobj(container,varargin)
 
         % Display a warning if the requested handle was not found because it's invisible
         if nargout && isempty(handles)
-            warnInvisible;
+            warnInvisible(varargin{:});
         end
 
         return;  %debug point
@@ -331,7 +335,18 @@ function [handles,levels,parentIdx,listing] = findjobj(container,varargin)
     end
 
     %% Display a warning if the requested handle was not found because it's invisible
-    function warnInvisible
+    function warnInvisible(varargin)
+        try
+            if strcmpi(get(hFig,'Visible'),'off')
+                pos = get(hFig,'Position');
+                set(hFig, 'Position',pos-[5000,5000,0,0], 'Visible','on');
+                drawnow; pause(0.01);
+                [handles,levels,parentIdx,listing] = findjobj(origContainer,varargin{:});
+                set(hFig, 'Position',pos, 'Visible','off');
+            end
+        catch
+            % ignore - move on...
+        end
         try
             stk = dbstack;
             stkNames = {stk.name};
@@ -662,7 +677,7 @@ function [handles,levels,parentIdx,listing] = findjobj(container,varargin)
             end
             
             % If several possible handles were found and the first is the container of the second
-            if length(foundIdx) > 1 && isequal(handles(foundIdx(1)).java, handles(foundIdx(2)).getParent)
+            if length(foundIdx) == 2 && isequal(handles(foundIdx(1)).java, handles(foundIdx(2)).getParent)
                 % Discard the uninteresting component container
                 foundIdx(1) = [];
             end
@@ -1142,6 +1157,9 @@ function [handles,levels,parentIdx,listing] = findjobj(container,varargin)
 
     %% Present the object hierarchy tree
     function presentObjectTree()
+        persistent lastVersionCheck
+        if isempty(lastVersionCheck),  lastVersionCheck = now-1;  end
+
         import java.awt.*
         import javax.swing.*
         hTreeFig = findall(0,'tag','findjobjFig');
@@ -1527,7 +1545,9 @@ function [handles,levels,parentIdx,listing] = findjobj(container,varargin)
         set(hTreeFig,'userdata',userdata);
 
         % Pre-expand all rows
+        %treePane.setVisible(false);
         expandNode(progressBar, jTreeObj, tree_h, root, 0);
+        %treePane.setVisible(true);
         %jTreeObj.setVisible(1);
 
         % Hide the progressbar now that we've finished expanding all rows
@@ -1543,8 +1563,11 @@ function [handles,levels,parentIdx,listing] = findjobj(container,varargin)
         jTreeObj.requestFocus;
         drawnow;
 
-        % Check for a newer version
-        checkVersion();
+        % Check for a newer version (only in non-deployed mode, and only twice a day)
+        if ~isdeployed && now-lastVersionCheck > 0.5
+            checkVersion();
+            lastVersionCheck = now;
+        end
 
         % Reset the last error
         lasterr('');  %#ok
@@ -2424,7 +2447,8 @@ function [handles,levels,parentIdx,listing] = findjobj(container,varargin)
                 try
                     location = hndl.getLocationOnScreen;
                     pos = [location.getX, location.getY, hndl.getWidth, hndl.getHeight];
-                    dist = sum((labelPositions-repmat(pos,size(labelPositions,1),[1,1,1,1])).^2, 2);
+                    %dist = sum((labelPositions-repmat(pos,size(labelPositions,1),[1,1,1,1])).^2, 2);
+                    dist = sum((labelPositions-repmat(pos,[size(labelPositions,1),1])).^2, 2);
                     [minVal,minIdx] = min(dist);
                     % Allow max distance of 8 = 2^2+2^2 (i.e. X&Y off by up to 2 pixels, W&H exact)
                     if minVal <= 8  % 8=2^2+2^2
@@ -3198,7 +3222,7 @@ end  % FINDJOBJ
 
 %% TODO TODO TODO
 %{
-- Enh: Improve performance - esp. expandNode() (performance solved in non-nteractive mode)
+- Enh: Improve performance - esp. expandNode() (performance solved in non-interactive mode)
 - Enh: Add property listeners - same problem in MathWork's inspect.m
 - Enh: Display additional properties - same problem in MathWork's inspect.m
 - Enh: Add axis (plot, Graphics) component handles
