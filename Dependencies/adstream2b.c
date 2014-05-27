@@ -5,7 +5,7 @@
 #include <memory.h>
 #include "mex.h"
 
-unsigned long nanAlt[2] = {0xffffffff, 0x7fffffff}; /* used to be called 'nan' but this conflicts with the nan declaration in math.h for linux systems */
+unsigned long nanAlt[2] = {0xffffffff, 0x7fffffff};
 
 /* Input Arguments */
 
@@ -102,29 +102,29 @@ traceStreamXYUV(double *xvec, double *yvec,
                 break;
             }
           
-			if (x<0 || x>xdim-1 || y<0 || y>ydim-1)/* This prevents negative starting points or points over the edge on the grid... */
+			if (x<0 || x>xdim-1 || y<0 || y>ydim-1) /* This prevents negative starting points or points over the edge on the grid... */
 			{
 				break;
 			}
           
-			if (mxIsNaN(x)) { ix = 0; } else  { ix = (mwSize)x;} /* because of the mwSize cast, ix is not necessarily x here but just the integer (0.9 = 0)! So it can be used to index...
-			if (mxIsNaN(y)) { iy = 0; } else  { iy = (mwSize)y;} /* although ix = 0 when x = 1.00, but ix = 2 when x = 2.00... strange behaviour	  
+			if (mxIsNaN(x)) { ix = 0; } else  { ix = (mwSize)x;} /* because of the mwSize cast, ix is not necessarily x here but just the integer (0.9 = 0)! So it can be used to index... */
+			if (mxIsNaN(y)) { iy = 0; } else  { iy = (mwSize)y;} /* although ix = 0 when x = 1.00, but ix = 2 when x = 2.00... strange behaviour */
 			
 			/* ix always attempts to be one left and below the current point (unless cp is 1,1) */
 			
 			if (ix==xdim-1) ix--; /* if its at the edge of the map, go back 1 */
 			if (iy==ydim-1) iy--;
 			xfrac = x-ix; /* this is the fraction of x not also represented in ix... */
-			yfrac = y-iy; /* becomes a NaN when x/y is NaN when ui or vi is NaN */				  
+			yfrac = y-iy; /* becomes a NaN when x/y is NaN when ui or vi is NaN */			  
 		  
 			x0 = GETX2(ix); x1 = GETX2(ix+1); 	/* See define GETX2(X) xvec[(X)], so this gets the first and second values of the xrange input... */
-			y0 = GETY2(iy); y1 = GETY2(iy+1); 	/* Same as with the xvec */		
+			y0 = GETY2(iy); y1 = GETY2(iy+1); 	/* Same as with the xvec */
 			
 			xi = x0*(1-xfrac) + x1*xfrac;		/* Is NaN when x / y is NaN (so frac becomes NaN) */
 			yi = y0*(1-yfrac) + y1*yfrac;
 		  
-			if (mxIsNaN(xi) || mxIsNaN(yi)) 	/* Check whether these are NaN, most common stop
-			{	
+			if (mxIsNaN(xi) || mxIsNaN(yi)) 	/* Check whether these are NaN, most common stop */
+			{		
 				break;
 			}
 			
@@ -146,20 +146,19 @@ traceStreamXYUV(double *xvec, double *yvec,
 			cos = ax * bx + ay * by; /* calculate current angle step */
 		  
 			/* mexPrintf("\nCurrent dists value %f \n", dists[numVerts]); */
-			/* mexEvalString("drawnow;"); /* to dump string. */
           
 			if ((cos <= cosMin) && (numVerts >= 2)) /* breaks when angle is more than 45d (or special input) */
             {
                 numVerts--;
 			    /* mexPrintf("Broke here because cos (change in gradient angle) is... %f \n", cos);
-				/* mexPrintf("ax = %f, bx = %f, ay = %f, by = %f \n", ax,bx,ay,by);
-				/* mexPrintf("x is %f, y is %f \n", x, y);						
-				/* mexPrintf("ix, is %d, and iy is %d \n", ix, iy);
-				/* mexPrintf("xi, xiPrev is %f,%f, yi, yiPrev is %f,%f \n", xi, xiPrev, yi, yiPrev);
-				/* mexPrintf("xfrac is %f, yfrac is %f \n", xfrac, yfrac);
-				/* mexPrintf("xi, xiPrev is %f,%f, yi, yiPrev is %f,%f \n", xi, xiPrev, yi, yiPrev);
-				/* mexPrintf("ui, uiPrev is %f,%f, vi, viPrev is %f,%f \n", ui, uiPrev, vi, viPrev);				
-			    /* mexEvalString("drawnow;"); /* to dump string. */					 
+				mexPrintf("ax = %f, bx = %f, ay = %f, by = %f \n", ax,bx,ay,by);
+				mexPrintf("x is %f, y is %f \n", x, y);						
+				mexPrintf("ix, is %d, and iy is %d \n", ix, iy);
+				mexPrintf("xi, xiPrev is %f,%f, yi, yiPrev is %f,%f \n", xi, xiPrev, yi, yiPrev);
+				mexPrintf("xfrac is %f, yfrac is %f \n", xfrac, yfrac);
+				mexPrintf("xi, xiPrev is %f,%f, yi, yiPrev is %f,%f \n", xi, xiPrev, yi, yiPrev);
+				mexPrintf("ui, uiPrev is %f,%f, vi, viPrev is %f,%f \n", ui, uiPrev, vi, viPrev);				
+			        mexEvalString("drawnow;"); to dump string. */ 					
 				break;
             }
           
@@ -175,6 +174,9 @@ traceStreamXYUV(double *xvec, double *yvec,
 			c=(1-xfrac)*(  yfrac); /* weight for ui value below */
 			d=(  xfrac)*(  yfrac); /* weight for ui vaue below and to the right */
 		  
+			/* mexPrintf("\n a = %f, b = %f, c = %f, d = %f \n", a,b,c,d); */
+			/* mexEvalString("drawnow;"); to dump string. */
+			
 			uiPrev = ui;
 			viPrev = vi;
 			
@@ -186,7 +188,9 @@ traceStreamXYUV(double *xvec, double *yvec,
 				GETV2(ix,  iy+1)*c + GETV2(ix+1,iy+1)*d;
 			
 			if (mxIsNaN(ui) || mxIsNaN(vi))  /* break if gradients have NaNs */
-			{			
+			{
+				/* mexPrintf("Broke here because a gradient was found to be NaN \n"); */	
+				/* mexEvalString("drawnow;"); */
 				break;
 			}
 
@@ -195,12 +199,14 @@ traceStreamXYUV(double *xvec, double *yvec,
 						
 			dx = x1-x0; /* differential between adjacent points in the xrange */
 			dy = y1-y0; /* differential between adjacent points in the yrange */
-			if (dx) ui /= dx; /* How could (dx) ever be zero? */ 
+			if (dx) ui /= dx; /* How could (dx) ever be zero? */
 			if (dy) vi /= dy; /* gradient information divided by the difference between adjacent grid points (Riedner always has 1) */
 		  
 			if (fabs(ui)>fabs(vi)) imax=fabs(ui); else imax=fabs(vi); /*imax is the bigger gradient between horizontal and vertical gradients */
 			if (imax==0) 
-			{			
+			{
+				/* mexPrintf("Broke here because imax (max h/v gradient) is %f \n", imax); */
+				/* mexEvalString("drawnow;"); */				
 				break; /* if gradient is zero then break... this is bad because various sampling rates or large interpolants may make intermittent zero gradients where stream would stop */
 			}
 		  
