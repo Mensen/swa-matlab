@@ -43,12 +43,7 @@ end
 for nST = loopRange
     
     Delays      = ST(nST).Travelling_Delays;
-    
-    % Check for minimum travel time...
-    if max(Delays) < Info.Parameters.Travelling_MinDelay*Info.sRate/1000
-        continue
-    end
-    
+      
     %% Interpolate delay map [zeros or nans above...]
     Delays = Delays(:);            % Ensure data is in column format
     
@@ -62,6 +57,11 @@ for nST = loopRange
     ST(nST).Travelling_DelayMap = F(XYmesh, XYmesh'); % Delay map (with zeros)
     [u,v] = gradient(ST(nST).Travelling_DelayMap);
 
+    % Check for minimum travel time...
+    if max(Delays) < Info.Parameters.Travelling_MinDelay*Info.sRate/1000
+        continue
+    end
+    
     %% Define Starting Point(s) on the GSxGS grid...
     sx = xloc(ST(nST).Channels_Active);
     sy = yloc(ST(nST).Channels_Active);
