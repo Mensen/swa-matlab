@@ -1,4 +1,4 @@
-function H = swa_DelayPlot(Delay_Map, e_loc, varargin)
+function H = swa_DelayPlot(DelayMap, e_loc, varargin)
 
 %% Set defaults
 ContourWidth        = 0.2;
@@ -56,6 +56,10 @@ if nargin > 2
             F                   = Value;
         case 'streams'
             Streams             = Value;
+        case 'gs'
+            GS                  = Value;
+        case 'travelling_delays'
+            Travelling_Delays   = Value;
         otherwise
             display (['Unknown parameter setting: ' Param])
     end
@@ -64,16 +68,41 @@ end
 
 %% Adjust Settings based on Arguments
 
-% Overwrite number of contours if the interpolated surface is drawn
+% Overwrite contours plot if the interpolated surface is drawn
 if PlotSurface == 1; PlotContour = 0; end
-
-%% Use the e_loc to project points to a 2D surface
-GS = length(Delay_Map);
-XYrange = linspace(1, GS, GS);
-XYmesh = XYrange(ones(GS,1),:);
 
 yloc = cell2mat({e_loc.x}); yloc=yloc(:);
 xloc = cell2mat({e_loc.y}); xloc=xloc(:);
+
+%% If there is no delay map, or if the involvement map is being plotted...
+if isempty(DelayMap)
+    
+    % Create the plotting mesh
+    if ~exist('GS', 'var')
+        GS = 40;
+        fprintf(1, 'Warning: Set gridscale as parameter, using default [GS = 40]');
+    end
+    XYrange = linspace(1, GS, GS);
+    XYmesh  = XYrange(ones(GS,1),:);
+    
+    % Check Matlab version for interpolant...
+    if exist('scatteredInterpolant', 'file')
+        % If its available use the newest function
+        F = scatteredInterpolant(xloc,yloc, Travelling_Delays(:), 'natural', 'none');
+        ver = 2;
+    else
+        % Use the old function
+        F = TriScatteredInterp(xloc,yloc, Travelling_Delays(:), 'natural');
+        ver = 1;
+    end
+    
+    DelayMap = F(XYmesh, XYmesh')'; % Delay map (with zeros)
+end
+
+%% Use the e_loc to project points to a 2D surface
+GS = length(DelayMap);
+XYrange = linspace(1, GS, GS);
+XYmesh = XYrange(ones(GS,1),:);
 
 %% Actual Plot
 
@@ -103,7 +132,7 @@ if PlotSurface == 1
 end
 
 if PlotSurface == 1
-    H.Surface = surf(H.CurrentAxes, XYmesh ,XYmesh', zeros(size(Delay_Map)), Delay_Map');
+    H.Surface = surf(H.CurrentAxes, XYmesh ,XYmesh', zeros(size(DelayMap)), DelayMap');
     set(H.Surface,...
         'EdgeColor',        'none'              ,...
         'FaceColor',        'interp'            ,...
@@ -111,10 +140,10 @@ if PlotSurface == 1
 end
 %% Plot the contour map
 % Adjust the contour lines to account for the minimum and maximum difference in values
-LevelList   = linspace(min(Delay_Map(:)), max(Delay_Map(:)), NumContours);
+LevelList   = linspace(min(DelayMap(:)), max(DelayMap(:)), NumContours);
 
 if PlotContour == 1
-    [~,H.Contour] = contourf(H.CurrentAxes, XYmesh,XYmesh',Delay_Map');
+    [~,H.Contour] = contourf(H.CurrentAxes, XYmesh,XYmesh',DelayMap');
     set(H.Contour,...
         'LineWidth',        ContourWidth        ,...
         'LevelList',        LevelList           ,...
