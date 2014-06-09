@@ -492,8 +492,9 @@ else
     set(handles.SWPlot.CWT(1), 'yData', handles.Data.CWT{1}(handles.SW(nSW).Ref_Region(1),range));
     set(handles.SWPlot.CWT(2), 'yData', handles.Data.CWT{2}(handles.SW(nSW).Ref_Region(1),range));
     
-    
-    set(handles.ax_SWPlot, 'YLim', [-50, 50])
+    % Find the absolute maximum value and round to higher 10, then add 10 for space
+    dataMax = ceil(abs(max(max(handles.Data.REM(handles.SW(nSW).Channels_Active, range))))/10)*10+10;
+    set(handles.ax_SWPlot, 'YLim', [-dataMax, dataMax])
 
 end
 
