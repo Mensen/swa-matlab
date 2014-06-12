@@ -46,8 +46,11 @@ for refWave = 1:size(Data.STRef,1)
     
     %% --Continuous Wavelet Transform -- %%
     FreqRange   = Info.Parameters.CWT_hPass:Info.Parameters.CWT_lPass;
-    Scale_theta  = swa_frq2scal(FreqRange, 'morl', 1/Info.sRate);       % Own Function!
-    Scale_alpha  = swa_frq2scal(8:12, 'morl', 1/Info.sRate);            % Own Function!
+%     Scale_theta  = swa_frq2scal(FreqRange, 'morl', 1/Info.sRate);       % Own Function!
+    Scale_theta  = (centfrq('morl')./FreqRange)*Info.sRate;
+%     Scale_alpha  = swa_frq2scal(8:12, 'morl', 1/Info.sRate);            % Own Function!
+    Scale_alpha = (centfrq('morl')./[8:12])*Info.sRate;
+
     
     Data.CWT{1}(refWave,:) = mean(cwt(Data.STRef(refWave,:), Scale_theta, 'morl'));
     Data.CWT{2}(refWave,:) = mean(cwt(Data.STRef(refWave,:), Scale_alpha, 'morl'));
