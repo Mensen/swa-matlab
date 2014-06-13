@@ -25,7 +25,7 @@ After you've downloaded the toolbox, add the path to matlab using ``setpath`` an
 Dependencies
 ^^^^^^^^^^^^
 
-All the main dependencies for the toolbox are provided in the *dependencies* folder. The primary external dependency for using the GUI is the tools provided by `undocumented matlab <http://undocumentedmatlab.com>`_ which add essential features to the typical GUI in matlab.
+All the main dependencies for the toolbox are provided in the *dependencies* folder. The primary external dependency for using the GUI is the tools provided by `undocumented matlab toolbox <http://undocumentedmatlab.com>`_ which adds essential features to the typical GUI in matlab.
 
 In order to use some of the additional features of the toolbox, as well as taking advantage of the specific formatting required to use the sleep scoring section we recommend installing the latest version of `EEGLAB <http://sccn.ucsd.edu/eeglab/downloadtoolbox.html>`_
 
