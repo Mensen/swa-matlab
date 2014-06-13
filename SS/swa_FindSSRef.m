@@ -2,6 +2,21 @@ function [Data, Info, SS] = swa_FindSSRef(Data, Info)
 % Automatic spindle detection on a reference channel using continuous 
 % wavelet transform
 
+% The algorithm used is built on the one used by Wamsley et al 2012 which 
+% was the highest rated automatic detection algorithm in a comparison by
+% Warby et al 2014 (NatureMethods). 
+% Here this is improved upon by: using a 
+% - shorter default minimum detection window (300ms instead of 500ms), a 
+%   change which puts the method ahead of non-expert consensus in the study
+%   by Warby et al
+% - using a dynamic threshold based on the standard deviation above the
+%   mean in the power spectrum (and not just the mean), which would
+%   stabalise the results across different nights/participants
+% - finding the true start of the spindle by calculating the lowest trough
+%   in the power spectrum prior to passing the threshold (end as well)
+% - performing an additional wavelet transform to determine whether the 
+%   spindle is best classified as a slow or fast variant
+
 %% Initialise the SS Structure
 SS = struct(...
     'Ref_Region',               [],...
