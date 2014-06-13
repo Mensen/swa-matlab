@@ -88,7 +88,7 @@ for refWave = 1:size(Data.STRef,1)
     % Loop through each MNP in the theta range data
     for i = 1:length(MNP) - 1
         
-        % Use this when looking for a specific wave not found...
+        % Use this when looking for a specific wave not found and set a breakpoint...
 %         if refWave == 1 && MPP(i) > 71130
 %             x = 1;
 %         end
