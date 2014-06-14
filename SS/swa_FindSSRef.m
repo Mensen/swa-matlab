@@ -47,7 +47,10 @@ if ~isfield(Info, 'Parameters')
     Info.Parameters.CWT_lPass(1)    = 13;
     Info.Parameters.CWT_hPass(1)    = 14;
     Info.Parameters.CWT_lPass(1)    = 16;
-    Info.Parameters.CWT_StdThresh   = 2;
+    
+    Info.Parameters.CWT_StdThresh   = 8;
+    Info.Parameters.Ref_MinLength   = 0.3;       % Minimum spindle duration
+    Info.Parameters.Ref_MinWaves    = 3;
 end
 
 % Wavelet Parameters
