@@ -123,20 +123,26 @@ for refWave = 1:size(Data.SSRef,1)
     %% Check neighbouring frequencies to ensure its spindle specific
     % To do
 
-    % Find mid point of waves calculated so far
+    %% Calculate slope of reference data
+    slopeRef  = [0 diff(Data.SSRef(refWave,:))];
+    
+    %% Find mid point of waves calculated so far
     allSS = [SS.Ref_Start]+[SS.Ref_Length]/2;
 
-    
     %% Loop through each spindle found
     for i = 1:length(startSS)
         
         % Find the local peaks and troughs
         % ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         % Calculate the slope of the original wave
-        slopeRef  = [0 diff(Data.SSRef(refWave,startSS(i):endSS(i)))];
+        slopeSS  = slopeRef(:,startSS(i):endSS(i));
         % Find all the peaks, both positive and negative
-        peakAmp     = Data.SSRef(refWave, startSS(i)-1+find(abs(diff(sign(slopeRef)))== 2));
+        peakAmp     = Data.SSRef(refWave, startSS(i)-1+find(abs(diff(sign(slopeSS)))== 2));
         [peak2Peak, id]   = max(abs(diff(peakAmp)));
+        
+        if length(peakAmp) < Info.Parameters.Ref_MinWaves*2
+            continue;
+        end
         
         % Check spindle type (fast or slow
         slow = mean(cwt(Data.SSRef(refWave,startSS(i):endSS(i)), scaleSlow, 'morl'), 1);
