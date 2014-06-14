@@ -492,7 +492,7 @@ hPass = str2double(get(handles.et_HighPass, 'String'))/(handles.EEG.srate/2);
 lPass = str2double(get(handles.et_LowPass, 'String'))/(handles.EEG.srate/2);
 [b,a] = butter(2,[hPass lPass]);
 
-Data = filtfilt(b, a, Data')'; %transpose data twice
+Data = single(filtfilt(b, a, double(Data'))'); %transpose data twice
 
 for i = 1:8
     set(handles.plCh(i), 'Ydata', Data(i,:));
