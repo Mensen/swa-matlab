@@ -89,8 +89,8 @@ for refWave = 1:size(Data.SSRef,1)
     end
     
     % Check for last DZC with no UZC
-    if length(DZC)>length(UZC)
-        DZC(end) = [];
+    if length(UZC)>length(DZC)
+        UZC(end) = [];
     end
     
     %% Check Soft Minimum Length (30% less than actual minimum)
