@@ -76,28 +76,36 @@ for nSS = 1:length(SS)
     end
     
     %% Calculate peak to peak
-    % save items to the SS
-    SS(nSS).Channels_Active 	= Channels;
-    
     % pre-allocate using nans
     SS(nSS).Channels_Peak2PeakAmp = nan(length(Info.Electrodes),1);
     
     % find the slopes of the raw data
     if Info.Parameters.Filter_Apply
-        slopeRef  = diff(Data.Filtered(Channels, SS(nSS).Ref_Start:SS(nSS).Ref_End), 1, 2);
+        slopeData  = diff(Data.Filtered(Channels, SS(nSS).Ref_Start:SS(nSS).Ref_End), 1, 2);
     else
-        slopeRef  = diff(Data.Raw(Channels, SS(nSS).Ref_Start:SS(nSS).Ref_End), 1, 2);
+        slopeData  = diff(Data.Raw(Channels, SS(nSS).Ref_Start:SS(nSS).Ref_End), 1, 2);
     end
     
-    peak2Peak = zeros(sum(Channels),1);
+    peak2Peak = nan(sum(Channels),1);
+    
     % Find all the peaks, both positive and negative
-    for ch = 1:size(slopeRef, 1)
-        peakAmp = Data.Raw(ch, SS(nSS).Ref_Start+find(abs(diff(sign(slopeRef(ch,:)), 1, 2)== 2)));
+    for ch = 1:size(slopeData, 1)
+        % Find all the peaks, both positive and negative
+        peakAmp = Data.Raw(ch, SS(nSS).Ref_Start+find(abs(diff(sign(slopeData(ch,:)), 1, 2)== 2)));
+        % if a channel has less than 3 peaks, delete it
+        if length(peakAmp) < 3
+            peak2Peak(ch,:) = nan;
+            continue;
+        end
         peak2Peak(ch,:)   = max(abs(diff(peakAmp)));
     end
     
+    % Save to SS structure
     SS(nSS).Channels_Peak2PeakAmp(Channels) = peak2Peak;
-    SS(nSS).Channels_Globality  = sum(Channels)/length(Channels)*100;
+    
+    % save remaining channels to structure
+    SS(nSS).Channels_Active = abs(SS(nSS).Channels_Peak2PeakAmp) > 0;
+    SS(nSS).Channels_Globality  = sum(SS(nSS).Channels_Active)/length(SS(nSS).Channels_Active)*100;
        
     %% Delay Calculation
     SS(nSS).Travelling_Delays = nan(length(Info.Electrodes),1);
