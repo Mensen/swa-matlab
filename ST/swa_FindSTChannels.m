@@ -1,14 +1,10 @@
 function [Data, Info, ST] = swa_FindSTChannels(Data, Info, ST)
 
-% 18.02.2014 / V3.0
-% ___ Create CWT waves for each channel and minimal threshold
-
-
 fprintf(1, 'Analysis: Finding Saw-Tooth Waves in Individual Channels... \n');
 %% -- Calculate CWT Waves -- %%
 
 FreqRange   = Info.Parameters.CWT_hPass:Info.Parameters.CWT_lPass;
-Scale_theta  = swa_frq2scal(FreqRange, 'morl', 1/Info.sRate);    % Own Function!
+Scale_theta = (centfrq('morl')./FreqRange)*Info.sRate;
 
 Channels_Theta = zeros(size(Data.REM));
 WaitHandle = waitbar(0,'Please wait...', 'Name', 'Calculating Wavelets');
