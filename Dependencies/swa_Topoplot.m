@@ -58,8 +58,8 @@ if nargin > 2
             Streams             = Value;
         case 'gs'
             GS                  = Value;
-        case 'travelling_delays'
-            Travelling_Delays   = Value;
+        case 'data'
+            Data   = Value;
         otherwise
             display (['Unknown parameter setting: ' Param])
     end
@@ -81,6 +81,9 @@ if isempty(DelayMap)
     if ~exist('GS', 'var')
         GS = 40;
         fprintf(1, 'Warning: Set gridscale as parameter, using default [GS = 40]');
+    elseif isempty(GS)
+        GS = 40;
+        fprintf(1, 'Warning: Set gridscale as parameter, using default [GS = 40]');        
     end
     XYrange = linspace(1, GS, GS);
     XYmesh  = XYrange(ones(GS,1),:);
@@ -88,11 +91,11 @@ if isempty(DelayMap)
     % Check Matlab version for interpolant...
     if exist('scatteredInterpolant', 'file')
         % If its available use the newest function
-        F = scatteredInterpolant(xloc,yloc, Travelling_Delays(:), 'natural', 'none');
+        F = scatteredInterpolant(xloc,yloc, Data(:), 'natural', 'none');
         ver = 2;
     else
         % Use the old function
-        F = TriScatteredInterp(xloc,yloc, Travelling_Delays(:), 'natural');
+        F = TriScatteredInterp(xloc,yloc, Data(:), 'natural');
         ver = 1;
     end
     
