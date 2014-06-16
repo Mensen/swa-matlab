@@ -3,7 +3,7 @@
 function eloc = swa_add2dlocations(eloc, GS)
 
 if nargin < 2
-   GS = 20; 
+   GS = 40; 
 end
 
 Th = pi/180*[eloc.theta];      % Calculate theta values from x,y,z e_loc
