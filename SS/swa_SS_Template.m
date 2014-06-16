@@ -15,11 +15,18 @@
 % be taken directly from the EEGLAB file using >> Info.sRate = EEG.srate; and >> Info.Electrodes = 
 % EEG.chanlocs;
 
+% Check for 'N2' name and call it 'Raw'...
+if isfield(Data, 'N2')
+    Data.Raw = Data.N2;
+    Data = rmfield(Data, 'N2');
+end
+
 %% -- Setting Parameters -- %%
 
 Info.Parameters.Ref_Method      = [];  % 'Envelope'/'MDC'/'Central'/'Midline'
 Info.Parameters.Ref_UseInside   = [];  % true/false
 Info.Parameters.Ref_MinLength   = [];
+Info.Parameters.Ref_MinWaves    = [];
 
 Info.Parameters.Filter_Apply    = [];  % true/false 
 Info.Parameters.Filter_Method   = [];  % 'Chebyshev'/'Buttersworth'
@@ -48,14 +55,16 @@ Info.Parameters.Filter_Apply    = false; % No filter needed for CWT method...
 %% New CWT Method
 % CWT Parameters
 
-    Info.Parameters.CWT_hPass(1)    = 11;
-    Info.Parameters.CWT_lPass(1)    = 13.5;
-    Info.Parameters.CWT_hPass(2)    = 13.5;
-    Info.Parameters.CWT_lPass(2)    = 16;
-    Info.Parameters.CWT_StdThresh   = 4;
-
-    Info.Parameters.CWT_AmpThresh   = [];
+    Info.Parameters.CWT_hPass(1)    = 11.5;
+    Info.Parameters.CWT_lPass(1)    = 14;
+    Info.Parameters.CWT_hPass(2)    = 14;
+    Info.Parameters.CWT_lPass(2)    = 16.5;
+    
+    Info.Parameters.CWT_StdThresh   = 8;
     Info.Parameters.Ref_MinLength   = 0.3;       % Minimum spindle duration
+    Info.Parameters.Ref_MinWaves    = 3;
+    
+    Info.Parameters.CWT_AmpThresh   = [];
     
 [Data, Info, SS] = swa_FindSSRef(Data, Info);
 
@@ -78,4 +87,26 @@ Info.Parameters.Channels_CorrThresh = 0.9;
 % figure('color', 'w', 'position', [50,50, 1000, 500]); 
 % plot(time, data, 'k', 'linewidth', 2);
 % set(gca, 'YLim', [-60, 60]);
+
+% Plot wave after detection
+% ~~~~~~~~~~~~~~~~~~~~~~~~~
+
+nSS = 240;
+win = Info.sRate * 2;
+range =  SS(nSS).Ref_Start-win:SS(nSS).Ref_End+win;
+ref_data = Data.SSRef(SS(nSS).Ref_Region(1), range);
+raw_data = Data.Raw(SS(nSS).Channels_Active, range);
+cwt_data = Data.CWT{1}(SS(nSS).Ref_Region(1), range);
+time = 1/Info.sRate:1/Info.sRate:size(ref_data,2)/Info.sRate;
+
+figure('color', 'w', 'position', [50,50, 1000, 500]); 
+% Plot active channels if they've been calculated
+hold all;
+plot(time, cwt_data*2, 'color', [.7 .7 .7], 'linewidth', 2);
+plot(time, raw_data, 'linewidth', 0.5);
+plot(time, ref_data, 'k', 'linewidth', 4);
+set(gca, 'YLim', [-60, 60]);
+
+
+
 
