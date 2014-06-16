@@ -1,4 +1,4 @@
-function H = swa_DelayPlot(DelayMap, e_loc, varargin)
+function H = swa_Topoplot(DelayMap, e_loc, varargin)
 
 %% Set defaults
 ContourWidth        = 0.2;
@@ -71,20 +71,27 @@ end
 % Overwrite contours plot if the interpolated surface is drawn
 if PlotSurface == 1; PlotContour = 0; end
 
-yloc = cell2mat({e_loc.x}); yloc=yloc(:);
-xloc = cell2mat({e_loc.y}); xloc=xloc(:);
+if ~exist('GS', 'var')
+    GS = 40;
+    fprintf(1, 'Warning: Set gridscale as parameter, using default [GS = 40] \n');
+elseif isempty(GS)
+    GS = 40;
+    fprintf(1, 'Warning: Set gridscale as parameter, using default [GS = 40] \n');
+end
+
+if isfield(e_loc(1), 'x')
+    yloc = cell2mat({e_loc.x}); yloc=yloc(:);
+    xloc = cell2mat({e_loc.y}); xloc=xloc(:);
+else
+    e_loc = swa_add2dlocations(e_loc, GS);
+    yloc = cell2mat({e_loc.x}); yloc=yloc(:);
+    xloc = cell2mat({e_loc.y}); xloc=xloc(:);
+end
 
 %% If there is no delay map, or if the involvement map is being plotted...
 if isempty(DelayMap)
     
     % Create the plotting mesh
-    if ~exist('GS', 'var')
-        GS = 40;
-        fprintf(1, 'Warning: Set gridscale as parameter, using default [GS = 40]');
-    elseif isempty(GS)
-        GS = 40;
-        fprintf(1, 'Warning: Set gridscale as parameter, using default [GS = 40]');        
-    end
     XYrange = linspace(1, GS, GS);
     XYmesh  = XYrange(ones(GS,1),:);
     
