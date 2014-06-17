@@ -39,8 +39,8 @@ Info.Parameters.CWT_lPass       = [];
 Info.Parameters.CWT_StdThresh   = [];   % Number of standard deviations from the mean
 Info.Parameters.CWT_AmpThresh   = [];   % If left empty the StdThresh is used to calculate this
 
-Info.Parameters.Channels_WinSize    = []; % in seconds
-Info.Parameters.Channels_CorrThresh = [];
+Info.Parameters.Channels_WinSize        = []; % in seconds
+Info.Parameters.Channels_ThreshFactor   = []; % percent of reference threshold for channel detection
 
 Info.Parameters.Travelling_GS       = [];
 Info.Parameters.Travelling_MinDelay = [];
@@ -69,14 +69,14 @@ Info.Parameters.Filter_Apply    = false; % No filter needed for CWT method...
 [Data, Info, SS] = swa_FindSSRef(Data, Info);
 
 %% For rest of channels
-Info.Parameters.Channels_WinSize = 0.100; % in seconds
-Info.Parameters.Channels_CorrThresh = 0.9;
+Info.Parameters.Channels_WinSize        = 0.150; % in seconds
+Info.Parameters.Channels_ThreshFactor   = 0.75;
+Info.Parameters.Travelling_GS           = 40; % Gridsize for delay map
 
 %% Find SS in All Channels
 [Data, Info, SS] = swa_FindSSChannels(Data, Info, SS);
 
 %% Find Streams
-% Info.Parameters.Travelling_GS       = 40; % Gridsize for delay map
 % Info.Parameters.Travelling_MinDelay = 20; % minimum travel time in ms
 % 
 % [Info, SS] = swa_FindSSTravelling(Info, SS);
