@@ -3,10 +3,10 @@ function [Data, Info, SS] = swa_FindSSChannels(Data, Info, SS)
 % been detected in a reference channel 
 
 % Check for necessary parameters in the Info
-if ~isfield(Info.Parameters, 'Channels_CorrThresh')
+if ~isfield(Info.Parameters, 'Channels_WinSize')
     fprintf(1, 'Warning: No further SS parameters found in Info; using defaults \n');
-    Info.Parameters.Channels_CorrThresh = 0.9;
     Info.Parameters.Channels_WinSize    = 0.1;
+    Info.Parameters.Channels_ThreshFactor = 0.8;
 end
 
 %% Filter the original signal
@@ -39,55 +39,95 @@ if Info.Parameters.Filter_Apply
     end
 end
 
+% parameters for cwt
+FreqRange   = Info.Parameters.CWT_hPass(1):0.5:Info.Parameters.CWT_lPass(2);
+fullScale   = (centfrq('morl')./FreqRange)*Info.sRate;
+powerWindow = ones((Info.sRate/10),1)/(Info.sRate/10); % create 140ms window to convolve with
+
+% calculate cwt for each channel
+cwtData = zeros(size(Data.Raw));
+WaitHandle = waitbar(0,'Please wait...', 'Name', 'Calculating Wavelets');
+for i = 1:size(Data.Raw,1)
+    waitbar(i/size(Data.Raw,1),WaitHandle,sprintf('Channel %d of %d',i, size(Data.Raw,1)))
+    cwtData(i,:) = mean(cwt(Data.Raw(i,:),fullScale,'morl'));
+end
+delete(WaitHandle);
+
+% calculate the power of each cwt
+powerData = cwtData.^2;
+powerData = filter(powerWindow,1,powerData')';
+
+% calculate individual channel thresholds
+stdMor = mad(powerData',1)'; % Returns the absolute deviation from the median (to avoid outliers)
+thresholds = (stdMor.*Info.Parameters.CWT_StdThresh*Info.Parameters.Channels_ThreshFactor)+median(powerData')';
+
+% when and for how long does the power cross the threshold
+signData    = sign(powerData - repmat(thresholds, [1, size(powerData,2)]));       % gives the sign of data
+minLength = (Info.Parameters.Ref_MinLength/1.3)*Info.sRate;
+    
+% time around the reference wave for other channels
 win = round(Info.Parameters.Channels_WinSize*Info.sRate);
 
 %% Find corresponding channels from the reference wave
-WaitHandle = waitbar(0,'Please wait...', 'Name', 'Finding Slow Waves...');
+WaitHandle = waitbar(0,'Please wait...', 'Name', 'Finding Spindles in Channels...');
 ToDelete=[];
 
 for nSS = 1:length(SS)
     
-    waitbar(nSS/length(SS),WaitHandle,sprintf('Slow Wave %d of %d',nSS, length(SS)))
+    waitbar(nSS/length(SS),WaitHandle,sprintf('Spindle %d of %d',nSS, length(SS)))
     
-    % Get the shorter time series data with a window on each side
-    if Info.Parameters.Filter_Apply
-        shortData = Data.Filtered(:,SS(nSS).Ref_Start-win:SS(nSS).Ref_End+win);
-    else
-        shortData = Data.Raw(:,SS(nSS).Ref_Start-win:SS(nSS).Ref_End+win);
-    end
-    % Reference data is taken from start to end of the spindle
-    refData = Data.SSRef(SS(nSS).Ref_Region(1),SS(nSS).Ref_Start:SS(nSS).Ref_End);
+    % calculate the sample range
+    range = SS(nSS).Ref_Start-win:SS(nSS).Ref_End+win;
     
-    %% Cross correlate with the reference channel at multiple lags
-    % cross correlation will simply pick up near-reference channels!
-    % should work on alternative method
-    cc = swa_xcorr(refData, shortData, win);
+%     % Get the shorter time series data with a window on each side
+%     if Info.Parameters.Filter_Apply
+%         shortData = Data.Filtered(:,SS(nSS).Ref_Start-win:SS(nSS).Ref_End+win);
+%     else
+%         shortData = Data.Raw(:,SS(nSS).Ref_Start-win:SS(nSS).Ref_End+win);
+%     end
+%     % Reference data is taken from start to end of the spindle
+%     refData = Data.SSRef(SS(nSS).Ref_Region(1),SS(nSS).Ref_Start:SS(nSS).Ref_End);
     
-    % find the maximum correlation and location
-    [maxCC, maxID]      = max(cc,[],2); 
-    % channels with correlation above threshold
-    Channels    = maxCC > Info.Parameters.Channels_CorrThresh; 
+    %% Calculate the continuous wavelet transform and power
+%     cwtData = zeros(size(shortData));
+%     % looping fairly slow
+%     for i = 1:size(shortData,1)
+%         cwtData(i,:) = mean(cwt(shortData(i,:),fullScale,'morl'));
+%     end
+%     
+%     powerData = cwtData.^2;
+%     powerData = filter(powerWindow,1,powerData')'; % take the moving average using the above window
+
+    shortPower = powerData(:,range);
+
+    %% Maximum power and duration criteria
+    shortSign = signData(:,range);
+    Channels = sum(shortSign > 0, 2) > minLength*Info.Parameters.Channels_ThreshFactor;
     
-    % if no channels correlate well with the reference then delete the SS
-    % and continue... [should try to correlate with maximum channel]
-    if sum(Channels)==0
-        ToDelete(end+1)=nSS;
-        continue
-    end
+    % find the time of the peak of the powerData (shortPower)
+    shortPower = shortPower(Channels, :);
+    [~, maxID]      = max(shortPower,[],2); 
     
-    %% Calculate peak to peak
-    % pre-allocate using nans
-    SS(nSS).Channels_Peak2PeakAmp = nan(length(Info.Electrodes),1);
     
+%     %% Cross correlate with the reference channel at multiple lags
+%     % cross correlation will simply pick up near-reference channels!
+%     % should work on alternative method
+%     cc = swa_xcorr(refData, shortData, win);
+%     
+%     % find the maximum correlation and location
+%     [maxCC, maxID]      = max(cc,[],2); 
+%     % channels with correlation above threshold
+%     Channels    = maxCC > Info.Parameters.Channels_CorrThresh; 
+    
+    %% Calculate peak to peak  
     % find the slopes of the raw data
     if Info.Parameters.Filter_Apply
-        slopeData  = diff(Data.Filtered(Channels, SS(nSS).Ref_Start:SS(nSS).Ref_End), 1, 2);
+        slopeData  = diff(Data.Filtered(Channels, range), 1, 2);
     else
-        slopeData  = diff(Data.Raw(Channels, SS(nSS).Ref_Start:SS(nSS).Ref_End), 1, 2);
+        slopeData  = diff(Data.Raw(Channels, range), 1, 2);
     end
     
-    peak2Peak = nan(sum(Channels),1);
-    
+    peak2Peak = nan(sum(Channels),1);  
     % Find all the peaks, both positive and negative
     for ch = 1:size(slopeData, 1)
         % Find all the peaks, both positive and negative
@@ -100,22 +140,30 @@ for nSS = 1:length(SS)
         peak2Peak(ch,:)   = max(abs(diff(peakAmp)));
     end
     
-    % Save to SS structure
+    % continue if no channels are left after duration and peak2peak checks
+    if sum(Channels) == 0
+        ToDelete(end+1) = nSS;
+        continue
+    end
+    
+    %% Save to SS structure
+    % pre-allocate using nans
+    SS(nSS).Channels_Peak2PeakAmp = nan(length(Info.Electrodes),1);
     SS(nSS).Channels_Peak2PeakAmp(Channels) = peak2Peak;
     
     % save remaining channels to structure
     SS(nSS).Channels_Active = abs(SS(nSS).Channels_Peak2PeakAmp) > 0;
     SS(nSS).Channels_Globality  = sum(SS(nSS).Channels_Active)/length(SS(nSS).Channels_Active)*100;
        
-    %% Delay Calculation
+    
+    % Find delays based on time of maximum power
     SS(nSS).Travelling_Delays = nan(length(Info.Electrodes),1);
-    SS(nSS).Travelling_Delays(Channels)...
-        = maxID(Channels) - min(maxID(Channels));
+    SS(nSS).Travelling_Delays(Channels) = maxID - min(maxID);
     
 end
 
 if ~isempty(ToDelete)
-    fprintf(1, 'Information: %d slow waves were removed due insufficient criteria \n', length(ToDelete));
+    fprintf(1, 'Information: %d spindle(s) were removed due insufficient criteria \n', length(ToDelete));
     SS(ToDelete)=[];
 end
 
