@@ -69,20 +69,20 @@ for refWave = 1:size(Data.SSRef,1)
     OSTCount = length(SS); % counts empty as one... fix!
     
     %% --Continuous Wavelet Transform -- %%
-    Data.CWT{1}(refWave,:) = mean(cwt(Data.SSRef(refWave,:), scaleFull, 'morl'), 1);
+    cwtData = mean(cwt(Data.SSRef(refWave,:), scaleFull, 'morl'), 1);
     
     % Calculate the power of each wavelet
     window = ones((Info.sRate/10),1)/(Info.sRate/10); % create 140ms window to convolve with
 
-    powerData = Data.CWT{1}(refWave,:).^2;
-    powerData = filter(window,1,powerData); % take the moving average using the above window
+    cwtData = cwtData.^2;
+    Data.CWT{1}(refWave,:) = filter(window,1,cwtData); % take the moving average using the above window
     
     %% -- Threshold crossings -- %%
     % Calculate power threshold criteria
-    stdMor = mad(powerData,1); % Returns the absolute deviation from the median (to avoid outliers)
-    Info.Parameters.CWT_AmpThresh(refWave) = (stdMor*Info.Parameters.CWT_StdThresh*2)+median(powerData); % StdThresh standard deviations from each side      
+    stdMor = mad(Data.CWT{1}(refWave,:),1); % Returns the absolute deviation from the median (to avoid outliers)
+    Info.Parameters.CWT_AmpThresh(refWave) = (stdMor*Info.Parameters.CWT_StdThresh*2)+median(Data.CWT{1}(refWave,:)); % StdThresh standard deviations from each side      
     
-    signData    = sign(powerData - Info.Parameters.CWT_AmpThresh(refWave));       % gives the sign of data
+    signData    = sign(Data.CWT{1}(refWave,:) - Info.Parameters.CWT_AmpThresh(refWave));       % gives the sign of data
     DZC = find(diff(signData) == -2); % -2 indicates when the sign goes from 1 to -1
     UZC = find(diff(signData) == 2);
     
@@ -104,7 +104,7 @@ for refWave = 1:size(Data.SSRef,1)
     DZC(SSLengths < minLength) = [];
     
     %% Find negative troughs in the power signal near the crossings
-    slopePower = [0 diff(powerData)];  % Differential of reference data (smoothed for better notch detection)     
+    slopePower = [0 diff(Data.CWT{1}(refWave,:))];  % Differential of reference data (smoothed for better notch detection)     
     powerMNP   = find(diff(sign(slopePower))==2); %Maximum Negative Point (trough of the wave)
     
     startSS = [];
