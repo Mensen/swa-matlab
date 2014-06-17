@@ -1,9 +1,4 @@
 %% GUI for Exploring Travelling Waves
-%% Version History
-% 2.0 14.2.14
-% ___ include CWT waves in the individual plot
-% ___ option to see background waves
-
 function swa_Explorer(varargin)
 DefineInterface
 
@@ -526,7 +521,7 @@ nSW = handles.java.Spinner.getValue();
 
 % Calculate the range
 if strcmp(handles.Type, 'SS')
-    winLength = floor((3*handles.Info.sRate - handles.SW(nSW).Ref_Length)/2);
+    winLength = floor((2*handles.Info.sRate - handles.SW(nSW).Ref_Length)/2);
     range = handles.SW(nSW).Ref_Start - winLength  :  handles.SW(nSW).Ref_End + winLength;
 else
     range = handles.SW(nSW).Ref_NegativePeak - winLength  :  handles.SW(nSW).Ref_NegativePeak + winLength;
@@ -564,10 +559,20 @@ else
     
     set(handles.SWPlot.Ref, 'yData', handles.Data.([handles.Type, 'Ref'])(handles.SW(nSW).Ref_Region(1),range));
     
+    % Find the absolute maximum value and round to higher 10, then add 10 for space
+    dataMax = ceil(abs(max(max(handles.Data.Raw(handles.SW(nSW).Channels_Active, range))))/10)*10+10;
+    set(handles.ax_SWPlot, 'YLim', [-dataMax, dataMax])
     
+    % Plot the cwt data...
     if isfield(handles.Data, 'CWT')
         for np = 1:length(handles.Data.CWT)
-            set(handles.SWPlot.CWT(1), 'yData', handles.Data.CWT{np}(handles.SW(nSW).Ref_Region(1),range));
+            % if its spindle power plot below line
+            if strcmp(handles.Type, 'SS')
+                data = handles.Data.CWT{np}(handles.SW(nSW).Ref_Region(1),range);
+                set(handles.SWPlot.CWT(1), 'yData', (data./max(data)*dataMax) - dataMax);
+            else
+                set(handles.SWPlot.CWT(1), 'yData', handles.Data.CWT{np}(handles.SW(nSW).Ref_Region(1),range));
+            end
         end
     end
 
@@ -582,10 +587,6 @@ else
 %     else
 %         set(handles.SWPlot.CWT(2), 'yData', []);             
 %     end
-    
-    % Find the absolute maximum value and round to higher 10, then add 10 for space
-    dataMax = ceil(abs(max(max(handles.Data.Raw(handles.SW(nSW).Channels_Active, range))))/10)*10+10;
-    set(handles.ax_SWPlot, 'YLim', [-dataMax, dataMax])
 
 end
 
@@ -635,7 +636,7 @@ if handles.java.PlotBox.getSelectedIndex()+1 == 1;
 elseif handles.java.PlotBox.getSelectedIndex()+1 == 2;
     swa_Topoplot...
         ([], handles.Info.Electrodes,...
-        'Travelling_Delays',handles.SW(nSW).Channels_Peak2PeakAmp,...
+        'Data',handles.SW(nSW).Channels_Peak2PeakAmp,...
         'GS',               handles.Info.Parameters.Travelling_GS,...
         'NewFigure',        nFigure                             ,...
         'Axes',             handles.ax_Delay                    ,...
@@ -699,7 +700,7 @@ H = swa_Topoplot(...
     'NewFigure',        1                                   ,...
     'Axes',             handles.ax_Density                  ,...
     'NumContours',      4                                   ,...
-    'PlotSurface',      1   
+    'PlotSurface',      1                                   );
 
 function pb_XDelay_Callback(hObject, eventdata, handles)
 handles = guidata(hObject);
@@ -727,7 +728,7 @@ nSW = handles.java.Spinner.getValue();
 
 % Calculate the range
 if strcmp(handles.Type, 'SS')
-    winLength = floor((3*handles.Info.sRate - handles.SW(nSW).Ref_Length)/2);
+    winLength = floor((2*handles.Info.sRate - handles.SW(nSW).Ref_Length)/2);
     range = handles.SW(nSW).Ref_Start - winLength  :  handles.SW(nSW).Ref_End + winLength;
 else
     range = handles.SW(nSW).Ref_NegativePeak - winLength  :  handles.SW(nSW).Ref_NegativePeak + winLength;
@@ -792,7 +793,7 @@ set(j_pbTravel, 'MouseReleasedCallback', {@UpdateTravelling, handles.Figure});
 
 %% Plot the data with the reference negative peak centered %
 SW_Handles.Plot_Ch = plot(SW_Handles.Axes,...
-     xaxis, handles.Data.REM(:,range)',...
+     xaxis, handles.Data.Raw(:,range)',...
     'Color', [0.8 0.8 0.8],...
     'LineWidth', 0.5,...
     'LineStyle', ':');
@@ -801,14 +802,16 @@ set(SW_Handles.Plot_Ch(handles.SW(nSW).Channels_Active), 'Color', [0.6 0.6 0.6],
 % set(SW_Handles.Plot_Ch(handles.SW(nSW).Travelling_Delays<1), 'Color', 'b', 'LineWidth', 2, 'LineStyle', '-');
 
 handles.SWPlot.Ref = plot(SW_Handles.Axes,...
-    xaxis, handles.Data.STRef(handles.SW(nSW).Ref_Region(1),range)',...
+    xaxis, handles.Data.([handles.Type, 'Ref'])(handles.SW(nSW).Ref_Region(1),range)',...
     'Color', 'r',...
     'LineWidth', 3);
 
-handles.SWPlot.CWT = plot(SW_Handles.Axes,...
-    xaxis, handles.Data.CWT{1}(handles.SW(nSW).Ref_Region(1), range)',...
-    'Color', 'b',...
-    'LineWidth', 3);
+if ~strcmp(handles.Type, 'SS')
+    handles.SWPlot.CWT = plot(SW_Handles.Axes,...
+        xaxis, handles.Data.CWT{1}(handles.SW(nSW).Ref_Region(1), range)',...
+        'Color', 'b',...
+        'LineWidth', 3);
+end
 
 
 
@@ -837,28 +840,66 @@ handles = guidata(FigureHandle);
 nSW = handles.java.Spinner.getValue();
 
 % Recalculate the Travelling_Delays parameter before running...
-Window = round(handles.Info.Parameters.Channels_WinSize*handles.Info.sRate);
-wData = (handles.SW(nSW).CWT_NegativePeak-Window):(handles.SW(nSW).CWT_NegativePeak+Window);  
+win = round(handles.Info.Parameters.Channels_WinSize*handles.Info.sRate);
 
-Data.REM = handles.Data.REM(handles.SW(nSW).Channels_Active, wData);
+if strcmp(handles.Type, 'SS')
+    range = handles.SW(nSW).Ref_Start-win:handles.SW(nSW).Ref_End+win;
+else
+    range = (handles.SW(nSW).CWT_NegativePeak-win):(handles.SW(nSW).CWT_NegativePeak+win);
+end
+
+currData    = handles.Data.Raw(handles.SW(nSW).Channels_Active, range);
 
 FreqRange   = handles.Info.Parameters.CWT_hPass:handles.Info.Parameters.CWT_lPass;
-Scale_theta  = swa_frq2scal(FreqRange, 'morl', 1/handles.Info.sRate);    % Own Function!
+scale       = (centfrq('morl')./FreqRange)*handles.Info.sRate;
 
-Channels_Theta = zeros(size(Data.REM));
-WaitHandle = waitbar(0,'Please wait...', 'Name', 'Calculating Wavelets');
-for i = 1:size(Data.REM,1)
-    waitbar(i/size(Data.REM,1),WaitHandle,sprintf('Channel %d of %d',i, size(Data.REM,1)))
-    Channels_Theta(i,:) = mean(cwt(Data.REM(i,:),Scale_theta,'morl'));
+cwtData= zeros(size(currData));
+for i = 1:size(currData,1)
+    cwtData(i,:) = mean(cwt(currData(i,:),scale,'morl'));
 end
-delete(WaitHandle);
 
-[Ch_Min, Ch_Id] = min(Channels_Theta, [],2);
-
-handles.SW(nSW).Travelling_Delays = nan(size(handles.Data.REM,1),1);
-handles.SW(nSW).Travelling_Delays(handles.SW(nSW).Channels_Active) = Ch_Id-min(Ch_Id);
-
-[handles.Info, handles.SW] = swa_FindSTTravelling(handles.Info, handles.SW, nSW);
+% Recalculate the delays and peak2peak amplitudes differently for each type
+if strcmp(handles.Type, 'SS')
+    % calculate the power of each cwt
+    powerWindow = ones((handles.Info.sRate/10),1)/(handles.Info.sRate/10); % create 100ms window to convolve with
+    powerData = cwtData.^2;
+    powerData = filter(powerWindow,1,powerData')';
+    
+    % find the time of the peak of the powerData (shortPower)
+    [~, maxID] = max(powerData,[],2);     
+    
+    % Find delays based on time of maximum power
+    handles.SW(nSW).Travelling_Delays = nan(length(handles.Info.Electrodes),1);
+    handles.SW(nSW).Travelling_Delays(handles.SW(nSW).Channels_Active) = maxID - min(maxID);
+      
+    % calculate new peak2peaks
+    slopeData  = diff(currData, 1, 2);
+        
+    peak2Peak = nan(sum(handles.SW(nSW).Channels_Active),1);  
+    % Find all the peaks, both positive and negative
+    for ch = 1:size(slopeData, 1)
+        % Find all the peaks, both positive and negative
+        peakAmp = currData(ch, find(abs(diff(sign(slopeData(ch,:)), 1, 2)== 2)));
+        % if a channel has less than 3 peaks, delete it
+        if length(peakAmp) < 2
+            peak2Peak(ch,:) = nan;
+            continue;
+        end
+        peak2Peak(ch,:)   = max(abs(diff(peakAmp)));
+    end
+    
+    handles.SW(nSW).Channels_Peak2PeakAmp = nan(length(handles.Info.Electrodes),1);
+    handles.SW(nSW).Channels_Peak2PeakAmp(handles.SW(nSW).Channels_Active) = peak2Peak;
+    
+else
+    % to do: peak2peak amplitude adjustment for ST
+    [~, Ch_Id] = min(cwtData, [],2);
+    
+    handles.SW(nSW).Travelling_Delays = nan(size(handles.Data.Raw,1),1);
+    handles.SW(nSW).Travelling_Delays(handles.SW(nSW).Channels_Active) = Ch_Id-min(Ch_Id);
+    
+    [handles.Info, handles.SW] = swa_FindSTTravelling(handles.Info, handles.SW, nSW);
+end
 
 handles = update_SWDelay(handles, 0);
 guidata(handles.Figure, handles);
@@ -870,8 +911,7 @@ set(handles.ax_Butterfly,   'YDir', Direction)
 set(handles.ax_SWPlot,      'YDir', Direction)
 
 
-
-%% Check Boxes
+%% Big plot check-box callback
 function UpdateDelay2(hObject, eventdata)
 handles = guidata(hObject);
 update_SWDelay(handles, 0);
