@@ -423,6 +423,8 @@ switch handles.Type
         save([savePath, saveName], 'Data', 'Info', 'ST', '-mat');
 end
 
+set(handles.Figure, 'Name', ['Travelling Waves: ', saveName]);
+
 
 %% Update Controls
 function SpinnerUpdate(~,~,hObject)
@@ -812,7 +814,6 @@ if ~strcmp(handles.Type, 'SS')
         'Color', 'b',...
         'LineWidth', 3);
 end
-
 
 
 function Channel_Selected(hObject, ~ , FigureHandle, SW_Handles)
