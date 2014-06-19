@@ -74,8 +74,8 @@ for refWave = 1:size(Data.SSRef,1)
     % Calculate the power of each wavelet
     window = ones((Info.sRate/10),1)/(Info.sRate/10); % create 140ms window to convolve with
 
-    cwtData = cwtData.^2;
-    Data.CWT{1}(refWave,:) = filter(window,1,cwtData); % take the moving average using the above window
+    Data.CWT{1}(refWave,:) = cwtData.^2;
+    Data.CWT{1}(refWave,:) = filter(window,1, Data.CWT{1}(refWave,:)); % take the moving average using the above window
     
     %% -- Threshold crossings -- %%
     % Calculate power threshold criteria
