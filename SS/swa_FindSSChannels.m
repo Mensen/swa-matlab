@@ -42,7 +42,7 @@ end
 % parameters for cwt
 FreqRange   = Info.Parameters.CWT_hPass(1):0.5:Info.Parameters.CWT_lPass(2);
 fullScale   = (centfrq('morl')./FreqRange)*Info.sRate;
-powerWindow = ones((Info.sRate/10),1)/(Info.sRate/10); % create 140ms window to convolve with
+powerWindow = ones((Info.sRate/10),1)/(Info.sRate/10); % create 100ms window to convolve with
 
 % calculate cwt for each channel
 cwtData = zeros(size(Data.Raw));
@@ -154,8 +154,7 @@ for nSS = 1:length(SS)
     % save remaining channels to structure
     SS(nSS).Channels_Active = abs(SS(nSS).Channels_Peak2PeakAmp) > 0;
     SS(nSS).Channels_Globality  = sum(SS(nSS).Channels_Active)/length(SS(nSS).Channels_Active)*100;
-       
-    
+         
     % Find delays based on time of maximum power
     SS(nSS).Travelling_Delays = nan(length(Info.Electrodes),1);
     SS(nSS).Travelling_Delays(Channels) = maxID - min(maxID);
