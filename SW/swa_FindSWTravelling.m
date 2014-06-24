@@ -38,28 +38,20 @@ for nSW = 1:length(SW)
     [u,v] = gradient(SW(nSW).Travelling_DelayMap);
 
     %% Define Starting Point(s) on the GSxGS grid...
-    sx = xloc(SW(nSW).Travelling_Delays<2);
-    sy = yloc(SW(nSW).Travelling_Delays<2);
+    sx = xloc(SW(nSW).Channels_Active);
+    sy = yloc(SW(nSW).Channels_Active);
       
     %% Find Streamline(s)
-    % stream2 results in NaN values in streams and also tiny repetitions of coordinates.
-%     SW(nSW).Vector = stream2(XY,XY',u,v,sx,sy, [0.2, 100]); % max stepsize 100 to avoid too many NaNs
-    
-    % But mmstream2 is 4 times slower and still leaves NaNs (stream2 uses mex)!
-%     SW(nSW).Vector = mmstream2(XY,XY',u,v,sx,sy, 'start', 0.2); % max stepsize 100 to avoid too many NaNs
-    
-    % Use adstream2
+
+    % Use adstream2 (should optimise by coding entirely in c)
     Streams         = cell(1,length(sx));
     Distances       = cell(1,length(sx));
     for i = 1:length(sx)
-        [Streams{i},Distances{i},~] = adstream2b(XYrange,XYrange,u,v,sx(i),sy(i), cosd(45), 0.1, 1000);
+        [StreamsBack, DistancesBack,~] = adstream2b(XYrange,XYrange,-u,-v,sx(i),sy(i), cosd(45), 0.1, 1000);
+        [StreamsForw, DistancesForw,~] = adstream2b(XYrange,XYrange,u,v,sx(i),sy(i), cosd(45), 0.1, 1000);
+        Streams{i}      = [fliplr(StreamsBack), StreamsForw];
+        Distances{i}    = [fliplr(DistancesBack), DistancesForw];
     end
-       
-    % Problems
-    % P: Border origins are not calculable because border u/v gradients are NaN
-    % A1: Make neighbour channels -1 and recalculate
-    % A2: Edit adstream to make it more compatible
-    % P: Streams stop at zero gradients
        
     %% Process and save streamlines...
     Streams(cellfun(@isempty, Streams)) = []; %Remove empty streams
@@ -93,50 +85,6 @@ for nSW = 1:length(SW)
         SW(nSW).Travelling_Streams{end+1} = Streams{maxAngleId};
     end
     
-    %% Plot Functions
-
-%     H.Figure    = figure('color','w'); % set axes CLim to 0.5 to avoid all white delay = 1
-%     H.Contour   = contourf(XYmesh,XYmesh',SW(nSW).Delay_Map,10, 'edgecolor', 'none');
-%     camroll(90) % rotate counter-clockwise
-%     
-% %     H.Image     = imagesc(SW(nSW).Delay_Map);
-%     
-%     hold on
-%     axis ij % invert the y axis
-%     axis square
-%     axis off
-%     hold on
-%     colormap(flipud(hot))
-%     % channel plot
-%     H.Channels = plot(xloc,yloc,'k.');
-%     H.Starts   = plot(sx,sy,'ko', 'linewidth', 2);
-% 
-% %     H.Streams = plot(SW(nSW).Vector{1}(1,:), SW(nSW).Vector{1}(2,:));
-% %     set(H.Streams,'color','k', 'linewidth', 4);
-%     
-% %     for i = 1:length(SW(nSW).Vector)
-% %         if ~isempty(SW(nSW).Vector{i})
-% %             H.Streams(i) = plot(SW(nSW).Vector{i}(1,:), SW(nSW).Vector{i}(2,:));
-% %         end
-% %     end
-% %     set(H.Streams(H.Streams>0), 'color','k', 'linewidth', 2);
-%     
-%     % Plot Patches for Streams
-%     H.PStream = [];
-%     for i = 1:length(SW(nSW).Streams)
-%         if ~isempty(SW(nSW).Streams{i})
-%             pad = linspace(0,Info.Stream_Parameters.GS/50,length(SW(nSW).Streams{i}));
-%             xp = [SW(nSW).Streams{i}(1,:)-pad, fliplr(SW(nSW).Streams{i}(1,:)+pad)];
-%             yp = [SW(nSW).Streams{i}(2,:)+pad, fliplr(SW(nSW).Streams{i}(2,:)-pad)];
-%             H.PStream(i) = patch(xp,yp,'w');
-%         end
-%     end
-%     set(H.PStream(H.PStream>0),...
-%         'linewidth',    2,...
-%         'edgecolor',    'w',...
-%         'facecolor',    'b',...
-%         'facealpha',    0.5);%     set(H.Streams(1),'color','k', 'linewidth', 4);
-
     %% Update waitbar
     waitbar(nSW/length(SW),h,sprintf('Slow Wave %d of %d',nSW, length(SW)))
 
