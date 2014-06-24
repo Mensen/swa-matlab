@@ -2,7 +2,7 @@ function [SW, Data, Info] = swa_FindSWChannels(SW, Data, Info)
 
 if ~isfield(Info, 'ChN');
     fprintf(1,'Calculating: Channel Neighbours...');
-    Info.ChN = ept_ChN2(Info.Electrodes);
+    Info.ChN = swa_ChN(Info.Electrodes);
     fprintf(1,'Done. \n');
 else
     fprintf(1,'Information: Using channels neigbourhood in ''Info''. \n');
