@@ -73,10 +73,10 @@ if PlotSurface == 1; PlotContour = 0; end
 
 if ~exist('GS', 'var')
     GS = 40;
-    fprintf(1, 'Warning: Set gridscale as parameter, using default [GS = 40] \n');
+%     fprintf(1, 'Warning: Set gridscale as parameter, using default [GS = 40] \n');
 elseif isempty(GS)
     GS = 40;
-    fprintf(1, 'Warning: Set gridscale as parameter, using default [GS = 40] \n');
+%     fprintf(1, 'Warning: Set gridscale as parameter, using default [GS = 40] \n');
 end
 
 if isfield(e_loc(1), 'x')
