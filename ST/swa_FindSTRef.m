@@ -56,8 +56,8 @@ for refWave = 1:size(Data.STRef,1)
     Data.CWT{2}(refWave,:) = mean(cwt(Data.STRef(refWave,:), Scale_alpha, 'morl'));
     
     %% -- Process Slopes -- %%
-    slopeData = [0 diff(Data.STRef(refWave,:))];  % Differential of reference data (smoothed for better notch detection) 
-    slopeCWT  = [0 diff(Data.CWT{1}(refWave,:))];           % Differential of theta bands
+    slopeData = [0 diff(Data.STRef(refWave,:))];    % Differential of reference data (smoothed for better notch detection) 
+    slopeCWT  = [0 diff(Data.CWT{1}(refWave,:))];   % Differential of theta bands
     
     refMNP  = find(diff(sign(slopeData))==2); %Maximum Negative Point (trough of the wave)
     refMPP  = find(diff(sign(slopeData))==-2); %Maximum Negative Point (trough of the wave)
