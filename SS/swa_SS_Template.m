@@ -52,7 +52,7 @@ Info.Parameters.Filter_Apply    = false; % No filter needed for CWT method...
 
 [Data.SSRef, Info]  = swa_CalculateReference(Data.Raw, Info);
 
-%% New CWT Method
+%% CWT Method
 % CWT Parameters
 
     Info.Parameters.CWT_hPass(1)    = 11.5;
@@ -88,25 +88,37 @@ Info.Parameters.Travelling_GS           = 40; % Gridsize for delay map
 % plot(time, data, 'k', 'linewidth', 2);
 % set(gca, 'YLim', [-60, 60]);
 
+
 % Plot wave after detection
 % ~~~~~~~~~~~~~~~~~~~~~~~~~
-
-nSS = 240;
-win = Info.sRate * 2;
+nSS = 30;
+win = Info.sRate * 1.5;
 range =  SS(nSS).Ref_Start-win:SS(nSS).Ref_End+win;
 ref_data = Data.SSRef(SS(nSS).Ref_Region(1), range);
-raw_data = Data.Raw(SS(nSS).Channels_Active, range);
-cwt_data = Data.CWT{1}(SS(nSS).Ref_Region(1), range);
+% raw_data = Data.Raw(SS(nSS).Channels_Active, range);
+pow_data = Data.CWT{1}(SS(nSS).Ref_Region(1), range+10);
+
+cwt_data = cwtData(:, range);
 time = 1/Info.sRate:1/Info.sRate:size(ref_data,2)/Info.sRate;
 
 figure('color', 'w', 'position', [50,50, 1000, 500]); 
 % Plot active channels if they've been calculated
 hold all;
-plot(time, cwt_data*2, 'color', [.7 .7 .7], 'linewidth', 2);
-plot(time, raw_data, 'linewidth', 0.5);
-plot(time, ref_data, 'k', 'linewidth', 4);
+% plot(time, cwt_data*2, 'color', [.5 .5 .5], 'linewidth', 1);
+% plot(time, raw_data, 'color', [.5 .5 .5], 'linewidth', 0.5);
+plot(time, ref_data, 'color', 'b', 'linewidth', 1);
+plot(time, pow_data.^0.5*4, 'color', 'r', 'linewidth', 3);
+
 set(gca, 'YLim', [-60, 60]);
 
 
-
-
+% plot the three reference waves
+nSS = 18;
+win = Info.sRate * 1.5;
+range =  SS(nSS).Ref_Start-win:SS(nSS).Ref_End+win;
+time = 1/Info.sRate:1/Info.sRate:size(ref_data,2)/Info.sRate;
+figure('color', 'w', 'position', [50,50, 1000, 500]); 
+hold all;
+plot(time, Data.SSRef(1, range)+50, 'color', 'g',  'linewidth', 2);
+plot(time, Data.SSRef(2, range),    'color', 'b',  'linewidth', 2);
+plot(time, Data.SSRef(1, range)-50, 'color', 'r',  'linewidth', 2);
