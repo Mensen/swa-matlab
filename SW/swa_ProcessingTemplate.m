@@ -10,9 +10,10 @@ Info.Parameters.Filter_order    = 2;
 
 Info.Parameters.Ref_Method      = 'Envelope';
 Info.Parameters.Ref_UseInside   = 1;
-Info.Parameters.Ref_NegAmpMin   = 80;
-Info.Parameters.Ref_ZCLength    = [0.25 1.25];
-Info.Parameters.Ref_SlopeMin    = 0.90;
+Info.Parameters.Ref_AmpStd      = 6;                % Standard deviations from mean negativity
+Info.Parameters.Ref_NegAmpMin   = 80;               % Only used if Ref_AmpStd not set
+Info.Parameters.Ref_ZCLength    = [0.25 1.25];      % Length criteria between zero crossings
+Info.Parameters.Ref_SlopeMin    = 0.90;             % Percentage cut-off for slopes
 Info.Parameters.Ref_Peak2Peak   = 140;              % Only for MDC
 
 Info.Parameters.Channels_CorrThresh = 0.9;
@@ -28,11 +29,11 @@ Info.Parameters.Stream_MinDelay = 40; % minimum travel time (ms)
 
 [SW, Data, Info]    = swa_FindSWChannels(SW, Data, Info);
 
-[SW,Info]           = swa_FindSWStreams(SW,Info);
+[SW,Info]           = swa_FindSWTravelling(SW,Info);
 
+% Done! Use the swa_Explorer to visualise the results.
 
-
-%% -- Scripts for Four Regions
+%% -- Template for Four Regions Reference -- %%
 Info.Method = 'MDC';
 
 [Data.Ref, Info]    = swa_CalculateReference(Data.SWS, Info);
@@ -51,7 +52,9 @@ clear sortId AllPeaks
 
 [SW, Data, Info]    = swa_FindSWChannels(SW, Data, Info);
 
-[SW,Info]           = swa_FindSWStreams(SW,Info);
+[SW,Info]           = swa_FindSWTravelling(SW,Info);
+
+
 %% Plotting Functions %%
 nSW = 4;
 win = round(0.4*Info.sRate);
