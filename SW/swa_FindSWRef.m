@@ -57,28 +57,35 @@ if length(DZC)>length(UZC)
     DZC(end) = [];
 end
 
-Info.Failed.FailedAtLength  = 0;
-Info.Failed.FailedAtAmp     = 0;
-Info.Failed.FailedAtP2P     = 0;
-Info.Failed.FailedAtSlope   = 0;
+% Test Wavelength
+% ```````````````
+% Get all the wavelengths
+SWLengths = UZC-DZC;
+% Too short
+BadZC = SWLengths < Info.Parameters.Ref_ZCLength(1)*Info.sRate;
+% Too long
+BadZC(  SWLengths > Info.Parameters.Ref_ZCLength(2)*Info.sRate) = true;
+% Eliminate the indices
+UZC(BadZC) = [];
+DZC(BadZC) = [];
+
+% Calculate Amplitude Threshold Criteria
+% ```````````````````````````````````````
+if ~isempty(Info.Parameters.Ref_AmpStd)
+    MNP  = find(diff(sign(slopeData))==2);  % Maximum Negative Point (trough of the wave)
+    StdMor = mad(Data(MNP), 1);             % Returns the absolute deviation from the median (to avoid outliers)
+    Info.Parameters.Ref_NegAmpMin = (StdMor*8)+abs(mean(Data(MNP))); % Overwrite amp threshold
+end
 
 % To check differences between next peaks found...
 AllPeaks = [SW.Ref_PeakId];
 
 %% Loop through each DZC for criteria
 for i = 1:length(DZC)
-    
-    % Test for DZC to UZC length
-    % I wonder if this may be too strict given that our positive crossings might be delayed in the reference channel
-    if UZC(i)-DZC(i) < Info.Parameters.Ref_ZCLength(1)*Info.sRate || UZC(i)-DZC(i) > Info.Parameters.Ref_ZCLength(2)*Info.sRate
-        Info.Failed.FailedAtLength  = Info.Failed.FailedAtLength+1;
-        continue;
-    end
-    
+      
     % Test for negative amplitude
     [NegPeakAmp,NegPeakId] = min(Data(1,DZC(i):UZC(i)));
     if abs(NegPeakAmp) < Info.Parameters.Ref_NegAmpMin
-        Info.Failed.FailedAtAmp  = Info.Failed.FailedAtAmp+1;
         continue;
     end
     NegPeakId = NegPeakId+DZC(i);
@@ -87,7 +94,6 @@ for i = 1:length(DZC)
     if strcmp(Info.Parameters.Ref_Method,'MDC')
         PosPeakAmp = max(Data(1,UZC(i):UZC(i)+2*Info.sRate));
         if PosPeakAmp-NegPeakAmp < Info.Parameters.Ref_Peak2Peak
-            Info.Failed.FailedAtP2P  = Info.Failed.FailedAtP2P+1;
             continue;
         end
     end
@@ -95,7 +101,6 @@ for i = 1:length(DZC)
     % Test for positive slope
     MaxPosSlope = max(slopeData(1,DZC(i):UZC(i)));
     if MaxPosSlope < slopeThresh
-        Info.Failed.FailedAtSlope = Info.Failed.FailedAtSlope+1;
         continue;
     end    
     
