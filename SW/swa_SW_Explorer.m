@@ -1,16 +1,5 @@
 %% GUI for Exploring Travelling Waves
 
-%% Version History
-% 5.1 21.2.14
-% _x_ Context menu to switch negative up and down (Yaxis reverse)
-% ___ Arrow indicators in butterfly plot for detected waves
-
-% 5.0 29.1.14
-% _x_ Create editable SW_Plot with selectable channels
-% ___ Online reanalyse of particular waves using altered parameters
-% _x_ Replace buggy matlab slider with nice JSlider (undocumented)
-% _x_ Independent of GUIDE
-
 function swa_SW_Explorer(varargin)
 DefineInterface
 
@@ -422,7 +411,7 @@ nSW = handles.java.Spinner.getValue();
 if nFigure ~= 1; cla(handles.ax_Delay); end
 
 if ~isempty(handles.SW(nSW).Travelling_DelayMap)
-    H = swa_DelayPlot...
+    H = swa_Topoplot...
         (handles.SW(nSW).Travelling_DelayMap, handles.Info.Electrodes,...
         'NewFigure',        nFigure                             ,...
         'Axes',             handles.ax_Delay                    ,...
