@@ -56,7 +56,8 @@ Info.Parameters.Burst_Length        = 1;       % Maximum time between waves in s
 
 [Data, Info, ST] = swa_FindSTRef(Data, Info);
 
-%% Apply Burst as Criteria (Probably best to lower other criteria in order to capture all waves in burst
+%% Apply Burst as Criteri[Info, ST] = swa_FindSTTravelling(Info, ST);
+% a (Probably best to lower other criteria in order to capture all waves in burst
 
 BurstCriteria = [ST.Burst_BurstId];     
 ST(isnan(BurstCriteria)) = [];            % Delete all nan BurstIds
