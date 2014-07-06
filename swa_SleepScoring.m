@@ -62,15 +62,13 @@ jandles.StatusBar.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
 %     'Backgroundcolor', 'w',...
 %     'Units',    'normalized',...
 %     'Position', [0.15 0.25 0.75 0.025]);
-handles.java.Slider = javax.swing.JSlider;
-set(handles.java.Slider,...
-    'Background', [1,1,1]);
-[jh,handles.sl_Epochs] = javacomponent(handles.java.Slider);
+[handles.java.Slider, handles.sl_Epochs] = javacomponent(javax.swing.JSlider);
+handles.java.Slider.setBackground(javax.swing.plaf.ColorUIResource(1,1,1))
 set(handles.sl_Epochs,...
     'Parent',   handles.Figure,...      
     'Units',    'normalized',...
     'Position', [0.147 0.23 0.756 0.05]);
-set(jh, 'MouseReleasedCallback',{@sliderUpdate, handles.Figure});
+set(handles.java.Slider, 'MouseReleasedCallback',{@sliderUpdate, handles.Figure});
   
 %% Create PopUpMenus and Axes
 for i = 1:8
@@ -277,10 +275,15 @@ end
 set(handles.Figure, 'Name', ['Sleep Scoring: ', dataFile]);
 
 set(handles.StatusBar, 'String', 'Busy: Loading EEG (May take some time)...'); drawnow;
-handles.EEG = pop_loadset([dataPath, dataFile]);
+
+% Load the struct and memory map the actual data...
+load([dataPath, dataFile], '-mat');
+handles.EEG = EEG;
+handles.EEG.data = mmo(EEG.data, [EEG.nbchan EEG.pnts EEG.trials], false);
+% handles.EEG = pop_loadset([dataPath, dataFile]);
 set(handles.StatusBar, 'String', 'EEG Loaded')
 
-set(handles.pmCh, 'String', {handles.EEG.chanlocs.labels}')
+set(handles.pmCh, 'String', {handles.EEG.urchanlocs.labels}')
 
 %% Check for Previous Scoring
 if isfield(handles.EEG, 'SleepScoring')
