@@ -30,7 +30,7 @@ handles.menu.LoadMontage = uimenu(handles.menu.File,...
     'Label', 'Load Montage',...
     'Separator', 'on');
 
-handles.menu.Tools = uimenu(handles.Figure, 'Label', 'Tools', 'Enable', 'off');
+handles.menu.Tools      = uimenu(handles.Figure, 'Label', 'Tools', 'Enable', 'off');
 handles.menu.Filter     = uimenu(handles.menu.Tools,'Label', 'Filter');
 handles.menu.Reference  = uimenu(handles.menu.Tools,'Label', 'Reference');
 
@@ -95,6 +95,9 @@ set(handles.axCh(1:end-1),...
     'Xtick', [],...
     'Ytick', []);
 
+% use the third axes to mark arousals
+set(handles.axCh(3), 'buttondownfcn', {@swa_select_range, handles.axCh(3), 'buttondown'})
+
 %% Scoring Buttons
 
 handles.bg_Scoring = uibuttongroup(...
@@ -129,7 +132,7 @@ set(handles.rb, 'BackgroundColor', 'w', 'FontName', 'Century Gothic','FontSize',
 handles.StageBar = uicontrol(...
     'Parent', handles.Figure,...    
     'Style',    'text',...    
-    'String',   'Unscored',...
+    'String',   '1: Unscored',...
     'ForegroundColor', 'k',...
     'Units',    'normalized',...
     'Position', [0.15 0.935 0.75 0.02],...
@@ -257,64 +260,93 @@ drawnow; pause(0.001)
 jFrame = get(handle(handles.Figure),'JavaFrame');
 jFrame.setMaximized(true);   % to maximize the figure
 
-guidata(handles.Figure,handles) 
+guidata(handles.Figure, handles) 
 
 
 function menu_LoadEEG(hObject, eventdata, handles)
 
-% !Load dialog box with file type
-
+% load dialog box with file type
 [dataFile, dataPath] = uigetfile('*.set', 'Please Select Sleep Data');
 
+% just return if no datafile was actually selected
 if isequal(dataFile, 0)
     set(handles.StatusBar, 'String', 'Information: No file selected'); drawnow;
     return;
 end
 
 % Load the Files
-set(handles.Figure, 'Name', ['Sleep Scoring: ', dataFile]);
-
+% ``````````````
 set(handles.StatusBar, 'String', 'Busy: Loading EEG (May take some time)...'); drawnow;
 
-% Load the struct and memory map the actual data...
+% load the struct to the workspace
 load([dataPath, dataFile], '-mat');
-handles.EEG = EEG;
-handles.EEG.data = mmo(EEG.data, [EEG.nbchan EEG.pnts EEG.trials], false);
-% handles.EEG = pop_loadset([dataPath, dataFile]);
-set(handles.StatusBar, 'String', 'EEG Loaded')
-
-set(handles.pmCh, 'String', {handles.EEG.urchanlocs.labels}')
-
-%% Check for Previous Scoring
-if isfield(handles.EEG, 'SleepScoring')
-    set(handles.et_EpochLength, 'String', num2str(handles.EEG.SleepScoring.EpochLength));  
-    sEpoch  = handles.EEG.SleepScoring.EpochLength*handles.EEG.srate;
-    nEpochs = floor(size(handles.EEG.data,2)/sEpoch);
-else
-    handles.EEG.SleepScoring.EpochLength = str2double(get(handles.et_EpochLength, 'String'));
-    sEpoch  = str2double(get(handles.et_EpochLength, 'String'))*handles.EEG.srate; % samples per epoch 
-    nEpochs = floor(size(handles.EEG.data,2)/sEpoch);
-    handles.EEG.SleepScoring.Stages = nan(1,nEpochs);
-    handles.EEG.SleepScoring.StageNames = cell(1,nEpochs);
-    handles.EEG.SleepScoring.StageNames(:) = {'Unscored'};
-    handles.EEG.SleepScoring.Montage = 1:8;
+if ~exist('EEG', 'var')
+    set(handles.StatusBar, 'String', 'Warning: No EEG structure found in file'); drawnow;
+    return;
 end
 
-%% Plot the data
+% memory map the actual data...
+tmp = memmapfile(EEG.data,...
+                'Format', {'single', [EEG.nbchan EEG.pnts EEG.trials], 'eegData'});
+eegData = tmp.Data.eegData;
+% eegData = mmo(EEG.data, [EEG.nbchan EEG.pnts EEG.trials], false);
+% EEG = pop_loadset([dataPath, dataFile]);
 
+set(handles.StatusBar, 'String', 'EEG Loaded'); drawnow;
+set(handles.Figure, 'Name', ['Sleep Scoring: ', dataFile]);
+
+% set the pop-up menus values to the channel labels
+set(handles.pmCh, 'String', {EEG.urchanlocs.labels}')
+
+% Check for Previous Scoring
+% ``````````````````````````
+if isfield(EEG, 'swa_scoring')
+    % if there is a previously scoring file
+    % set the epochlength
+    set(handles.et_EpochLength, 'String', num2str(EEG.swa_scoring.epochLength));  
+    sEpoch  = EEG.swa_scoring.EpochLength*EEG.srate;
+    nEpochs = floor(size(eegData,2)/sEpoch);
+else
+    % get the default setting for the epoch length from the figure
+    EEG.swa_scoring.epochLength = str2double(get(handles.et_EpochLength, 'String'));
+    % calculate samples per epoch
+    sEpoch  = EEG.swa_scoring.epochLength*EEG.srate; % samples per epoch 
+    % calculate number of epochs in the entire series
+    nEpochs = floor(size(eegData,2)/sEpoch);
+    
+    % pre-allocate the variables
+    % each sample is assigned a stage (255 is default unscored)
+    EEG.swa_scoring.stages      = uint8(ones(1,EEG.pnts)*255);
+    EEG.swa_scoring.arousals    = logical(ones(1,EEG.pnts)*255);    
+    % only every epoch is assigned a name
+    EEG.swa_scoring.stageNames  = cell(1,nEpochs);
+    EEG.swa_scoring.stageNames(:) = {'Unscored'};
+    % the montage just indicates which channels are displayed
+    EEG.swa_scoring.montage     = 1:8;
+end
+
+% Initial plot of the data
+% ````````````````````````
+% get the default scale
 ylimits = str2double(get(handles.et_Scale, 'String'));
+
+% set the limits of all the axes
 set(handles.axCh,...
     'YLim', [-ylimits,ylimits]);
 
+% initial plot on each axes
 for i = 1:8
+    % re-set the channel labels accordingly
+    set(handles.pmCh(i), 'Value', EEG.swa_scoring.montage(i));
+    % plot the channel from the first sample on
     handles.plCh(i) = plot(handles.axCh(i),...
-        handles.EEG.data(handles.EEG.SleepScoring.Montage(i),1:sEpoch), 'b');
-    set(handles.pmCh(i), 'Value', handles.EEG.SleepScoring.Montage(i));
+        eegData(EEG.swa_scoring.montage(i),1:sEpoch), 'b');
 end
 
-%% Set Slider Values
+% Set Slider Values
+% `````````````````
+% edit the java objects directly using object traversal (ie, .set)
 handles.java.Slider.setValue(1);
-% handles.java.Slider.setMinimum(1);
 handles.java.Slider.setMaximum(nEpochs);
 handles.java.Slider.setMinorTickSpacing(10);
 handles.java.Slider.setMajorTickSpacing(50);
@@ -322,34 +354,60 @@ handles.java.Slider.setPaintTicks(true);
 % handles.java.Slider.setPaintLabels(false);
 handles.java.Slider.setPaintLabels(true);
 
-%% Set Hypnogram
-set(handles.axHypno,...
-    'XLim', [1 nEpochs]);
+% Set Hypnogram
+% `````````````
+time = [1:EEG.pnts]/EEG.srate/60/60;
 
-handles.plHypno = plot(handles.EEG.SleepScoring.Stages,...
+% set the x-limit to the number of stages
+set(handles.axHypno,...
+    'XLim', [0 time(end)],...
+    'YLim', [0 5]);
+   
+% plot the stages    
+handles.plHypno = plot(time, EEG.swa_scoring.stages,...
     'LineWidth', 2,...
     'Color',    'k');
+% ``````````````
 
+% enable the menu items
 set(handles.menu.Export, 'Enable', 'on');
 set(handles.menu.Statistics, 'Enable', 'on');
-set(handles.menu.Tools, 'Enable', 'on');
+% set(handles.menu.Tools, 'Enable', 'on');
 
+% reset the status bar
 set(handles.StatusBar, 'String', 'Idle')
-guidata(handles.Figure,handles) 
-CheckFilter(hObject,eventdata,2)
+
+% update the handles structure
+guidata(handles.Figure, handles)
+% use setappdata for data storage to avoid passing it around in handles when not necessary
+setappdata(handles.Figure, 'EEG', EEG);
+setappdata(handles.Figure, 'eegData', eegData);
+
+% check the filter settings and adjust plots
+CheckFilter(hObject, eventdata, 2)
 
 function menu_SaveEEG(hObject, eventdata)
 handles = guidata(hObject); % Get handles
 
 set(handles.StatusBar, 'String', 'Saving Dataset')
-pop_saveset( handles.EEG );
+
+% Get the EEG from the figure's appdata
+EEG = getappdata(handles.Figure, 'EEG');
+
+% since the data has not changed we can just save the EEG part, not the data
+save([EEG.filepath, '/' EEG.filename], 'EEG', '-mat');
+
 set(handles.StatusBar, 'String', 'Idle')
 
 function menu_Export(hObject, eventdata, stage)
 handles = guidata(hObject); % Get handles
 
+% get the eegData structure out of the figure
+EEG = getappdata(handles.Figure, 'EEG');
+eegData = getappdata(handles.Figure, 'eegData');
+
 % Interpolate the scoring for each sample...
-StagesBySample = interp1(1:length(handles.EEG.SleepScoring.Stages), handles.EEG.SleepScoring.Stages, linspace(1,length(handles.EEG.SleepScoring.Stages), handles.EEG.srate*handles.EEG.SleepScoring.EpochLength*length(handles.EEG.SleepScoring.Stages)), 'nearest');
+StagesBySample = interp1(1:length(EEG.SleepScoring.Stages), EEG.SleepScoring.Stages, linspace(1,length(EEG.SleepScoring.Stages), EEG.srate*EEG.SleepScoring.EpochLength*length(EEG.SleepScoring.Stages)), 'nearest');
 KeepSamples = find(StagesBySample==stage);
 
 if isempty(KeepSamples)
@@ -359,15 +417,15 @@ end
 
 switch stage
     case 2
-        Data.N2  = double(handles.EEG.data(:, KeepSamples));
+        Data.N2  = double(eegData(:, KeepSamples));
     case 3
-        Data.SWS = double(handles.EEG.data(:, KeepSamples));
+        Data.SWS = double(eegData(:, KeepSamples));
     case 5
-        Data.REM = double(handles.EEG.data(:, KeepSamples));        
+        Data.REM = double(eegData(:, KeepSamples));        
 end
 
-Info.Electrodes = handles.EEG.chanlocs;
-Info.sRate      = handles.EEG.srate;
+Info.Electrodes = EEG.chanlocs;
+Info.sRate      = EEG.srate;
 
 [saveName,savePath] = uiputfile('*.mat');
 if ~isempty(saveName)
@@ -380,28 +438,53 @@ end
 function ChangeChannel(hObject, eventdata)
 handles = guidata(hObject); % Get handles
 
-handles.EEG.SleepScoring.Montage(get(hObject, 'UserData')) = get(hObject, 'Value');
+% Get the EEG from the figure's appdata
+EEG = getappdata(handles.Figure, 'EEG');
+
+EEG.swa_scoring.montage(get(hObject, 'UserData')) = get(hObject, 'Value');
 updateAxes(handles)
 
 % reset the control so focus is on the figure
 set(hObject, 'Enable', 'off'); drawnow; set(hObject, 'Enable', 'on'); 
-guidata(hObject,handles) 
 
-function sliderUpdate(hObject, eventdata, Figure)
-handles = guidata(Figure); % Needs to be like this because slider is a java object
+% update the guidata
+guidata(hObject, handles)
+setappdata(handles.Figure, 'EEG', EEG);
 
-if handles.java.Slider.getValue == 0
+function sliderUpdate(hObject, eventdata, figurehandle)
+% get the handles from the guidata
+    % use the handle for the figure since slider is a java object
+handles = guidata(figurehandle);
+
+% Get the EEG from the figure's appdata
+EEG = getappdata(handles.Figure, 'EEG');
+
+% check if the value is less than 1, and set to 1
+if handles.java.Slider.getValue < 1
     handles.java.Slider.setValue(1);
 end
 
+% set the stage name to the current stage
+set(handles.StageBar, 'String', [num2str(handles.java.Slider.getValue),': ', EEG.swa_scoring.stageNames{handles.java.Slider.getValue}]);
+
+% update the GUI handles (*updates just fine)
+guidata(handles.Figure, handles)
+setappdata(handles.Figure, 'EEG', EEG);
+
+% update all the axes
 updateAxes(handles);
 
-set(handles.StageBar, 'String', handles.EEG.SleepScoring.StageNames{handles.java.Slider.getValue});
+
 
 function updateEpochLength(hObject, eventdata)
+% get handles
+handles = guidata(hObject); 
 
-handles = guidata(hObject); % Get handles
+% get the eegData structure out of the figure
+EEG = getappdata(handles.Figure, 'EEG');
+eegData = getappdata(handles.Figure, 'eegData');
 
+% check for minimum (5s) and maximum (120s) and give warning...
 if str2double(get(handles.et_EpochLength, 'String')) > 120
     set(handles.StatusBar, 'String', 'No more than 120s Epochs')
     set(handles.et_EpochLength, 'String', '120')
@@ -412,99 +495,128 @@ elseif str2double(get(handles.et_EpochLength, 'String')) < 5
     return;
 end
 
+% set the new epoch length
+EEG.swa_scoring.epochLength = str2double(get(handles.et_EpochLength, 'String'));
 
-handles.EEG.SleepScoring.EpochLength = str2double(get(handles.et_EpochLength, 'String'));
+% calculate the number of samples per epoch
+sEpoch  = str2double(get(handles.et_EpochLength, 'String'))*EEG.srate;
+% calculate the total number of epochs in the time series
+nEpochs = floor(size(eegData,2)/sEpoch);
 
-sEpoch  = str2double(get(handles.et_EpochLength, 'String'))*handles.EEG.srate; % samples per epoch
-nEpochs = floor(size(handles.EEG.data,2)/sEpoch);
-
-%% Interpolate the Stages
-oldStages = handles.EEG.SleepScoring.Stages;
-handles.EEG.SleepScoring.Stages = interp1(1:length(oldStages), oldStages, linspace(1,length(oldStages),nEpochs), 'nearest');
-
-% Plot interpolated staging to Hypnograph...
-set(handles.plHypno,...
-    'Ydata', handles.EEG.SleepScoring.Stages);
-
-%% Set Slider
+% Set Slider
+% ``````````
 handles.java.Slider.setMaximum(nEpochs);
+% set limit to the axes
 set(handles.axHypno,...
     'XLim', [1 nEpochs]);
 
+% update the contents of all the axes
+    % i don't think this will work!
 for i = 1:8
     updateAxes(handles, get(handles.pmCh(i), 'Value'), i)
 end
 
-% Redo the stage names
-handles.EEG.SleepScoring.StageNames = cell(1,nEpochs);
+% re-calculate the stage names from the value (e.g. 0 = wake)
+EEG.swa_scoring.stageNames = cell(1,nEpochs);
 for i = 1:nEpochs
-    switch handles.EEG.SleepScoring.Stages(i)
+    switch EEG.swa_scoring.stages(i)
         case 0
-            handles.EEG.SleepScoring.StageNames(i) = {'Wake'};
+            EEG.swa_scoring.stageNames(i) = {'Wake'};
         case 1
-            handles.EEG.SleepScoring.StageNames(i) = {'N1'};
+            EEG.swa_scoring.stageNames(i) = {'N1'};
         case 2
-            handles.EEG.SleepScoring.StageNames(i) = {'N2'};
+            EEG.swa_scoring.stageNames(i) = {'N2'};
         case 3
-            handles.EEG.SleepScoring.StageNames(i) = {'N3'};
+            EEG.swa_scoring.stageNames(i) = {'N3'};
         case 5
-            handles.EEG.SleepScoring.StageNames(i) = {'N4'};
+            EEG.swa_scoring.stageNames(i) = {'N4'};
         otherwise
-            handles.EEG.SleepScoring.StageNames(i) = {'Unscored'};
+            EEG.swa_scoring.stageNames(i) = {'Unscored'};
     end
 end 
 
-
 set(handles.StatusBar, 'String', 'Idle')
-guidata(handles.Figure,handles) 
+
+% update the GUI handles
+guidata(handles.Figure, handles) 
+setappdata(handles.Figure, 'EEG', EEG);
+
  
 function updateScale(hObject, eventdata)
 handles = guidata(hObject); % Get handles
 
+% Get the new scale value
 ylimits = str2double(get(handles.et_Scale, 'String'));
 
+% Update all the axis to the new scale limits
 set(handles.axCh,...
     'YLim', [-ylimits,ylimits]);
 
 function updateStage(hObject, eventdata)
-handles = guidata(hObject); % Get handles
+% get the updated handles from the GUI
+handles = guidata(hObject);
 
-handles.EEG.SleepScoring.Stages(handles.java.Slider.getValue) = get(get(handles.bg_Scoring, 'SelectedObject'), 'UserData');
-handles.EEG.SleepScoring.StageNames{handles.java.Slider.getValue} = get(get(handles.bg_Scoring, 'SelectedObject'), 'String');
+% Get the EEG from the figure's appdata
+EEG = getappdata(handles.Figure, 'EEG');
 
-handles.java.Slider.setValue(handles.java.Slider.getValue+1)
-sliderUpdate(hObject, eventdata, handles.Figure)
+% current epoch range
+sEpoch  = str2double(get(handles.et_EpochLength, 'String'))*EEG.srate; % samples per epoch
+cEpoch  = handles.java.Slider.getValue;
+range   = (cEpoch*sEpoch-(sEpoch-1)):(cEpoch*sEpoch);
+
+% set the current sleep stage value and name
+EEG.swa_scoring.stages(range) = get(get(handles.bg_Scoring, 'SelectedObject'), 'UserData');
+EEG.swa_scoring.stageNames{handles.java.Slider.getValue} = get(get(handles.bg_Scoring, 'SelectedObject'), 'String');
+
+% reset the scoring box
 set(handles.bg_Scoring,'SelectedObject',[]);  % No selection
 
+% change the scores value
 set(handles.plHypno,...
-    'Ydata', handles.EEG.SleepScoring.Stages);
+    'Ydata', EEG.swa_scoring.stages);
 
-set(handles.rb, 'Enable', 'off');drawnow;set(handles.rb, 'Enable', 'on');
-guidata(handles.Figure,handles) 
+% get focus back to the figure (bit of a hack)
+set(handles.rb, 'Enable', 'off'); drawnow; set(handles.rb, 'Enable', 'on');
+
+% Update the handles in the GUI
+guidata(handles.Figure, handles)
+setappdata(handles.Figure, 'EEG', EEG);
+
+% go to the next epoch
+handles.java.Slider.setValue(handles.java.Slider.getValue+1)
+sliderUpdate(hObject, eventdata, handles.Figure)
 
 function updateAxes(handles)
+% With memory mapping, this part takes the longest time since here it actually loads the data into RAM...
 
-% Data Section
-sEpoch  = str2double(get(handles.et_EpochLength, 'String'))*handles.EEG.srate; % samples per epoch
+% get the eegData structure out of the figure
+EEG = getappdata(handles.Figure, 'EEG');
+eegData = getappdata(handles.Figure, 'eegData');
+
+% data section
+sEpoch  = str2double(get(handles.et_EpochLength, 'String'))*EEG.srate; % samples per epoch
 cEpoch  = handles.java.Slider.getValue;
+range   = (cEpoch*sEpoch-(sEpoch-1)):(cEpoch*sEpoch);
 
-Data = handles.EEG.data(handles.EEG.SleepScoring.Montage, (cEpoch*sEpoch-(sEpoch-1)):(cEpoch*sEpoch));
+data = eegData(EEG.swa_scoring.montage, range);
 
-% Filter Parameters (Buttersworth)
-hPass = str2double(get(handles.et_HighPass, 'String'))/(handles.EEG.srate/2);
-lPass = str2double(get(handles.et_LowPass, 'String'))/(handles.EEG.srate/2);
+% filter Parameters (Buttersworth)
+hPass = str2double(get(handles.et_HighPass, 'String'))/(EEG.srate/2);
+lPass = str2double(get(handles.et_LowPass, 'String'))/(EEG.srate/2);
 [b,a] = butter(2,[hPass lPass]);
 
-Data = single(filtfilt(b, a, double(Data'))'); %transpose data twice
+data = single(filtfilt(b, a, double(data'))'); %transpose data twice
 
+% plot the new data
 for i = 1:8
-    set(handles.plCh(i), 'Ydata', Data(i,:));
+    set(handles.plCh(i), 'Ydata', data(i,:));
 end
 
-
 function cb_KeyPressed(hObject, eventdata)
-handles = guidata(hObject); % Get handles
+% get the updated handles structure (*not updated properly)
+handles = guidata(hObject);
 
+% movement keys
 switch eventdata.Key
     case 'rightarrow'
         handles.java.Slider.setValue(handles.java.Slider.getValue+1);
@@ -530,6 +642,7 @@ switch eventdata.Key
         updateScale(hObject, eventdata);
 end
 
+% sleep staging
 switch eventdata.Character
     case '0'
         set(handles.bg_Scoring,'SelectedObject',handles.rb(1));
@@ -548,8 +661,14 @@ switch eventdata.Character
         updateStage(hObject, eventdata);
 end
 
+guidata(handles.Figure, handles)
+
 function CheckFilter(hObject, eventdata, type)
-handles = guidata(hObject); % Get handles
+% get the updated handles structure
+handles = guidata(hObject);
+
+% Get the EEG from the figure's appdata
+EEG = getappdata(handles.Figure, 'EEG');
 
 switch type
     case 1
@@ -558,8 +677,8 @@ switch type
             set(handles.StatusBar, 'String', 'Warning: High pass must be more than 0')
         end
     case 2
-        if  str2double(get(handles.et_LowPass, 'String')) > handles.EEG.srate/2
-            set(handles.et_LowPass, 'String', num2str(handles.EEG.srate/2));
+        if  str2double(get(handles.et_LowPass, 'String')) > EEG.srate/2
+            set(handles.et_LowPass, 'String', num2str(EEG.srate/2));
             set(handles.StatusBar, 'String', 'Warning: Low pass must be less than Nyquist frequency')
         end
 end
@@ -567,7 +686,13 @@ end
 updateAxes(handles)
 
 function menu_Filter(hObject, eventdata)
-handles = guidata(hObject); % Get handles
+% Note: doesn't seem to work with memory mapped data
+
+% get the updated handles structure
+handles = guidata(hObject);
+
+% Get the EEG from the figure's appdata
+EEG = getappdata(handles.Figure, 'EEG');
 
 FiPar = inputdlg({'HighPass (Hz)', 'LowPass (Hz)'}, 'Filter Parameters', 1, {'0.5', '30'});
 
@@ -579,14 +704,21 @@ hpass = str2double(FiPar{1});
 lpass = str2double(FiPar{2});
 
 set(handles.StatusBar, 'String', 'Busy: Filtering Dataset')
-handles.EEG = pop_eegfiltnew(handles.EEG, hpass, lpass); 
+EEG = pop_eegfiltnew(EEG, hpass, lpass); 
 
 updateAxes(handles)
 set(handles.StatusBar, 'String', 'Idle')
-guidata(handles.Figure,handles) 
+
+% update the handles
+guidata(handles.Figure,handles)
+setappdata(handles.Figure, 'EEG', EEG);
+
 
 function menu_LoadMontage(hObject, eventdata)
 handles = guidata(hObject); % Get handles
+
+% Get the EEG from the figure's appdata
+EEG = getappdata(handles.Figure, 'EEG');
 
 [dataFile, dataPath] = uigetfile('*.set', 'Please Select Scored File with Montage');
 
@@ -597,20 +729,146 @@ end
 
 % Load the Files
 set(handles.StatusBar, 'String', 'Busy: Loading Montage Data'); drawnow;
-Data = pop_loadset([dataPath, dataFile]);
+nEEG = load([dataPath, dataFile], '-mat'); nEEG = nEEG.EEG;
 set(handles.StatusBar, 'String', 'Idle'); drawnow;
 try
-    handles.EEG.SleepScoring.Montage = Data.SleepScoring.Montage;
+    EEG.swa_scoring.montage = nEEG.swa_scoring.montage;
 catch
     set(handles.StatusBar, 'String', 'Information: No montage found in file'); drawnow;  
 end
 
-clear Data
+clear nEEG
 
 for i = 1:8
-    set(handles.pmCh(i), 'Value', handles.EEG.SleepScoring.Montage(i));
+    set(handles.pmCh(i), 'Value', EEG.swa_scoring.montage(i));
 end
 
 updateAxes(handles);
-guidata(handles.Figure,handles) 
+guidata(handles.Figure,handles)
+setappdata(handles.Figure, 'EEG', EEG);
+
+
+
+function swa_select_range(~, ~, hObject, event)
+
+H = guidata(hObject); % Get handles
+
+% set the figure's windowbuttonmotionfunction
+set(H.Figure, 'WindowButtonMotionFcn', {@swa_select_range, hObject, 'Motion'});
+% set the figure's windowbuttonupfunction
+set(H.Figure, 'WindowButtonUpFcn',     {@swa_select_range, hObject, 'ButtonUp'});
+
+% get the userData if there was some already (otherwise returns empty)
+userData = getappdata(H.axCh(3), 'x_range');
+
+% if there was no userData, then pre-allocate the userData
+if isempty(userData)
+  userData.range = []; % this is a Nx4 matrix with the selection range
+  userData.box   = []; % this is a Nx1 vector with the line handle
+end
+
+% determine whether the user is currently making a selection
+selecting = numel(userData.range)>0 && any(isnan(userData.range(end,:)));
+
+% get the current point
+p = get(H.axCh(3), 'CurrentPoint');
+p = p(1,1:2);
+
+xLim = get(H.axCh(3), 'xlim');
+yLim = get(H.axCh(3), 'ylim');
+
+% limit cursor coordinates to axes...
+if p(1)<xLim(1), p(1)=xLim(1); end;
+if p(1)>xLim(2), p(1)=xLim(2); end;
+if p(2)<yLim(1), p(2)=yLim(1); end;
+if p(2)>yLim(2), p(2)=yLim(2); end;
+
+switch lower(event)
+  
+  case lower('ButtonDown')        
+      if ~isempty(userData.range)
+          if (p(1)>=userData.range(:,1) & p(1)<=userData.range(:,2) & p(2)>=userData.range(:,3) & p(2)<=userData.range(:,4));
+              % the user has clicked in one of the existing selections
+              
+%               H.aData = nan(size(H.data));
+%               H.aData(floor(userData.range(1)):ceil(userData.range(2))) = H.data(floor(userData.range(1)):ceil(userData.range(2)));
+%               
+%               plot(H.axes1, H.aData, 'linewidth', 2, 'color', 'r')
+              
+              return
+          end
+      end
+      
+      % add a new selection range
+      userData.range(end+1,1:4) = nan;
+      userData.range(end,1) = p(1);
+      userData.range(end,3) = p(2);
+      
+      % add a new selection box
+      xData = [nan nan nan nan nan];
+      yData = [nan nan nan nan nan];
+      userData.box(end+1) = line(xData, yData, 'parent', H.axCh(3));
+      
+  case lower('Motion')
+      
+    if selecting
+      % update the selection box
+        x1 = userData.range(end,1);
+        x2 = p(1);
+        
+        % we are only ever interested in the horizontal range
+        y1 = yLim(1);
+        y2 = yLim(2);
+      
+      xData = [x1 x2 x2 x1 x1];
+      yData = [y1 y1 y2 y2 y1];
+      set(userData.box(end), 'xData', xData);
+      set(userData.box(end), 'yData', yData);
+      set(userData.box(end), 'Color', [0 0 0]);
+      set(userData.box(end), 'EraseMode', 'xor');
+      set(userData.box(end), 'LineStyle', '--');
+      set(userData.box(end), 'LineWidth', 3);
+      set(userData.box(end), 'Visible', 'on');
+      
+    end  
+    
+  case lower('ButtonUp')
+
+      if selecting
+          % select the other corner of the box
+          userData.range(end,2) = p(1);
+          userData.range(end,4) = p(2);
+      end
+      
+      % if just a single click (point) then delete all the boxes present
+      if ~isempty(userData.range) && ~diff(userData.range(end,1:2)) && ~diff(userData.range(end,3:4))
+          % start with a new selection
+          delete(userData.box(ishandle(userData.box)));
+          userData.range = [];
+          userData.box   = [];
+      end
+      
+      if ~isempty(userData.range)
+          % ensure that the selection is sane
+          if diff(userData.range(end,1:2))<0
+              userData.range(end,1:2) = userData.range(end,[2 1]);
+          end
+          if diff(userData.range(end,3:4))<0
+              userData.range(end,3:4) = userData.range(end,[4 3]);
+          end
+          % only select along the x-axis
+          userData.range(end,3:4) = [-inf inf];
+      end
+      
+      % set the figure callbacks to empty to avoid unnecessary calls when
+      % not in specific plot
+        % set the figure's windowbuttonmotionfunction
+      set(H.Figure, 'WindowButtonMotionFcn', []);
+        % set the figure's windowbuttonupfunction
+      set(H.Figure, 'WindowButtonUpFcn',     []);
+    
+end % switch event
+
+% put the selection back in the figure
+setappdata(H.axCh(3), 'x_range', userData);
 
