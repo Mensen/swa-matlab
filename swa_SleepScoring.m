@@ -76,6 +76,7 @@ for i = 1:8
         'Parent', handles.Figure,...
         'Position', [0.15 (9-i)*0.08+0.225 0.75 0.08],...
         'NextPlot', 'add',...
+        'drawmode', 'fast',...
         'FontName', 'Century Gothic',...
         'FontSize', 8);
 	handles.pmCh(i) = uicontrol(...
@@ -96,7 +97,7 @@ set(handles.axCh(1:end-1),...
     'Ytick', []);
 
 % use the third axes to mark arousals
-set(handles.axCh(3), 'buttondownfcn', {@swa_select_range, handles.axCh(3), 'buttondown'})
+set(handles.axCh(3), 'buttondownfcn', {@fcn_select_events, handles.axCh(3), 'buttondown'})
 
 %% Scoring Buttons
 
@@ -296,7 +297,11 @@ set(handles.StatusBar, 'String', 'EEG Loaded'); drawnow;
 set(handles.Figure, 'Name', ['Sleep Scoring: ', dataFile]);
 
 % set the pop-up menus values to the channel labels
-set(handles.pmCh, 'String', {EEG.urchanlocs.labels}')
+try
+    set(handles.pmCh, 'String', {EEG.urchanlocs.labels}')
+catch
+    set(handles.pmCh, 'String', {EEG.chanlocs.labels}')
+end
 
 % Check for Previous Scoring
 % ``````````````````````````
@@ -304,7 +309,7 @@ if isfield(EEG, 'swa_scoring')
     % if there is a previously scoring file
     % set the epochlength
     set(handles.et_EpochLength, 'String', num2str(EEG.swa_scoring.epochLength));  
-    sEpoch  = EEG.swa_scoring.EpochLength*EEG.srate;
+    sEpoch  = EEG.swa_scoring.epochLength*EEG.srate;
     nEpochs = floor(size(eegData,2)/sEpoch);
 else
     % get the default setting for the epoch length from the figure
@@ -317,7 +322,7 @@ else
     % pre-allocate the variables
     % each sample is assigned a stage (255 is default unscored)
     EEG.swa_scoring.stages      = uint8(ones(1,EEG.pnts)*255);
-    EEG.swa_scoring.arousals    = logical(ones(1,EEG.pnts)*255);    
+    EEG.swa_scoring.arousals    = logical(zeros(1,EEG.pnts)*255);    
     % only every epoch is assigned a name
     EEG.swa_scoring.stageNames  = cell(1,nEpochs);
     EEG.swa_scoring.stageNames(:) = {'Unscored'};
@@ -332,17 +337,22 @@ ylimits = str2double(get(handles.et_Scale, 'String'));
 
 % set the limits of all the axes
 set(handles.axCh,...
+    'XLim', [1, sEpoch],...
     'YLim', [-ylimits,ylimits]);
 
 % initial plot on each axes
+data = eegData(EEG.swa_scoring.montage,1:sEpoch);
+
 for i = 1:8
     % re-set the channel labels accordingly
     set(handles.pmCh(i), 'Value', EEG.swa_scoring.montage(i));
     % plot the channel from the first sample on
-    handles.plCh(i) = plot(handles.axCh(i),...
-        eegData(EEG.swa_scoring.montage(i),1:sEpoch), 'b');
+    handles.plCh(i) = plot(handles.axCh(i), data(i,:), 'b');
 end
 
+    data(3,  ~EEG.swa_scoring.arousals(1:sEpoch)) = nan;
+    handles.current_events = plot(handles.axCh(3), data, 'r');
+    
 % Set Slider Values
 % `````````````````
 % edit the java objects directly using object traversal (ie, .set)
@@ -550,7 +560,7 @@ ylimits = str2double(get(handles.et_Scale, 'String'));
 
 % Update all the axis to the new scale limits
 set(handles.axCh,...
-    'YLim', [-ylimits,ylimits]);
+    'YLim', [-ylimits, ylimits]);
 
 function updateStage(hObject, eventdata)
 % get the updated handles from the GUI
@@ -572,11 +582,10 @@ EEG.swa_scoring.stageNames{handles.java.Slider.getValue} = get(get(handles.bg_Sc
 set(handles.bg_Scoring,'SelectedObject',[]);  % No selection
 
 % change the scores value
-set(handles.plHypno,...
-    'Ydata', EEG.swa_scoring.stages);
+set(handles.plHypno, 'Ydata', EEG.swa_scoring.stages);
 
 % get focus back to the figure (bit of a hack)
-set(handles.rb, 'Enable', 'off'); drawnow; set(handles.rb, 'Enable', 'on');
+% set(handles.rb, 'Enable', 'off'); drawnow; set(handles.rb, 'Enable', 'on');
 
 % Update the handles in the GUI
 guidata(handles.Figure, handles)
@@ -599,18 +608,18 @@ cEpoch  = handles.java.Slider.getValue;
 range   = (cEpoch*sEpoch-(sEpoch-1)):(cEpoch*sEpoch);
 
 data = eegData(EEG.swa_scoring.montage, range);
-
-% filter Parameters (Buttersworth)
-hPass = str2double(get(handles.et_HighPass, 'String'))/(EEG.srate/2);
-lPass = str2double(get(handles.et_LowPass, 'String'))/(EEG.srate/2);
-[b,a] = butter(2,[hPass lPass]);
-
-data = single(filtfilt(b, a, double(data'))'); %transpose data twice
+% filter the data; a and b parameters were computed and stored in the Checkfilter function
+data = single(filtfilt(EEG.filter.b, EEG.filter.a, double(data'))'); %transpose data twice
 
 % plot the new data
 for i = 1:8
     set(handles.plCh(i), 'Ydata', data(i,:));
 end
+
+% % plot the events
+% event = data(3, :);
+% event(:, ~EEG.swa_scoring.arousals(range)) = nan;
+% set(handles.current_events, 'yData', event);
 
 function cb_KeyPressed(hObject, eventdata)
 % get the updated handles structure (*not updated properly)
@@ -683,6 +692,12 @@ switch type
         end
 end
 
+% filter Parameters (Buttersworth)
+hPass = str2double(get(handles.et_HighPass, 'String'))/(EEG.srate/2);
+lPass = str2double(get(handles.et_LowPass, 'String'))/(EEG.srate/2);
+[EEG.filter.b, EEG.filter.a] = butter(2,[hPass lPass]);
+
+setappdata(handles.Figure, 'EEG', EEG);
 updateAxes(handles)
 
 function menu_Filter(hObject, eventdata)
@@ -748,15 +763,11 @@ guidata(handles.Figure,handles)
 setappdata(handles.Figure, 'EEG', EEG);
 
 
-
-function swa_select_range(~, ~, hObject, event)
+% Code for selecting and marking events
+% ````````````````````````````````````
+function fcn_select_events(~, ~, hObject, event)
 
 H = guidata(hObject); % Get handles
-
-% set the figure's windowbuttonmotionfunction
-set(H.Figure, 'WindowButtonMotionFcn', {@swa_select_range, hObject, 'Motion'});
-% set the figure's windowbuttonupfunction
-set(H.Figure, 'WindowButtonUpFcn',     {@swa_select_range, hObject, 'ButtonUp'});
 
 % get the userData if there was some already (otherwise returns empty)
 userData = getappdata(H.axCh(3), 'x_range');
@@ -787,17 +798,25 @@ switch lower(event)
   
   case lower('ButtonDown')        
       if ~isempty(userData.range)
-          if (p(1)>=userData.range(:,1) & p(1)<=userData.range(:,2) & p(2)>=userData.range(:,3) & p(2)<=userData.range(:,4));
+          if any(p(1)>=userData.range(:,1) & p(1)<=userData.range(:,2))
               % the user has clicked in one of the existing selections
               
-%               H.aData = nan(size(H.data));
-%               H.aData(floor(userData.range(1)):ceil(userData.range(2))) = H.data(floor(userData.range(1)):ceil(userData.range(2)));
-%               
-%               plot(H.axes1, H.aData, 'linewidth', 2, 'color', 'r')
+              fcn_mark_event(H.Figure, userData, get(gcf,'selectiontype'));
               
-              return
+              % refresh the axes
+              updateAxes(H);
+              
+%               % after box has been clicked delete the box
+%               delete(userData.box(ishandle(userData.box)));
+%               userData.range = [];
+%               userData.box   = [];
           end
       end
+      
+      % set the figure's windowbuttonmotionfunction
+      set(H.Figure, 'WindowButtonMotionFcn', {@fcn_select_events, hObject, 'Motion'});
+      % set the figure's windowbuttonupfunction
+      set(H.Figure, 'WindowButtonUpFcn',     {@fcn_select_events, hObject, 'ButtonUp'});
       
       % add a new selection range
       userData.range(end+1,1:4) = nan;
@@ -872,3 +891,24 @@ end % switch event
 % put the selection back in the figure
 setappdata(H.axCh(3), 'x_range', userData);
 
+function fcn_mark_event(figurehandle, userData, type)
+
+% get the figure handles and data
+handles = guidata(figurehandle);
+EEG     = getappdata(handles.Figure, 'EEG');
+
+cEpoch  = handles.java.Slider.getValue;
+sEpoch  = str2double(get(handles.et_EpochLength, 'String'))*EEG.srate; % samples per epoch
+
+for row = 1:size(userData.range, 1)
+    range   = (cEpoch*sEpoch-(sEpoch-1))+floor(userData.range(row, 1)):(cEpoch*sEpoch-(sEpoch-1))+ceil(userData.range(row, 2));
+    if strcmp(type, 'normal')
+        EEG.swa_scoring.arousals(range) = true;
+    else
+        EEG.swa_scoring.arousals(range) = false;
+    end
+end
+
+guidata(handles.Figure, handles);
+setappdata(handles.Figure, 'EEG', EEG);
+% ```````````````````````````````````
