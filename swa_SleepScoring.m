@@ -263,7 +263,8 @@ jFrame.setMaximized(true);   % to maximize the figure
 
 guidata(handles.Figure, handles) 
 
-
+% Menu Functions
+% ``````````````
 function menu_LoadEEG(hObject, eventdata, handles)
 
 % load dialog box with file type
@@ -347,11 +348,13 @@ for i = 1:8
     % re-set the channel labels accordingly
     set(handles.pmCh(i), 'Value', EEG.swa_scoring.montage(i));
     % plot the channel from the first sample on
-    handles.plCh(i) = plot(handles.axCh(i), data(i,:), 'b');
+%     handles.plCh(i) = plot(handles.axCh(i), data(i,:), 'b');
+    handles.plCh(i) = line(1:sEpoch, data(i,:), 'color', 'b', 'parent', handles.axCh(i));
 end
 
-    data(3,  ~EEG.swa_scoring.arousals(1:sEpoch)) = nan;
-    handles.current_events = plot(handles.axCh(3), data, 'r');
+% plot the arousals 
+data(3,  ~EEG.swa_scoring.arousals(1:sEpoch)) = nan;
+handles.current_events = line(1:sEpoch, data(3, :), 'color', 'r', 'parent', handles.axCh(3));
     
 % Set Slider Values
 % `````````````````
@@ -417,8 +420,7 @@ EEG = getappdata(handles.Figure, 'EEG');
 eegData = getappdata(handles.Figure, 'eegData');
 
 % Interpolate the scoring for each sample...
-StagesBySample = interp1(1:length(EEG.SleepScoring.Stages), EEG.SleepScoring.Stages, linspace(1,length(EEG.SleepScoring.Stages), EEG.srate*EEG.SleepScoring.EpochLength*length(EEG.SleepScoring.Stages)), 'nearest');
-KeepSamples = find(StagesBySample==stage);
+KeepSamples = find(EEG.swa_sleep_c==stage);
 
 if isempty(KeepSamples)
     set(handles.StatusBar, 'String', ['Cannot Export: No epochs found for stage ', num2str(stage)])
@@ -445,6 +447,32 @@ if ~isempty(saveName)
 end
 
 
+% Update Functions
+% ````````````````
+function updateAxes(handles)
+% get the eegData structure out of the figure
+EEG = getappdata(handles.Figure, 'EEG');
+eegData = getappdata(handles.Figure, 'eegData');
+
+% data section
+sEpoch  = str2double(get(handles.et_EpochLength, 'String'))*EEG.srate; % samples per epoch
+cEpoch  = handles.java.Slider.getValue;
+range   = (cEpoch*sEpoch-(sEpoch-1)):(cEpoch*sEpoch);
+
+data = eegData(EEG.swa_scoring.montage, range);
+% filter the data; a and b parameters were computed and stored in the Checkfilter function
+data = single(filtfilt(EEG.filter.b, EEG.filter.a, double(data'))'); %transpose data twice
+
+% plot the new data
+for i = 1:8
+    set(handles.plCh(i), 'Ydata', data(i,:));
+end
+
+% plot the events
+event = data(3, :);
+event(:, ~EEG.swa_scoring.arousals(range)) = nan;
+set(handles.current_events, 'yData', event);
+
 function ChangeChannel(hObject, eventdata)
 handles = guidata(hObject); % Get handles
 
@@ -452,7 +480,6 @@ handles = guidata(hObject); % Get handles
 EEG = getappdata(handles.Figure, 'EEG');
 
 EEG.swa_scoring.montage(get(hObject, 'UserData')) = get(hObject, 'Value');
-updateAxes(handles)
 
 % reset the control so focus is on the figure
 set(hObject, 'Enable', 'off'); drawnow; set(hObject, 'Enable', 'on'); 
@@ -460,6 +487,8 @@ set(hObject, 'Enable', 'off'); drawnow; set(hObject, 'Enable', 'on');
 % update the guidata
 guidata(hObject, handles)
 setappdata(handles.Figure, 'EEG', EEG);
+
+updateAxes(handles)
 
 function sliderUpdate(hObject, eventdata, figurehandle)
 % get the handles from the guidata
@@ -484,74 +513,6 @@ setappdata(handles.Figure, 'EEG', EEG);
 % update all the axes
 updateAxes(handles);
 
-
-
-function updateEpochLength(hObject, eventdata)
-% get handles
-handles = guidata(hObject); 
-
-% get the eegData structure out of the figure
-EEG = getappdata(handles.Figure, 'EEG');
-eegData = getappdata(handles.Figure, 'eegData');
-
-% check for minimum (5s) and maximum (120s) and give warning...
-if str2double(get(handles.et_EpochLength, 'String')) > 120
-    set(handles.StatusBar, 'String', 'No more than 120s Epochs')
-    set(handles.et_EpochLength, 'String', '120')
-    return;
-elseif str2double(get(handles.et_EpochLength, 'String')) < 5
-    set(handles.StatusBar, 'String', 'No less than 5s Epochs')
-    set(handles.et_EpochLength, 'String', '5')    
-    return;
-end
-
-% set the new epoch length
-EEG.swa_scoring.epochLength = str2double(get(handles.et_EpochLength, 'String'));
-
-% calculate the number of samples per epoch
-sEpoch  = str2double(get(handles.et_EpochLength, 'String'))*EEG.srate;
-% calculate the total number of epochs in the time series
-nEpochs = floor(size(eegData,2)/sEpoch);
-
-% Set Slider
-% ``````````
-handles.java.Slider.setMaximum(nEpochs);
-% set limit to the axes
-set(handles.axHypno,...
-    'XLim', [1 nEpochs]);
-
-% update the contents of all the axes
-    % i don't think this will work!
-for i = 1:8
-    updateAxes(handles, get(handles.pmCh(i), 'Value'), i)
-end
-
-% re-calculate the stage names from the value (e.g. 0 = wake)
-EEG.swa_scoring.stageNames = cell(1,nEpochs);
-for i = 1:nEpochs
-    switch EEG.swa_scoring.stages(i)
-        case 0
-            EEG.swa_scoring.stageNames(i) = {'Wake'};
-        case 1
-            EEG.swa_scoring.stageNames(i) = {'N1'};
-        case 2
-            EEG.swa_scoring.stageNames(i) = {'N2'};
-        case 3
-            EEG.swa_scoring.stageNames(i) = {'N3'};
-        case 5
-            EEG.swa_scoring.stageNames(i) = {'N4'};
-        otherwise
-            EEG.swa_scoring.stageNames(i) = {'Unscored'};
-    end
-end 
-
-set(handles.StatusBar, 'String', 'Idle')
-
-% update the GUI handles
-guidata(handles.Figure, handles) 
-setappdata(handles.Figure, 'EEG', EEG);
-
- 
 function updateScale(hObject, eventdata)
 handles = guidata(hObject); % Get handles
 
@@ -595,31 +556,81 @@ setappdata(handles.Figure, 'EEG', EEG);
 handles.java.Slider.setValue(handles.java.Slider.getValue+1)
 sliderUpdate(hObject, eventdata, handles.Figure)
 
-function updateAxes(handles)
-% With memory mapping, this part takes the longest time since here it actually loads the data into RAM...
+function updateEpochLength(hObject, eventdata)
+% get handles
+handles = guidata(hObject); 
 
 % get the eegData structure out of the figure
 EEG = getappdata(handles.Figure, 'EEG');
 eegData = getappdata(handles.Figure, 'eegData');
 
-% data section
-sEpoch  = str2double(get(handles.et_EpochLength, 'String'))*EEG.srate; % samples per epoch
-cEpoch  = handles.java.Slider.getValue;
-range   = (cEpoch*sEpoch-(sEpoch-1)):(cEpoch*sEpoch);
-
-data = eegData(EEG.swa_scoring.montage, range);
-% filter the data; a and b parameters were computed and stored in the Checkfilter function
-data = single(filtfilt(EEG.filter.b, EEG.filter.a, double(data'))'); %transpose data twice
-
-% plot the new data
-for i = 1:8
-    set(handles.plCh(i), 'Ydata', data(i,:));
+% check for minimum (5s) and maximum (120s) and give warning...
+if str2double(get(handles.et_EpochLength, 'String')) > 120
+    set(handles.StatusBar, 'String', 'No more than 120s Epochs')
+    set(handles.et_EpochLength, 'String', '120')
+    return;
+elseif str2double(get(handles.et_EpochLength, 'String')) < 5
+    set(handles.StatusBar, 'String', 'No less than 5s Epochs')
+    set(handles.et_EpochLength, 'String', '5')    
+    return;
 end
 
-% % plot the events
-% event = data(3, :);
-% event(:, ~EEG.swa_scoring.arousals(range)) = nan;
-% set(handles.current_events, 'yData', event);
+% set the new epoch length
+EEG.swa_scoring.epochLength = str2double(get(handles.et_EpochLength, 'String'));
+
+% calculate the number of samples per epoch
+sEpoch  = str2double(get(handles.et_EpochLength, 'String'))*EEG.srate;
+% calculate the total number of epochs in the time series
+nEpochs = floor(size(eegData,2)/sEpoch);
+
+% Set Slider
+% ``````````
+handles.java.Slider.setMaximum(nEpochs);
+% set limit to the axes
+% set(handles.axHypno,...
+%     'XLim', [1 nEpochs]);
+set(handles.axCh,...
+    'XLim', [1, sEpoch]);
+
+% re-calculate the stage names from the value (e.g. 0 = wake)
+EEG.swa_scoring.stageNames = cell(1,nEpochs);
+count = 0;
+for i = 1:sEpoch:nEpochs*sEpoch
+    count = count+1;
+    switch EEG.swa_scoring.stages(i)
+        case 0
+            EEG.swa_scoring.stageNames(count) = {'Wake'};
+        case 1
+            EEG.swa_scoring.stageNames(count) = {'N1'};
+        case 2
+            EEG.swa_scoring.stageNames(count) = {'N2'};
+        case 3
+            EEG.swa_scoring.stageNames(count) = {'N3'};
+        case 5
+            EEG.swa_scoring.stageNames(count) = {'REM'};
+        otherwise
+            EEG.swa_scoring.stageNames(count) = {'Unscored'};
+    end
+end
+
+set(handles.StatusBar, 'String', 'Idle')
+
+% update the GUI handles
+guidata(handles.Figure, handles) 
+setappdata(handles.Figure, 'EEG', EEG);
+
+% set the xdata and ydata to equal lengths
+for i = 1:8
+    set(handles.plCh(i), 'Xdata', 1:sEpoch, 'Ydata', 1:sEpoch);
+end
+set(handles.current_events, 'Xdata', 1:sEpoch, 'Ydata', 1:sEpoch);
+
+% update the hypnogram
+set(handles.plHypno, 'Ydata', EEG.swa_scoring.stages);
+
+% update all the axes
+updateAxes(handles);
+
 
 function cb_KeyPressed(hObject, eventdata)
 % get the updated handles structure (*not updated properly)
