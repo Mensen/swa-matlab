@@ -26,13 +26,8 @@ handles.menu.LoadEEG = uimenu(handles.menu.File,...
 handles.menu.SaveEEG = uimenu(handles.menu.File,...
     'Label', 'Save EEG',...
     'Accelerator', 'S');
-handles.menu.LoadMontage = uimenu(handles.menu.File,...
-    'Label', 'Load Montage',...
-    'Separator', 'on');
 
-handles.menu.Tools      = uimenu(handles.Figure, 'Label', 'Tools', 'Enable', 'off');
-handles.menu.Filter     = uimenu(handles.menu.Tools,'Label', 'Filter');
-handles.menu.Reference  = uimenu(handles.menu.Tools,'Label', 'Reference');
+handles.menu.Montage      = uimenu(handles.Figure, 'Label', 'Montage', 'Enable', 'off');
 
 handles.menu.Export = uimenu(handles.Figure, 'Label', 'Export', 'Enable', 'off');
 handles.menu.N2  = uimenu(handles.menu.Export,'Label', 'N2');
@@ -79,12 +74,12 @@ for i = 1:8
         'drawmode', 'fast',...
         'FontName', 'Century Gothic',...
         'FontSize', 8);
-	handles.pmCh(i) = uicontrol(...
+	handles.lbCh(i) = uicontrol(...
         'Parent',   handles.Figure,...  
-        'Style',    'popupmenu',...  
+        'Style',    'edit',...  
         'BackgroundColor', 'w',...
         'Units',    'normalized',...
-        'Position', [0.11 (9-i)*0.08+0.232 0.04 0.04],...
+        'Position', [0.11 (9-i)*0.08+0.245 0.04 0.04],...
         'String',   ['Channel ', num2str(i)],...
         'UserData',  i,...
         'FontName', 'Century Gothic',...
@@ -218,16 +213,15 @@ handles.et_LowPass= uicontrol(...
     'FontSize', 10);
 
 %% Set Callbacks
+% menu callbacks
 set(handles.menu.LoadEEG,...
     'Callback', {@menu_LoadEEG, handles});
 set(handles.menu.SaveEEG,...
     'Callback', {@menu_SaveEEG});
-set(handles.menu.LoadMontage,...
-    'Callback', {@menu_LoadMontage});
+set(handles.menu.Montage,...
+    'Callback', {@updateMontage, handles.Figure});
 
-set(handles.menu.Filter,...
-    'Callback', {@menu_Filter});
-
+% set export callbacks
 set(handles.menu.N2,...
     'Callback', {@menu_Export, 2});
 set(handles.menu.N3,...
@@ -236,12 +230,12 @@ set(handles.menu.REM,...
     'Callback', {@menu_Export, 5});
 
 set(handles.et_HighPass,...
-    'Callback', {@CheckFilter, 1});
+    'Callback', {@checkFilter, 1});
 set(handles.et_LowPass,...
-    'Callback', {@CheckFilter, 2});
+    'Callback', {@checkFilter, 2});
 
-set(handles.pmCh,...
-    'Callback', {@ChangeChannel});
+set(handles.lbCh,...
+    'Callback', {@updateLabel});
 
 set(handles.et_EpochLength,...
     'Callback', {@updateEpochLength});
@@ -297,13 +291,6 @@ eegData = tmp.Data.eegData;
 set(handles.StatusBar, 'String', 'EEG Loaded'); drawnow;
 set(handles.Figure, 'Name', ['Sleep Scoring: ', dataFile]);
 
-% set the pop-up menus values to the channel labels
-try
-    set(handles.pmCh, 'String', {EEG.urchanlocs.labels}')
-catch
-    set(handles.pmCh, 'String', {EEG.chanlocs.labels}')
-end
-
 % Check for Previous Scoring
 % ``````````````````````````
 if isfield(EEG, 'swa_scoring')
@@ -327,8 +314,17 @@ else
     % only every epoch is assigned a name
     EEG.swa_scoring.stageNames  = cell(1,nEpochs);
     EEG.swa_scoring.stageNames(:) = {'Unscored'};
-    % the montage just indicates which channels are displayed
-    EEG.swa_scoring.montage     = 1:8;
+
+    % assign montage defaults
+    EEG.swa_scoring.montage.labels = cell(8,1);
+    EEG.swa_scoring.montage.labels(:) = {'undefined'};
+    EEG.swa_scoring.montage.channels = [1:8; ones(1,8)*size(eegData,1)]';
+    EEG.swa_scoring.montage.filterSettings = [ones(1,8)*0.5; ones(1,8)*30]';
+end
+
+% set the labels from the montage
+for i = 1:8
+    set(handles.lbCh(i), 'string', EEG.swa_scoring.montage.labels{i})
 end
 
 % Initial plot of the data
@@ -342,13 +338,10 @@ set(handles.axCh,...
     'YLim', [-ylimits,ylimits]);
 
 % initial plot on each axes
-data = eegData(EEG.swa_scoring.montage,1:sEpoch);
+data = eegData(EEG.swa_scoring.montage.channels(:,1),1:sEpoch)-eegData(EEG.swa_scoring.montage.channels(:,2),1:sEpoch);
 
 for i = 1:8
-    % re-set the channel labels accordingly
-    set(handles.pmCh(i), 'Value', EEG.swa_scoring.montage(i));
     % plot the channel from the first sample on
-%     handles.plCh(i) = plot(handles.axCh(i), data(i,:), 'b');
     handles.plCh(i) = line(1:sEpoch, data(i,:), 'color', 'b', 'parent', handles.axCh(i));
 end
 
@@ -382,10 +375,13 @@ handles.plHypno = plot(time, EEG.swa_scoring.stages,...
     'Color',    'k');
 % ``````````````
 
+% save the sEpoch to the EEG structure
+EEG.swa_scoring.sEpoch = sEpoch;
+
 % enable the menu items
 set(handles.menu.Export, 'Enable', 'on');
 set(handles.menu.Statistics, 'Enable', 'on');
-% set(handles.menu.Tools, 'Enable', 'on');
+set(handles.menu.Montage, 'Enable', 'on');
 
 % reset the status bar
 set(handles.StatusBar, 'String', 'Idle')
@@ -397,7 +393,7 @@ setappdata(handles.Figure, 'EEG', EEG);
 setappdata(handles.Figure, 'eegData', eegData);
 
 % check the filter settings and adjust plots
-CheckFilter(hObject, eventdata, 2)
+checkFilter(handles.Figure, [])
 
 function menu_SaveEEG(hObject, eventdata)
 handles = guidata(hObject); % Get handles
@@ -419,30 +415,35 @@ handles = guidata(hObject); % Get handles
 EEG = getappdata(handles.Figure, 'EEG');
 eegData = getappdata(handles.Figure, 'eegData');
 
-% Interpolate the scoring for each sample...
-KeepSamples = find(EEG.swa_sleep_c==stage);
+% Find the matching stage and remove arousal samples
+keepSamples = logical(zeros(1,size(EEG.swa_scoring.stages,2)));
+keepSamples(EEG.swa_scoring.stages == stage) = true;
+keepSamples(EEG.swa_scoring.arousals) = false;
 
-if isempty(KeepSamples)
+if sum(keepSamples) == 0
     set(handles.StatusBar, 'String', ['Cannot Export: No epochs found for stage ', num2str(stage)])
     return;
 end
 
-switch stage
-    case 2
-        Data.N2  = double(eegData(:, KeepSamples));
-    case 3
-        Data.SWS = double(eegData(:, KeepSamples));
-    case 5
-        Data.REM = double(eegData(:, KeepSamples));        
-end
+% copy the data to a new structure
+Data.N2  = double(eegData(:, keepSamples));    
 
-Info.Electrodes = EEG.chanlocs;
+% get the necessary info from the EEG
+if isempty(EEG.chanlocs)
+    Info.Electrodes = EEG.urchanlocs;
+else
+    Info.Electrodes = EEG.chanlocs;
+end
 Info.sRate      = EEG.srate;
+
+% calculate the time of each sample
+time = (1:size(EEG.swa_scoring.stages,2))/EEG.srate;
+Info.time       = time(keepSamples);
 
 [saveName,savePath] = uiputfile('*.mat');
 if ~isempty(saveName)
     set(handles.StatusBar, 'String', 'Busy: Exporting Data')
-    save([savePath, saveName], 'Data', 'Info', '-mat')
+    save([savePath, saveName], 'Data', 'Info', '-mat', '-v7.3')
     set(handles.StatusBar, 'String', 'Idle')
 end
 
@@ -455,16 +456,19 @@ EEG = getappdata(handles.Figure, 'EEG');
 eegData = getappdata(handles.Figure, 'eegData');
 
 % data section
-sEpoch  = str2double(get(handles.et_EpochLength, 'String'))*EEG.srate; % samples per epoch
+sEpoch  = EEG.swa_scoring.sEpoch;
 cEpoch  = handles.java.Slider.getValue;
 range   = (cEpoch*sEpoch-(sEpoch-1)):(cEpoch*sEpoch);
 
-data = eegData(EEG.swa_scoring.montage, range);
-% filter the data; a and b parameters were computed and stored in the Checkfilter function
-data = single(filtfilt(EEG.filter.b, EEG.filter.a, double(data'))'); %transpose data twice
+data = eegData(EEG.swa_scoring.montage.channels(:,1),range)-eegData(EEG.swa_scoring.montage.channels(:,2),range);
+% filter the data; a and b parameters were computed and stored in the checkfilter function
 
+% data = single(filtfilt(EEG.filter.b, EEG.filter.a, double(data'))'); %transpose data twice
+
+% loop for each individual channels settings
 % plot the new data
 for i = 1:8
+    data(i,:) = single(filtfilt(EEG.filter.b(i,:), EEG.filter.a(i,:), double(data(i,:)'))'); %transpose data twice
     set(handles.plCh(i), 'Ydata', data(i,:));
 end
 
@@ -473,22 +477,17 @@ event = data(3, :);
 event(:, ~EEG.swa_scoring.arousals(range)) = nan;
 set(handles.current_events, 'yData', event);
 
-function ChangeChannel(hObject, eventdata)
+function updateLabel(hObject, ~)
 handles = guidata(hObject); % Get handles
 
 % Get the EEG from the figure's appdata
 EEG = getappdata(handles.Figure, 'EEG');
 
-EEG.swa_scoring.montage(get(hObject, 'UserData')) = get(hObject, 'Value');
-
-% reset the control so focus is on the figure
-set(hObject, 'Enable', 'off'); drawnow; set(hObject, 'Enable', 'on'); 
+EEG.swa_scoring.montage.labels{get(hObject, 'UserData')} = get(hObject, 'string');
 
 % update the guidata
 guidata(hObject, handles)
 setappdata(handles.Figure, 'EEG', EEG);
-
-updateAxes(handles)
 
 function sliderUpdate(hObject, eventdata, figurehandle)
 % get the handles from the guidata
@@ -498,13 +497,14 @@ handles = guidata(figurehandle);
 % Get the EEG from the figure's appdata
 EEG = getappdata(handles.Figure, 'EEG');
 
+sliderValue = handles.java.Slider.getValue;
 % check if the value is less than 1, and set to 1
-if handles.java.Slider.getValue < 1
+if sliderValue < 1
     handles.java.Slider.setValue(1);
 end
 
 % set the stage name to the current stage
-set(handles.StageBar, 'String', [num2str(handles.java.Slider.getValue),': ', EEG.swa_scoring.stageNames{handles.java.Slider.getValue}]);
+set(handles.StageBar, 'String', [num2str(sliderValue),': ', EEG.swa_scoring.stageNames{sliderValue}]);
 
 % update the GUI handles (*updates just fine)
 guidata(handles.Figure, handles)
@@ -615,10 +615,6 @@ end
 
 set(handles.StatusBar, 'String', 'Idle')
 
-% update the GUI handles
-guidata(handles.Figure, handles) 
-setappdata(handles.Figure, 'EEG', EEG);
-
 % set the xdata and ydata to equal lengths
 for i = 1:8
     set(handles.plCh(i), 'Xdata', 1:sEpoch, 'Ydata', 1:sEpoch);
@@ -627,6 +623,13 @@ set(handles.current_events, 'Xdata', 1:sEpoch, 'Ydata', 1:sEpoch);
 
 % update the hypnogram
 set(handles.plHypno, 'Ydata', EEG.swa_scoring.stages);
+
+% save the sEpoch to the EEG structure
+EEG.swa_scoring.sEpoch = sEpoch;
+
+% update the GUI handles
+guidata(handles.Figure, handles) 
+setappdata(handles.Figure, 'EEG', EEG);
 
 % update all the axes
 updateAxes(handles);
@@ -683,95 +686,43 @@ end
 
 guidata(handles.Figure, handles)
 
-function CheckFilter(hObject, eventdata, type)
+function checkFilter(figureHandle, ~)
 % get the updated handles structure
-handles = guidata(hObject);
+handles = guidata(figureHandle);
 
 % Get the EEG from the figure's appdata
 EEG = getappdata(handles.Figure, 'EEG');
 
-switch type
-    case 1
-        if  str2double(get(handles.et_HighPass, 'String')) <= 0
-            set(handles.et_HighPass, 'String', num2str(0.5));
-            set(handles.StatusBar, 'String', 'Warning: High pass must be more than 0')
-        end
-    case 2
-        if  str2double(get(handles.et_LowPass, 'String')) > EEG.srate/2
-            set(handles.et_LowPass, 'String', num2str(EEG.srate/2));
-            set(handles.StatusBar, 'String', 'Warning: Low pass must be less than Nyquist frequency')
-        end
-end
+% switch type
+%     case 1
+%         if  str2double(get(handles.et_HighPass, 'String')) <= 0
+%             set(handles.et_HighPass, 'String', num2str(0.5));
+%             set(handles.StatusBar, 'String', 'Warning: High pass must be more than 0')
+%         end
+%     case 2
+%         if  str2double(get(handles.et_LowPass, 'String')) > EEG.srate/2
+%             set(handles.et_LowPass, 'String', num2str(EEG.srate/2));
+%             set(handles.StatusBar, 'String', 'Warning: Low pass must be less than Nyquist frequency')
+%         end
+% end
+% 
+% % filter Parameters (Buttersworth)
+% hPass = str2double(get(handles.et_HighPass, 'String'))/(EEG.srate/2);
+% lPass = str2double(get(handles.et_LowPass, 'String'))/(EEG.srate/2);
+% [EEG.filter.b, EEG.filter.a] = butter(2,[hPass lPass]);
 
-% filter Parameters (Buttersworth)
-hPass = str2double(get(handles.et_HighPass, 'String'))/(EEG.srate/2);
-lPass = str2double(get(handles.et_LowPass, 'String'))/(EEG.srate/2);
-[EEG.filter.b, EEG.filter.a] = butter(2,[hPass lPass]);
-
-setappdata(handles.Figure, 'EEG', EEG);
-updateAxes(handles)
-
-function menu_Filter(hObject, eventdata)
-% Note: doesn't seem to work with memory mapped data
-
-% get the updated handles structure
-handles = guidata(hObject);
-
-% Get the EEG from the figure's appdata
-EEG = getappdata(handles.Figure, 'EEG');
-
-FiPar = inputdlg({'HighPass (Hz)', 'LowPass (Hz)'}, 'Filter Parameters', 1, {'0.5', '30'});
-
-if isempty(FiPar)
-    return;
-end
-
-hpass = str2double(FiPar{1});
-lpass = str2double(FiPar{2});
-
-set(handles.StatusBar, 'String', 'Busy: Filtering Dataset')
-EEG = pop_eegfiltnew(EEG, hpass, lpass); 
-
-updateAxes(handles)
-set(handles.StatusBar, 'String', 'Idle')
-
-% update the handles
-guidata(handles.Figure,handles)
-setappdata(handles.Figure, 'EEG', EEG);
-
-
-function menu_LoadMontage(hObject, eventdata)
-handles = guidata(hObject); % Get handles
-
-% Get the EEG from the figure's appdata
-EEG = getappdata(handles.Figure, 'EEG');
-
-[dataFile, dataPath] = uigetfile('*.set', 'Please Select Scored File with Montage');
-
-if isequal(dataFile, 0)
-    set(handles.StatusBar, 'String', 'Information: No file selected'); drawnow;
-    return;
-end
-
-% Load the Files
-set(handles.StatusBar, 'String', 'Busy: Loading Montage Data'); drawnow;
-nEEG = load([dataPath, dataFile], '-mat'); nEEG = nEEG.EEG;
-set(handles.StatusBar, 'String', 'Idle'); drawnow;
-try
-    EEG.swa_scoring.montage = nEEG.swa_scoring.montage;
-catch
-    set(handles.StatusBar, 'String', 'Information: No montage found in file'); drawnow;  
-end
-
-clear nEEG
-
+% loop each channel for their individual settings
 for i = 1:8
-    set(handles.pmCh(i), 'Value', EEG.swa_scoring.montage(i));
+    [EEG.filter.b(i,:), EEG.filter.a(i,:)] = ...
+        butter(2,[EEG.swa_scoring.montage.filterSettings(i,1)/(EEG.srate/2),...
+                  EEG.swa_scoring.montage.filterSettings(i,2)/(EEG.srate/2)]);
 end
-
-updateAxes(handles);
-guidata(handles.Figure,handles)
+    
+% save EEG struct back into the figure
 setappdata(handles.Figure, 'EEG', EEG);
+
+% update the axes with the new filters
+updateAxes(handles)
 
 
 % Code for selecting and marking events
@@ -922,4 +873,190 @@ end
 
 guidata(handles.Figure, handles);
 setappdata(handles.Figure, 'EEG', EEG);
-% ```````````````````````````````````
+
+
+% Montage Options
+% ```````````````
+function updateMontage(~, ~, figurehandle)
+
+% create the figure
+H.Figure = figure(...
+    'Name',         'Montage Settings',...
+    'NumberTitle',  'off',...
+    'Color',        'w',...
+    'MenuBar',      'none',...
+    'Units',        'normalized',...
+    'Outerposition',[0.2 0.2 0.2 0.4]);
+
+% create label boxes
+defaults = {'LOC', 'ROC', 'Fz', 'C3', 'C4', 'O1', 'O2', 'EMG'};
+for i = 1:8
+    H.lbCh(i) = uicontrol(...
+        'Parent',        H.Figure,...
+        'Style',         'edit',...
+        'BackgroundColor', 'w',...
+        'Units',        'normalized',...
+        'Position',     [0.1 (9-i)*0.1+0.025 0.125 0.04],...
+        'String',       defaults{i},...
+        'FontName',     'Century Gothic',...
+        'FontSize',     8);
+end
+
+% create popup menus and axes
+for i = 1:8
+	H.pmCh(i) = uicontrol(...
+        'Parent',   H.Figure,...  
+        'Style',    'popupmenu',...  
+        'BackgroundColor', 'w',...
+        'Units',    'normalized',...
+        'Position', [0.3 (9-i)*0.1+0.025 0.125 0.04],...
+        'String',   ['Channel ', num2str(i)],...
+        'UserData',  i,...
+        'FontName', 'Century Gothic',...
+        'FontSize', 8);
+	H.pmRe(i) = uicontrol(...
+        'Parent',   H.Figure,...  
+        'Style',    'popupmenu',...  
+        'BackgroundColor', 'w',...
+        'Units',    'normalized',...
+        'Position', [0.45 (9-i)*0.1+0.025 0.125 0.04],...
+        'String',   ['Channel ', num2str(i)],...
+        'UserData',  i,...
+        'FontName', 'Century Gothic',...
+        'FontSize', 8);
+end
+
+% create filter boxes
+for i = 1:8
+    H.lbHP(i) = uicontrol(...
+        'Parent',        H.Figure,...
+        'Style',         'edit',...
+        'BackgroundColor', 'w',...
+        'Units',        'normalized',...
+        'Position',     [0.65 (9-i)*0.1+0.025 0.125 0.04],...
+        'String',       '0.5',...
+        'UserData',     0.5,...
+        'FontName',     'Century Gothic',...
+        'FontSize',     8);
+    H.lbLP(i) = uicontrol(...
+        'Parent',        H.Figure,...
+        'Style',         'edit',...
+        'BackgroundColor', 'w',...
+        'Units',        'normalized',...
+        'Position',     [0.8 (9-i)*0.1+0.025 0.125 0.04],...
+        'String',       '30',...
+        'UserData',     30,...
+        'FontName',     'Century Gothic',...
+        'FontSize',     8);    
+end
+
+% menu options
+H.menu.Open = uimenu(H.Figure, 'Label', 'Open');
+H.menu.Save = uimenu(H.Figure, 'Label', 'Apply');
+H.menu.Plot = uimenu(H.Figure, 'Label', 'Plot');
+
+
+setMontageData(H, figurehandle)
+
+function setMontageData(H, figureHandle)
+% get the figure handles and data
+handles = guidata(figureHandle);
+EEG     = getappdata(handles.Figure, 'EEG');
+
+% set the channel options in the pop-menu
+try
+    set([H.pmCh; H.pmRe], 'String', {EEG.urchanlocs.labels}')
+catch
+    set([H.pmCh; H.pmRe], 'String', {EEG.chanlocs.labels}')
+end
+
+% check if the input already has these files and change them
+if isfield(EEG.swa_scoring, 'montage')
+    % set the labels
+    for i = 1:8
+        set(H.lbCh(i), 'string', EEG.swa_scoring.montage.labels{i});
+        set(H.pmCh(i), 'Value',  EEG.swa_scoring.montage.channels(i,1));
+        set(H.pmRe(i), 'Value',  EEG.swa_scoring.montage.channels(i,2));
+        set(H.lbHP(i), 'string', num2str(EEG.swa_scoring.montage.filterSettings(i,1)));
+        set(H.lbLP(i), 'string', num2str(EEG.swa_scoring.montage.filterSettings(i,2)));
+    end
+else
+    
+    
+end
+
+% set the callbacks for the menu
+set(H.menu.Open,  'Callback', {@openMontage, H, figureHandle});
+set(H.menu.Save,  'Callback', {@saveMontage, H, figureHandle});
+set(H.menu.Plot,  'Callback', {@plotMontage, H, figureHandle});
+
+function openMontage(~, ~, H, figureHandle)
+handles = guidata(figureHandle); % Get handles
+
+% Get the EEG from the figure's appdata
+EEG = getappdata(handles.Figure, 'EEG');
+
+[dataFile, dataPath] = uigetfile('*.set', 'Please Select Scored File with Montage');
+
+if isequal(dataFile, 0)
+    set(handles.StatusBar, 'String', 'Information: No file selected'); drawnow;
+    return;
+end
+
+% Load the Files
+set(handles.StatusBar, 'String', 'Busy: Loading Montage Data'); drawnow;
+nEEG = load([dataPath, dataFile], '-mat'); nEEG = nEEG.EEG;
+set(handles.StatusBar, 'String', 'Idle'); drawnow;
+try
+    EEG.swa_scoring.montage = nEEG.swa_scoring.montage;
+catch
+    set(handles.StatusBar, 'String', 'Information: No montage found in file'); drawnow;  
+end
+
+clear nEEG
+
+guidata(handles.Figure,handles)
+setappdata(handles.Figure, 'EEG', EEG);
+
+setMontageData(H, figureHandle)
+
+% saving the Montage
+function saveMontage(~, ~, H, figureHandle)
+% get the data
+handles = guidata(figureHandle);
+EEG     = getappdata(figureHandle, 'EEG');
+
+% save the selected montage into the EEG structure
+EEG.swa_scoring.montage.labels = get(H.lbCh, 'String');
+EEG.swa_scoring.montage.channels = cell2mat([get(H.pmCh, 'Value'), get(H.pmRe, 'Value')]);
+EEG.swa_scoring.montage.filterSettings = [str2double(get(H.lbHP, 'String')), str2double(get(H.lbLP, 'String'))];
+
+% update all the labels (even if they didn't change)
+for i = 1:8
+    set(handles.lbCh(i), 'string', EEG.swa_scoring.montage.labels{i})
+end
+
+% set the data
+guidata(handles.Figure, handles)
+setappdata(figureHandle, 'EEG', EEG);
+
+% check the filter settings (calls updateAxes itself)
+checkFilter(handles.Figure)
+
+% plot empty channel set
+function plotMontage(~, ~, ~, figureHandle)
+EEG     = getappdata(figureHandle, 'EEG');
+
+if ~isempty(EEG.chanlocs)
+    locs = EEG.chanlocs;
+else
+    locs = EEG.urchanlocs;
+end
+   
+H = swa_Topoplot(...
+    nan(40, 40), locs                                       ,...
+    'NewFigure',        1                                   ,...
+    'NumContours',      10                                  ,...
+    'PlotContour',      1                                   ,...
+    'PlotChannels',     1                                   ,...
+    'PlotStreams',      0                                   );
