@@ -1,11 +1,9 @@
 %% -- Manual Sleep Scoring GUI -- %%
 function swa_SleepScoring(varargin)
-% GUI to quickly score sleep stages and save the results for further
+% GUI to score sleep stages and save the results for further
 % processing (e.g. travelling waves analysis)
 
 % Author: Armand Mensen
-
-% Version 1.0
 
 DefineInterface
 
@@ -398,15 +396,13 @@ checkFilter(handles.Figure, [])
 function menu_SaveEEG(hObject, eventdata)
 handles = guidata(hObject); % Get handles
 
-set(handles.StatusBar, 'String', 'Saving Dataset')
-
 % Get the EEG from the figure's appdata
 EEG = getappdata(handles.Figure, 'EEG');
 
 % since the data has not changed we can just save the EEG part, not the data
-save([EEG.filepath, '/' EEG.filename], 'EEG', '-mat');
+save([EEG.filepath, EEG.filename], 'EEG', '-mat');
 
-set(handles.StatusBar, 'String', 'Idle')
+set(handles.StatusBar, 'String', 'Data Saved')
 
 function menu_Export(hObject, eventdata, stage)
 handles = guidata(hObject); % Get handles
@@ -501,6 +497,7 @@ sliderValue = handles.java.Slider.getValue;
 % check if the value is less than 1, and set to 1
 if sliderValue < 1
     handles.java.Slider.setValue(1);
+    sliderValue = 1;
 end
 
 % set the stage name to the current stage

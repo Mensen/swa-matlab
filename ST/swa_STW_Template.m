@@ -5,7 +5,7 @@
 % Data
 % the variable 'Data' should be a structure containing the field 'REM' which contains a 2D matrix
 % of channels v samples (e.g. size(Data.REM) = [256, 2000]). If importing data from EEGLAB just load
-% the .set file (>> EEG = pop_loadset();) then type >> Data.REM = EEG.data
+% the .set file (>> EEG = pop_loadset();) then type >> Data.Raw = EEG.data
 
 % Info
 % the variable 'Info', should already contain two fields, '.sRate' and '.Electrodes'. These can also
