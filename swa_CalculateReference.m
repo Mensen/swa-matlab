@@ -1,4 +1,4 @@
-function [filtData, Info] = swa_CalculateReference(Data, Info)
+function [filtData, Info] = swa_CalculateReference(data, Info)
 
 if ~isfield(Info, 'Electrodes');
 	error('Error: No electrode information found in Info')
@@ -34,12 +34,12 @@ switch Info.Parameters.Ref_Method
         distances = (x.^2+y.^2).^0.5;
         insideCh = distances<0.35; %0.35 out of max 0.5 distance from center
         
-        Data = Data(insideCh,:);
+        data = data(insideCh,:);
         
     end
     
     %% Get the most negative channels for each sample
-    rData   = sort(Data);                             % Sort each sample to find the lowest values for each time point
+    rData   = sort(data);                             % Sort each sample to find the lowest values for each time point
     nCh     = floor(length(Info.Electrodes)*0.025);   % How many channels are the 97.5th percentile
     nData   = mean(rData(2:nCh,:));                   % Get the mean of the most negative channels (leave most negative if artifact)
     
@@ -60,12 +60,12 @@ switch Info.Parameters.Ref_Method
         RegionCenters = [-r, -r, r,  r;...
                           r, -r, -r, r];
         
-        nData = zeros(4,size(Data,2));              
+        nData = zeros(4,size(data,2));              
         for i = 1:4 % Each of the four regions
             distances = ((x+RegionCenters(1,i)).^2 + (y+RegionCenters(2,i)).^2).^0.5;
             insideCh = distances<0.175; %0.2 captures distinct regions
             % figure('color', 'w'); scatter(y,x); hold on; scatter(y(insideCh),x(insideCh), 'r', 'MarkerFaceColor','r'); axis off;
-            nData(i,:) = mean(Data(insideCh,:));            
+            nData(i,:) = mean(data(insideCh,:));            
         end
     
     case 'Central'
@@ -85,7 +85,7 @@ switch Info.Parameters.Ref_Method
         insideCh = distances<0.15;
         fprintf(1, 'Information: Central using %i channels for reference \n', sum(insideCh));
         % figure('color', 'w'); scatter(y,x); hold on; scatter(y(insideCh),x(insideCh), 'r', 'MarkerFaceColor','r'); axis off;
-        nData = mean(Data(insideCh,:));
+        nData = mean(data(insideCh,:));
         
         
     case 'Midline'
@@ -104,12 +104,12 @@ switch Info.Parameters.Ref_Method
         r = 0.25; % y distance from the center in each direction (25%, 50%, 75% of midline)
         RegionCenters = [-r,0, +r; 0,0,0];
         
-        nData = zeros(3,size(Data,2));              
+        nData = zeros(3,size(data,2));              
         for i = 1:3 % Each of the three regions
             distances = ((x+RegionCenters(1,i)).^2 + (y+RegionCenters(2,i)).^2).^0.5;
             insideCh = distances<0.1; %0.2 captures distinct regions
 %             figure('color', 'w'); scatter(y,x); hold on; scatter(y(insideCh),x(insideCh), 'r', 'MarkerFaceColor','r'); axis off;
-            nData(i,:) = mean(Data(insideCh,:));            
+            nData(i,:) = mean(data(insideCh,:));            
         end
     
 end
