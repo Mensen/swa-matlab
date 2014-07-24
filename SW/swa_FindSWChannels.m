@@ -29,7 +29,7 @@ if Info.Parameters.Filter_Apply
                 [n, Wn]=cheb2ord(Wp,Ws,Rp,Rs);
                 [bbp,abp]=cheby2(n,Rs,Wn); % Loses no more than 3 dB in pass band and has at least 10 dB attenuation in stop band
                 clear pass* stop* Rp Rs W* n;
-                Data.Filtered = filtfilt(bbp, abp, Data.SWS')';
+                Data.Filtered = filtfilt(bbp, abp, Data.Raw')';
                 
             case 'Buttersworth'
                 fhc = Info.Parameters.Filter_hPass/(Info.sRate/2);
@@ -37,7 +37,7 @@ if Info.Parameters.Filter_Apply
                 [b1,a1] = butter(Info.Parameters.Filter_order,fhc,'high');
                 [b2,a2] = butter(Info.Parameters.Filter_order,flc,'low');
                 
-                Data.Filtered = filtfilt(b1, a1, Data.SWS');
+                Data.Filtered = filtfilt(b1, a1, Data.Raw');
                 Data.Filtered = filtfilt(b2, a2, Data.Filtered)';
         end
         fprintf(1, 'Done. \n');
@@ -58,8 +58,8 @@ switch Info.Parameters.Ref_Method
             
             waitbar(nSW/length(SW),WaitHandle,sprintf('Slow Wave %d of %d',nSW, length(SW)))
             
-            shortData = Data.Filtered(:,SW(nSW).Ref_PeakId-win:SW(nSW).Ref_PeakId+win);
-            refData = Data.Ref(:,SW(nSW).Ref_PeakId-win:SW(nSW).Ref_PeakId+win);
+            shortData   = Data.Filtered(:,SW(nSW).Ref_PeakId-win:SW(nSW).Ref_PeakId+win);
+            refData     = Data.Ref(:,SW(nSW).Ref_PeakId-win:SW(nSW).Ref_PeakId+win);
             
             %% Cross correlate with the reference channel at multiple lags
             for ch = 1:size(shortData,1)
