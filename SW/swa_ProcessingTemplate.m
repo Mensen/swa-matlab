@@ -1,5 +1,10 @@
 %% -- Workflow and Plots for Slow Wave Analysis -- %%
 
+% read the preprocessed data or another swa file
+
+% for eeglab files
+[Data, Info] = swa_convertFromEEGLAB();
+
 %% Initial Parameter Settings
 
 Info.Parameters.Filter_Apply    = true;
@@ -23,13 +28,13 @@ Info.Parameters.Stream_GS       = 40; % size of interpolation grid
 Info.Parameters.Stream_MinDelay = 40; % minimum travel time (ms)
 
 %% -- Scripts to run -- %%
-[Data.Ref, Info]    = swa_CalculateReference(Data.SWS, Info);
+[Data.Ref, Info]    = swa_CalculateReference(Data.Raw, Info);
 
 [SW, Info]          = swa_FindSWRef(Data.Ref, Info);
 
 [SW, Data, Info]    = swa_FindSWChannels(SW, Data, Info);
 
-[SW,Info]           = swa_FindSWTravelling(SW,Info);
+[SW, Info]          = swa_FindSWTravelling(SW, Info);
 
 % Done! Use the swa_Explorer to visualise the results.
 
@@ -61,17 +66,17 @@ win = round(0.4*Info.sRate);
 
 % All the data...
 figure('Color', 'w');
-plot(Data.SWS','Color', [0.5 0.5 0.5], 'linewidth', 0.5) % all channels in grey
+plot(Data.Raw','Color', [0.5 0.5 0.5], 'linewidth', 0.5) % all channels in grey
 hold on;
-plot(Data.SWS(25,:)','Color', 'k', 'linewidth', 3) %channel 25 in black
-plot(Data.SWS(SW(nSW).channels,:)','Color', 'k', 'linewidth', 2) % all channels in grey
+plot(Data.Raw(25,:)','Color', 'k', 'linewidth', 3) %channel 25 in black
+plot(Data.Raw(SW(nSW).channels,:)','Color', 'k', 'linewidth', 2) % all channels in grey
 plot(Data.Ref','b', 'linewidth', 3) % reference in blue
 
 % Individual Wave...
 figure('Color', 'w');
-plot(Data.SWS(:,SW(nSW).negmax-win:SW(nSW).negmax+win)','Color', [0.5 0.5 0.5], 'linewidth', 0.5); 
+plot(Data.Raw(:,SW(nSW).negmax-win:SW(nSW).negmax+win)','Color', [0.5 0.5 0.5], 'linewidth', 0.5); 
 hold on;
-plot(Data.SWS(SW(nSW).channels,SW(nSW).negmax-win:SW(nSW).negmax+win)','Color', 'k', 'linewidth', 2); 
+plot(Data.Raw(SW(nSW).channels,SW(nSW).negmax-win:SW(nSW).negmax+win)','Color', 'k', 'linewidth', 2); 
 % plot(Data.Filtered(:,EW(nEW).negmax-win:EW(nEW).negmax+win)','k');
 plot(Data.Ref(:,SW(nSW).negmax-win:SW(nSW).negmax+win),'r','linewidth',3);
 
