@@ -271,9 +271,17 @@ if swaFile == 0
 end
 
 set(handles.StatusBar, 'String', 'Busy: Loading Data');
-load ([swaPath,swaFile]);
+load ([swaPath,swaFile], 'Data', 'Info', 'SW');
 
 set(handles.Figure, 'Name', ['Travelling Waves: ', swaFile]);
+
+%% Check for data present or external file
+if ischar(Data.Raw)
+    set(handles.StatusBar, 'String', 'Busy: Loading Data');
+    fid = fopen(Data.Raw);
+    Data.Raw = fread(fid, Info.Recording.dataDim, 'single');
+    fclose(fid);
+end
 
 %% Set the handles
 handles.Info    = Info;
@@ -348,42 +356,42 @@ guidata(handles.Figure, handles);
 function handles = update_ButterflyPlot(handles)
 % initial plot then update the yData in a loop (faster than replot)
 nSW = handles.java.Spinner.getValue();
-win = round(10*handles.Info.sRate); % ten seconds on each side of the wave
+win = round(10*handles.Info.Recording.sRate); % ten seconds on each side of the wave
 
 range = round((handles.SW(nSW).Ref_PeakId-win):(handles.SW(nSW).Ref_PeakId+win));
 range(range<1)=[]; %eliminate negative values in case SW is early in the data
-xaxis = range./handles.Info.sRate;
+xaxis = range./handles.Info.Recording.sRate;
 
 if ~isfield(handles, 'lines_Butterfly') %50 times takes 1.67s
     cla(handles.ax_Butterfly);
-    handles.lines_Butterfly = plot(handles.ax_Butterfly, xaxis, handles.Data.SWS(:,range)', 'k');
+    handles.lines_Butterfly = plot(handles.ax_Butterfly, xaxis, handles.Data.Raw(:,range)', 'k');
     set(handles.ax_Butterfly,...
         'YLim', [-200,200],...
         'XLim', [xaxis(1), xaxis(end)]);
     
-    handles.zoomline(1) = line([handles.SW(nSW).Ref_PeakId/handles.Info.sRate-0.4, handles.SW(nSW).Ref_PeakId/handles.Info.sRate-0.4],[-200, 200], 'color', [0.4 0.4 0.4], 'linewidth', 2, 'Parent', handles.ax_Butterfly);
-    handles.zoomline(2) = line([handles.SW(nSW).Ref_PeakId/handles.Info.sRate+.6, handles.SW(nSW).Ref_PeakId/handles.Info.sRate+0.6],[-200, 200], 'color', [0.4 0.4 0.4], 'linewidth', 2, 'Parent', handles.ax_Butterfly);
+    handles.zoomline(1) = line([handles.SW(nSW).Ref_PeakId/handles.Info.Recording.sRate-0.4, handles.SW(nSW).Ref_PeakId/handles.Info.Recording.sRate-0.4],[-200, 200], 'color', [0.4 0.4 0.4], 'linewidth', 2, 'Parent', handles.ax_Butterfly);
+    handles.zoomline(2) = line([handles.SW(nSW).Ref_PeakId/handles.Info.Recording.sRate+.6, handles.SW(nSW).Ref_PeakId/handles.Info.Recording.sRate+0.6],[-200, 200], 'color', [0.4 0.4 0.4], 'linewidth', 2, 'Parent', handles.ax_Butterfly);
 
 else %50 times takes 0.3s
     set(handles.lines_Butterfly, 'xData', xaxis);
-    for j = 1:size(handles.Data.SWS, 1)
-        set(handles.lines_Butterfly(j), 'yData', handles.Data.SWS(j,range)');
+    for j = 1:size(handles.Data.Raw, 1)
+        set(handles.lines_Butterfly(j), 'yData', handles.Data.Raw(j,range)');
     end 
     set(handles.ax_Butterfly,...
         'XLim', [xaxis(1), xaxis(end)]);
     
-    set(handles.zoomline(1), 'xData', [handles.SW(nSW).Ref_PeakId/handles.Info.sRate-0.4, handles.SW(nSW).Ref_PeakId/handles.Info.sRate-0.4]);
-    set(handles.zoomline(2), 'xData', [handles.SW(nSW).Ref_PeakId/handles.Info.sRate+0.6, handles.SW(nSW).Ref_PeakId/handles.Info.sRate+0.6]);
+    set(handles.zoomline(1), 'xData', [handles.SW(nSW).Ref_PeakId/handles.Info.Recording.sRate-0.4, handles.SW(nSW).Ref_PeakId/handles.Info.Recording.sRate-0.4]);
+    set(handles.zoomline(2), 'xData', [handles.SW(nSW).Ref_PeakId/handles.Info.Recording.sRate+0.6, handles.SW(nSW).Ref_PeakId/handles.Info.Recording.sRate+0.6]);
 end
 
 function handles = update_SWPlot(handles)
 nSW = handles.java.Spinner.getValue();
-win = round(0.5*handles.Info.sRate);
+win = round(0.5*handles.Info.Recording.sRate);
 
 if ~isfield(handles, 'SWPlot') % in case plot doesn't already exist
     cla(handles.ax_SWPlot);
     
-    handles.SWPlot.All = plot(handles.ax_SWPlot, handles.Data.Filtered(:,handles.SW(nSW).Ref_PeakId-win:handles.SW(nSW).Ref_PeakId+win)','Color', [0.7 0.7 0.7], 'linewidth', 0.5);
+    handles.SWPlot.All = plot(handles.ax_SWPlot, handles.Data.Raw(:,handles.SW(nSW).Ref_PeakId-win:handles.SW(nSW).Ref_PeakId+win)','Color', [0.7 0.7 0.7], 'linewidth', 0.5);
     set(handles.SWPlot.All(handles.SW(nSW).Channels_Active), 'Color', 'k', 'LineWidth', 1);
     set(handles.SWPlot.All(handles.SW(nSW).Travelling_Delays<1), 'Color', 'b', 'LineWidth', 2);
     
@@ -392,9 +400,9 @@ if ~isfield(handles, 'SWPlot') % in case plot doesn't already exist
     set(handles.ax_SWPlot, 'XLim', [1, win*2+1])
     
 else
-    for i = 1:size(handles.Data.Filtered,1) % faster than total replot...
+    for i = 1:size(handles.Data.Raw,1) % faster than total replot...
          set(handles.SWPlot.All(i),...
-             'yData', handles.Data.Filtered(i,handles.SW(nSW).Ref_PeakId-win:handles.SW(nSW).Ref_PeakId+win),...
+             'yData', handles.Data.Raw(i,handles.SW(nSW).Ref_PeakId-win:handles.SW(nSW).Ref_PeakId+win),...
              'Color', [0.6 0.6 0.6], 'linewidth', 0.5);
     end
     set(handles.SWPlot.All(handles.SW(nSW).Channels_Active), 'Color', 'k', 'LineWidth', 1);
@@ -441,8 +449,8 @@ end
 
 function handles = update_SWOriginsMap(handles, nFigure)
 
-handles.Origins = zeros(size(handles.Data.SWS,1),1);
-handles.Totals  = zeros(size(handles.Data.SWS,1),1);
+handles.Origins = zeros(size(handles.Data.Raw,1),1);
+handles.Totals  = zeros(size(handles.Data.Raw,1),1);
 for i = 1:length(handles.SW)
     handles.Origins(handles.SW(i).Travelling_Delays<1) = handles.Origins(handles.SW(i).Travelling_Delays<1) + 1;
     handles.Totals(handles.SW(i).Channels_Active)  = handles.Totals(handles.SW(i).Channels_Active) +1;
@@ -487,7 +495,7 @@ SpinnerUpdate([],[], hObject);
 function edit_SWPlot(hObject, eventdata)
 handles = guidata(hObject);
 nSW = handles.java.Spinner.getValue();
-win = round(0.5*handles.Info.sRate);
+win = round(0.5*handles.Info.Recording.sRate);
 
 SW_Handles.Figure = figure(...
     'Name',         'Edit Detected Slow Wave',...
@@ -507,7 +515,7 @@ SW_Handles.Axes = axes(...
     'Xtick', [],...
     'XLim', [1, win*2+1]);
 
-SW_Handles.Plot_Ch = plot(SW_Handles.Axes, handles.Data.Filtered(:,handles.SW(nSW).Ref_PeakId-win:handles.SW(nSW).Ref_PeakId+win)',...
+SW_Handles.Plot_Ch = plot(SW_Handles.Axes, handles.Data.Raw(:,handles.SW(nSW).Ref_PeakId-win:handles.SW(nSW).Ref_PeakId+win)',...
     'Color', [0.6 0.6 0.6],...
     'LineWidth', 0.5);
 set(SW_Handles.Plot_Ch, 'ButtonDownFcn', {@Channel_Selected, handles.Figure, SW_Handles});
