@@ -36,7 +36,18 @@ Info.Parameters.Stream_MinDelay = 40; % minimum travel time (ms)
 
 [SW, Info]          = swa_FindSWTravelling(SW, Info);
 
+% Replace the data with a file pointer if drive space is a concern
+Data.Raw = Info.Recording.dataFile;
+
+% Remove filtered dataset
+Data.Filtered = [];
+% Or at least make it single precision
+Data.Filtered = single(Data.Filtered);
+
 % Done! Use the swa_Explorer to visualise the results.
+[saveFile, savePath] = uiputfile('*.mat');
+save([savePath, saveFile], 'Data', 'Info', 'SW', '-mat');
+
 
 %% -- Template for Four Regions Reference -- %%
 Info.Method = 'MDC';
