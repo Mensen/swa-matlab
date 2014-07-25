@@ -27,7 +27,7 @@ for nSW = 1:length(SW)
     Delays      = SW(nSW).Travelling_Delays;
     
     % Check for minimum travel time...
-    if max(Delays) < Info.Parameters.Stream_MinDelay * Info.sRate/1000
+    if max(Delays) < Info.Parameters.Stream_MinDelay * Info.Recording.sRate/1000
         continue
     end
     

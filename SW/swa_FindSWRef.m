@@ -62,9 +62,9 @@ end
 % Get all the wavelengths
 SWLengths = UZC-DZC;
 % Too short
-BadZC = SWLengths < Info.Parameters.Ref_ZCLength(1)*Info.sRate;
+BadZC = SWLengths < Info.Parameters.Ref_ZCLength(1)*Info.Recording.sRate;
 % Too long
-BadZC(  SWLengths > Info.Parameters.Ref_ZCLength(2)*Info.sRate) = true;
+BadZC(  SWLengths > Info.Parameters.Ref_ZCLength(2)*Info.Recording.sRate) = true;
 % Eliminate the indices
 UZC(BadZC) = [];
 DZC(BadZC) = [];
@@ -74,7 +74,7 @@ DZC(BadZC) = [];
 if ~isempty(Info.Parameters.Ref_AmpStd)
     MNP  = find(diff(sign(slopeData))==2);  % Maximum Negative Point (trough of the wave)
     StdMor = mad(Data(MNP), 1);             % Returns the absolute deviation from the median (to avoid outliers)
-    Info.Parameters.Ref_NegAmpMin = (StdMor*8)+abs(mean(Data(MNP))); % Overwrite amp threshold
+    Info.Parameters.Ref_NegAmpMin = (StdMor*Info.Parameters.Ref_AmpStd)+abs(mean(Data(MNP))); % Overwrite amp threshold
 end
 
 % To check differences between next peaks found...
@@ -92,7 +92,7 @@ for i = 1:length(DZC)
     
     % MDC Test for peak to peak amplitude
     if strcmp(Info.Parameters.Ref_Method,'MDC')
-        PosPeakAmp = max(Data(1,UZC(i):UZC(i)+2*Info.sRate));
+        PosPeakAmp = max(Data(1,UZC(i):UZC(i)+2*Info.Recording.sRate));
         if PosPeakAmp-NegPeakAmp < Info.Parameters.Ref_Peak2Peak
             continue;
         end
