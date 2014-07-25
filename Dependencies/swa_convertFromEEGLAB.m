@@ -5,11 +5,12 @@ if nargin < 1
     load([filePath, fileName], '-mat');
 end
 
-Info.dataFile   = EEG.data;
-Info.dataDim    =[EEG.nbchan, EEG.pnts];
-Info.sRate      = EEG.srate;
-Info.Electrodes = EEG.chanlocs;
+Info.Recording.dataFile   = EEG.data;
+Info.Recording.dataDim    =[EEG.nbchan, EEG.pnts];
+Info.Recording.sRate      = EEG.srate;
+Info.Recording.reference  = EEG.ref;
+Info.Electrodes           = EEG.chanlocs;
 
-fid = fopen(Info.dataFile);
-Data.Raw = fread(fid, Info.dataDim, 'single');
+fid = fopen(Info.Recording.dataFile);
+Data.Raw = fread(fid, Info.Recording.dataDim, 'single');
 fclose(fid);
