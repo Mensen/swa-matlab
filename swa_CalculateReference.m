@@ -4,8 +4,8 @@ if ~isfield(Info, 'Electrodes');
 	error('Error: No electrode information found in Info')
 end
 
-if ~isfield(Info, 'sRate');
-    Info.sRate = 250;
+if ~isfield(Info.Recording, 'Recording.sRate');
+    Info.Recording.Recording.sRate = 250;
 end
 
 if ~isfield(Info.Parameters, 'Ref_Method');
@@ -130,8 +130,8 @@ if Info.Parameters.Filter_Apply
     
     switch Info.Parameters.Filter_Method
         case 'Chebyshev'
-            Wp=[Info.Parameters.Filter_hPass Info.Parameters.Filter_lPass]/(Info.sRate/2); % Filtering parameters
-            Ws=[Info.Parameters.Filter_hPass/5 Info.Parameters.Filter_lPass*2]/(Info.sRate/2); % Filtering parameters
+            Wp=[Info.Parameters.Filter_hPass Info.Parameters.Filter_lPass]/(Info.Recording.sRate/2); % Filtering parameters
+            Ws=[Info.Parameters.Filter_hPass/5 Info.Parameters.Filter_lPass*2]/(Info.Recording.sRate/2); % Filtering parameters
             Rp=3;
             Rs=10;
             [n, Wn]=cheb2ord(Wp,Ws,Rp,Rs);
@@ -141,8 +141,8 @@ if Info.Parameters.Filter_Apply
             % fprintf(1, 'Done. \n');
             
         case 'Buttersworth'
-            fhc = Info.Parameters.Filter_hPass/(Info.sRate/2);
-            flc = Info.Parameters.Filter_lPass/(Info.sRate/2);
+            fhc = Info.Parameters.Filter_hPass/(Info.Recording.sRate/2);
+            flc = Info.Parameters.Filter_lPass/(Info.Recording.sRate/2);
             [b1,a1] = butter(Info.Parameters.Filter_order,fhc,'high');
             [b2,a2] = butter(Info.Parameters.Filter_order,flc,'low');
             
