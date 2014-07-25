@@ -22,8 +22,8 @@ if Info.Parameters.Filter_Apply
         fprintf(1, 'Calculating: Filtering Dataset...');
         switch Info.Parameters.Filter_Method
             case 'Chebyshev'
-                Wp=[Info.Parameters.Filter_hPass Info.Parameters.Filter_lPass]/(Info.sRate/2); % Filtering parameters
-                Ws=[Info.Parameters.Filter_hPass/5 Info.Parameters.Filter_lPass*2]/(Info.sRate/2); % Filtering parameters
+                Wp=[Info.Parameters.Filter_hPass Info.Parameters.Filter_lPass]/(Info.Recording.sRate/2); % Filtering parameters
+                Ws=[Info.Parameters.Filter_hPass/5 Info.Parameters.Filter_lPass*2]/(Info.Recording.sRate/2); % Filtering parameters
                 Rp=3;
                 Rs=10;
                 [n, Wn]=cheb2ord(Wp,Ws,Rp,Rs);
@@ -32,8 +32,8 @@ if Info.Parameters.Filter_Apply
                 Data.Filtered = filtfilt(bbp, abp, Data.Raw')';
                 
             case 'Buttersworth'
-                fhc = Info.Parameters.Filter_hPass/(Info.sRate/2);
-                flc = Info.Parameters.Filter_lPass/(Info.sRate/2);
+                fhc = Info.Parameters.Filter_hPass/(Info.Recording.sRate/2);
+                flc = Info.Parameters.Filter_lPass/(Info.Recording.sRate/2);
                 [b1,a1] = butter(Info.Parameters.Filter_order,fhc,'high');
                 [b2,a2] = butter(Info.Parameters.Filter_order,flc,'low');
                 
@@ -46,7 +46,7 @@ if Info.Parameters.Filter_Apply
     end
 end
 
-win = round(Info.Parameters.Channels_WinSize*Info.sRate);
+win = round(Info.Parameters.Channels_WinSize*Info.Recording.sRate);
 
 %% Find corresponding channels from the reference wave
 WaitHandle = waitbar(0,'Please wait...', 'Name', 'Finding Slow Waves...');
@@ -58,16 +58,19 @@ switch Info.Parameters.Ref_Method
             
             waitbar(nSW/length(SW),WaitHandle,sprintf('Slow Wave %d of %d',nSW, length(SW)))
             
-            shortData   = Data.Filtered(:,SW(nSW).Ref_PeakId-win:SW(nSW).Ref_PeakId+win);
-            refData     = Data.Ref(:,SW(nSW).Ref_PeakId-win:SW(nSW).Ref_PeakId+win);
+            % extract a small portion of the channel data around the
+            % reference peak
+            shortData   = Data.Filtered(:,SW(nSW).Ref_Down-win:SW(nSW).Ref_Up+win);
+            % get only the negative portion of the reference peak
+            refData     = Data.Ref(:,SW(nSW).Ref_Down:SW(nSW).Ref_Up);
             
-            %% Cross correlate with the reference channel at multiple lags
-            for ch = 1:size(shortData,1)
-                cc(ch,:) = xcorr(shortData(ch,:), refData, win, 'coeff');
-            end
+            % cross correlation
+            cc = swa_xcorr(refData, shortData, win);
             
-            [maxCC, maxID]      = max(cc,[],2); % find the maximum correlation and location
-            Channels    = maxCC > Info.Parameters.Channels_CorrThresh; % channels with correlation above threshold
+            % find the maximum correlation and location
+            [maxCC, maxID]      = max(cc,[],2);
+            % channels with correlation above threshold
+            Channels    = maxCC > Info.Parameters.Channels_CorrThresh; 
             
             % if no channels correlate well with the reference then delete the SW
             % and continue... [should try to correlate with maximum channel]
