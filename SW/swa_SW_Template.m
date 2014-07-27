@@ -16,8 +16,9 @@ Info.Parameters.Filter_order    = 2;
 
 % reference detection
 Info.Parameters.Ref_Method      = [];
-Info.Parameters.Ref_UseInside   = 1;
-Info.Parameters.Ref_AmpStd      = 4.5;                % Standard deviations from mean negativity
+Info.Parameters.Ref_ZCorMNP     = 'MNP';
+Info.Parameters.Ref_UseInside   = 1;                % Use interior head channels or all
+Info.Parameters.Ref_AmpStd      = 4.5;              % Standard deviations from mean negativity
 Info.Parameters.Ref_NegAmpMin   = 80;               % Only used if Ref_AmpStd not set
 Info.Parameters.Ref_WaveLength  = [0.25 1.25];      % Length criteria between zero crossings
 Info.Parameters.Ref_SlopeMin    = 0.90;             % Percentage cut-off for slopes
@@ -44,6 +45,7 @@ Info.Parameters.Filter_Apply    = true;
 [Data, Info, SW]    = swa_FindSWChannels(Data, Info, SW);
 
 [Info, SW]          = swa_FindSWTravelling(Info, SW);
+
 
 % Replace the data with a file pointer if drive space is a concern
 Data.Raw = Info.Recording.dataFile;
