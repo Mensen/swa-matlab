@@ -1,4 +1,4 @@
-function [SW,Info] = swa_FindSWStreams(SW,Info)
+function [Info, SW] = swa_FindSWTravelling(Info, SW)
 % Calculate the streamlines for each slow wave
 
 if ~isfield(Info.Parameters, 'Stream_GS');

@@ -358,7 +358,7 @@ function handles = update_ButterflyPlot(handles)
 nSW = handles.java.Spinner.getValue();
 win = round(10*handles.Info.Recording.sRate); % ten seconds on each side of the wave
 
-range = round((handles.SW(nSW).Ref_PeakId-win):(handles.SW(nSW).Ref_PeakId+win));
+range = round((handles.SW(nSW).Ref_PeakInd-win):(handles.SW(nSW).Ref_PeakInd+win));
 range(range<1)=[]; %eliminate negative values in case SW is early in the data
 xaxis = range./handles.Info.Recording.sRate;
 
@@ -369,8 +369,8 @@ if ~isfield(handles, 'lines_Butterfly') %50 times takes 1.67s
         'YLim', [-200,200],...
         'XLim', [xaxis(1), xaxis(end)]);
     
-    handles.zoomline(1) = line([handles.SW(nSW).Ref_PeakId/handles.Info.Recording.sRate-0.4, handles.SW(nSW).Ref_PeakId/handles.Info.Recording.sRate-0.4],[-200, 200], 'color', [0.4 0.4 0.4], 'linewidth', 2, 'Parent', handles.ax_Butterfly);
-    handles.zoomline(2) = line([handles.SW(nSW).Ref_PeakId/handles.Info.Recording.sRate+.6, handles.SW(nSW).Ref_PeakId/handles.Info.Recording.sRate+0.6],[-200, 200], 'color', [0.4 0.4 0.4], 'linewidth', 2, 'Parent', handles.ax_Butterfly);
+    handles.zoomline(1) = line([handles.SW(nSW).Ref_PeakInd/handles.Info.Recording.sRate-0.4, handles.SW(nSW).Ref_PeakInd/handles.Info.Recording.sRate-0.4],[-200, 200], 'color', [0.4 0.4 0.4], 'linewidth', 2, 'Parent', handles.ax_Butterfly);
+    handles.zoomline(2) = line([handles.SW(nSW).Ref_PeakInd/handles.Info.Recording.sRate+.6, handles.SW(nSW).Ref_PeakInd/handles.Info.Recording.sRate+0.6],[-200, 200], 'color', [0.4 0.4 0.4], 'linewidth', 2, 'Parent', handles.ax_Butterfly);
 
 else %50 times takes 0.3s
     set(handles.lines_Butterfly, 'xData', xaxis);
@@ -380,8 +380,8 @@ else %50 times takes 0.3s
     set(handles.ax_Butterfly,...
         'XLim', [xaxis(1), xaxis(end)]);
     
-    set(handles.zoomline(1), 'xData', [handles.SW(nSW).Ref_PeakId/handles.Info.Recording.sRate-0.4, handles.SW(nSW).Ref_PeakId/handles.Info.Recording.sRate-0.4]);
-    set(handles.zoomline(2), 'xData', [handles.SW(nSW).Ref_PeakId/handles.Info.Recording.sRate+0.6, handles.SW(nSW).Ref_PeakId/handles.Info.Recording.sRate+0.6]);
+    set(handles.zoomline(1), 'xData', [handles.SW(nSW).Ref_PeakInd/handles.Info.Recording.sRate-0.4, handles.SW(nSW).Ref_PeakInd/handles.Info.Recording.sRate-0.4]);
+    set(handles.zoomline(2), 'xData', [handles.SW(nSW).Ref_PeakInd/handles.Info.Recording.sRate+0.6, handles.SW(nSW).Ref_PeakInd/handles.Info.Recording.sRate+0.6]);
 end
 
 function handles = update_SWPlot(handles)
@@ -391,23 +391,33 @@ win = round(0.5*handles.Info.Recording.sRate);
 if ~isfield(handles, 'SWPlot') % in case plot doesn't already exist
     cla(handles.ax_SWPlot);
     
-    handles.SWPlot.All = plot(handles.ax_SWPlot, handles.Data.Raw(:,handles.SW(nSW).Ref_PeakId-win:handles.SW(nSW).Ref_PeakId+win)','Color', [0.7 0.7 0.7], 'linewidth', 0.5);
-    set(handles.SWPlot.All(handles.SW(nSW).Channels_Active), 'Color', 'k', 'LineWidth', 1);
-    set(handles.SWPlot.All(handles.SW(nSW).Travelling_Delays<1), 'Color', 'b', 'LineWidth', 2);
+    handles.SWPlot.All = plot(handles.ax_SWPlot, handles.Data.Raw(:,handles.SW(nSW).Ref_PeakInd-win:handles.SW(nSW).Ref_PeakInd+win)',...
+        'color',        [0.7 0.7 0.7],...
+        'linewidth',    0.5,...
+        'visible',      'off');
+    set(handles.SWPlot.All(handles.SW(nSW).Channels_Active),...
+        'color',        'k',...
+        'linewidth',    1,...
+        'visible',      'on');
+    set(handles.SWPlot.All(handles.SW(nSW).Travelling_Delays<1),...
+        'color', 'g',...
+        'linewidth', 2);
     
-    handles.SWPlot.Ref = plot(handles.ax_SWPlot, handles.Data.Ref(1,handles.SW(nSW).Ref_PeakId-win:handles.SW(nSW).Ref_PeakId+win)','Color', 'r', 'linewidth', 3);
+    handles.SWPlot.Ref = plot(handles.ax_SWPlot, handles.Data.SWRef(1,handles.SW(nSW).Ref_PeakInd-win:handles.SW(nSW).Ref_PeakInd+win)',...
+        'color',        'r',...
+        'linewidth',    3);
 
     set(handles.ax_SWPlot, 'XLim', [1, win*2+1])
     
 else
     for i = 1:size(handles.Data.Raw,1) % faster than total replot...
          set(handles.SWPlot.All(i),...
-             'yData', handles.Data.Raw(i,handles.SW(nSW).Ref_PeakId-win:handles.SW(nSW).Ref_PeakId+win),...
-             'Color', [0.6 0.6 0.6], 'linewidth', 0.5);
+             'yData', handles.Data.Raw(i,handles.SW(nSW).Ref_PeakInd-win:handles.SW(nSW).Ref_PeakInd+win),...
+             'Color', [0.6 0.6 0.6], 'linewidth', 0.5, 'visible', 'off');
     end
-    set(handles.SWPlot.All(handles.SW(nSW).Channels_Active), 'Color', 'k', 'LineWidth', 1);
-    set(handles.SWPlot.All(handles.SW(nSW).Travelling_Delays < 1), 'Color', 'b', 'LineWidth', 2);
-    set(handles.SWPlot.Ref, 'yData', handles.Data.Ref(1,handles.SW(nSW).Ref_PeakId-win:handles.SW(nSW).Ref_PeakId+win));
+    set(handles.SWPlot.All(handles.SW(nSW).Channels_Active), 'Color', 'k', 'LineWidth', 1, 'visible', 'on');
+    set(handles.SWPlot.All(handles.SW(nSW).Travelling_Delays < 1), 'Color', 'g', 'LineWidth', 2);
+    set(handles.SWPlot.Ref, 'yData', handles.Data.SWRef(1,handles.SW(nSW).Ref_PeakInd-win:handles.SW(nSW).Ref_PeakInd+win));
     
     set(handles.ax_SWPlot, 'YLim', [handles.SW(nSW).Channels_NegAmp-20, -handles.SW(nSW).Channels_NegAmp-20])
 
@@ -515,14 +525,53 @@ SW_Handles.Axes = axes(...
     'Xtick', [],...
     'XLim', [1, win*2+1]);
 
-SW_Handles.Plot_Ch = plot(SW_Handles.Axes, handles.Data.Raw(:,handles.SW(nSW).Ref_PeakId-win:handles.SW(nSW).Ref_PeakId+win)',...
+% add javacomponent buttons
+% `````````````````````````
+% get icons
+iconZoom = fullfile(matlabroot,'/toolbox/matlab/icons/tool_zoom_in.png');
+iconArrow = fullfile(matlabroot,'/toolbox/matlab/icons/tool_pointer.png'); 
+iconTravel = fullfile(matlabroot,'/toolbox/matlab/icons/tool_text_arrow.png'); 
+
+[j_pbArrow,SW_Handles.pb_Arrow] = javacomponent(javax.swing.JButton);
+set(SW_Handles.pb_Arrow,...
+    'Parent',   SW_Handles.Figure,...      
+    'Units',    'normalized',...
+    'Position', [0.80 0.05 0.05 0.07]);
+% >> j_pbZoom.set [then tab complete to find available methods]
+j_pbArrow.setIcon(javax.swing.ImageIcon(iconArrow))
+set(j_pbArrow, 'ToolTipText', 'Select Channel'); 
+set(j_pbArrow, 'MouseReleasedCallback', 'zoom off');
+
+[j_pbZoom,SW_Handles.pb_Zoom] = javacomponent(javax.swing.JButton);
+set(SW_Handles.pb_Zoom,...
+    'Parent',   SW_Handles.Figure,...      
+    'Units',    'normalized',...
+    'Position', [0.85 0.05 0.05 0.07]);
+% >> j_pbZoom.set [then tab complete to find available methods]
+j_pbZoom.setIcon(javax.swing.ImageIcon(iconZoom))
+set(j_pbZoom, 'ToolTipText', 'Zoom Mode'); 
+set(j_pbZoom, 'MouseReleasedCallback', 'zoom on');
+
+[j_pbTravel,SW_Handles.pb_Travel] = javacomponent(javax.swing.JButton);
+set(SW_Handles.pb_Travel,...
+    'Parent',   SW_Handles.Figure,...      
+    'Units',    'normalized',...
+    'Position', [0.92 0.05 0.05 0.07]);
+% >> j_pbZoom.set [then tab complete to find available methods]
+j_pbTravel.setIcon(javax.swing.ImageIcon(iconTravel))
+set(j_pbTravel, 'ToolTipText', 'Recalculate Travelling'); 
+set(j_pbTravel, 'MouseReleasedCallback', {@UpdateTravelling, handles.Figure});
+
+% plot the channels
+% `````````````````
+SW_Handles.Plot_Ch = plot(SW_Handles.Axes, handles.Data.Raw(:,handles.SW(nSW).Ref_PeakInd-win:handles.SW(nSW).Ref_PeakInd+win)',...
     'Color', [0.6 0.6 0.6],...
     'LineWidth', 0.5);
 set(SW_Handles.Plot_Ch, 'ButtonDownFcn', {@Channel_Selected, handles.Figure, SW_Handles});
 set(SW_Handles.Plot_Ch(handles.SW(nSW).Channels_Active), 'Color', 'k', 'LineWidth', 1);
 set(SW_Handles.Plot_Ch(handles.SW(nSW).Travelling_Delays<1), 'Color', 'b', 'LineWidth', 2);
 
-handles.SWPlot.Ref = plot(SW_Handles.Axes, handles.Data.Ref(1,handles.SW(nSW).Ref_PeakId-win:handles.SW(nSW).Ref_PeakId+win)','Color', 'r', 'linewidth', 3);
+handles.SWPlot.Ref = plot(SW_Handles.Axes, handles.Data.SWRef(1,handles.SW(nSW).Ref_PeakInd-win:handles.SW(nSW).Ref_PeakInd+win)','Color', 'r', 'linewidth', 3);
 
 function Channel_Selected(hObject, eventdata, FigureHandle, SW_Handles)
 handles = guidata(FigureHandle);

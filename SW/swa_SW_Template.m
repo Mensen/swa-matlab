@@ -7,34 +7,43 @@
 
 %% Initial Parameter Settings
 
-Info.Parameters.Filter_Apply    = true;
+% filter parameters
+Info.Parameters.Filter_Apply    = [];
 Info.Parameters.Filter_Method   = 'Chebyshev';      % 'Chebyshev'/'Buttersworth'
 Info.Parameters.Filter_hPass    = 0.2;
 Info.Parameters.Filter_lPass    = 4;
 Info.Parameters.Filter_order    = 2;
 
-Info.Parameters.Ref_Method      = 'Envelope';
+% reference detection
+Info.Parameters.Ref_Method      = [];
 Info.Parameters.Ref_UseInside   = 1;
-Info.Parameters.Ref_AmpStd      = 6;                % Standard deviations from mean negativity
+Info.Parameters.Ref_AmpStd      = 4.5;                % Standard deviations from mean negativity
 Info.Parameters.Ref_NegAmpMin   = 80;               % Only used if Ref_AmpStd not set
-Info.Parameters.Ref_ZCLength    = [0.25 1.25];      % Length criteria between zero crossings
+Info.Parameters.Ref_WaveLength  = [0.25 1.25];      % Length criteria between zero crossings
 Info.Parameters.Ref_SlopeMin    = 0.90;             % Percentage cut-off for slopes
-Info.Parameters.Ref_Peak2Peak   = 140;              % Only for MDC
+Info.Parameters.Ref_Peak2Peak   = [];               % Only for MDC
 
+% channel detection
 Info.Parameters.Channels_CorrThresh = 0.9;
 Info.Parameters.Channels_WinSize    = 0.2;
 
+% travelling parameters
 Info.Parameters.Stream_GS       = 40; % size of interpolation grid
 Info.Parameters.Stream_MinDelay = 40; % minimum travel time (ms)
 
-%% -- Scripts to run -- %%
-[Data.Ref, Info]    = swa_CalculateReference(Data.Raw, Info);
+%% Template for envelope + filter analysis %%
 
-[SW, Info]          = swa_FindSWRef(Data.Ref, Info);
+% set envelope specific defaults
+Info.Parameters.Ref_Method      = 'Envelope';
+Info.Parameters.Filter_Apply    = true;
 
-[SW, Data, Info]    = swa_FindSWChannels(SW, Data, Info);
+[Data.SWRef, Info]  = swa_CalculateReference(Data.Raw, Info);
 
-[SW, Info]          = swa_FindSWTravelling(SW, Info);
+[Data, Info, SW]    = swa_FindSWRef(Data, Info);
+
+[Data, Info, SW]    = swa_FindSWChannels(Data, Info, SW);
+
+[Info, SW]          = swa_FindSWTravelling(Info, SW);
 
 % Replace the data with a file pointer if drive space is a concern
 Data.Raw = Info.Recording.dataFile;
@@ -49,29 +58,27 @@ Data.Filtered = single(Data.Filtered);
 save([savePath, saveFile], 'Data', 'Info', 'SW', '-mat');
 
 
-%% -- Template for Four Regions Reference -- %%
+%% -- Template for Regions Reference -- %%
+
+% set envelope specific defaults
 Info.Method = 'MDC';
+Info.Parameters.Ref_Peak2Peak   = 140;
 
-[Data.Ref, Info]    = swa_CalculateReference(Data.SWS, Info);
+[Data.SWRef, Info]  = swa_CalculateReference(Data.Raw, Info);
 
-% Independently for each slow wave
-[SW, Info]          = swa_FindSWRef(Data.Ref(1,:), Info);
-[SW, Info]          = swa_FindSWRef(Data.Ref(2,:), Info, SW);
-[SW, Info]          = swa_FindSWRef(Data.Ref(3,:), Info, SW);
-[SW, Info]          = swa_FindSWRef(Data.Ref(4,:), Info, SW);
+[Data, Info, SW]    = swa_FindSWRef(Data, Info);
 
-% Sort SW in case it found additional channels put at the end
-AllPeaks = [SW.Ref_PeakId];
-[~,sortId] = sort(AllPeaks);
-SW = SW(sortId);
-clear sortId AllPeaks
+[Data, Info, SW]    = swa_FindSWChannels(Data, Info, SW);
 
-[SW, Data, Info]    = swa_FindSWChannels(SW, Data, Info);
-
-[SW,Info]           = swa_FindSWTravelling(SW,Info);
+[Info, SW]          = swa_FindSWTravelling(Info, SW);
 
 
 %% Plotting Functions %%
+
+% Plot the reference wave in relation to all waves
+figure('color', 'w'); plot(1:5000, Data.Raw(:, 5001:10000), 'k'); hold on; plot(Data.SWRef(1,5001:10000), 'linewidth', 5);
+
+% Select a slow wave
 nSW = 4;
 win = round(0.4*Info.sRate);
 

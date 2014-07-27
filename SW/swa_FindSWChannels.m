@@ -1,4 +1,4 @@
-function [SW, Data, Info] = swa_FindSWChannels(SW, Data, Info)
+function [Data, Info, SW] = swa_FindSWChannels(Data, Info, SW)
 
 if ~isfield(Info, 'ChN');
     fprintf(1,'Calculating: Channel Neighbours...');
@@ -60,17 +60,19 @@ switch Info.Parameters.Ref_Method
             
             % extract a small portion of the channel data around the
             % reference peak
-            shortData   = Data.Filtered(:,SW(nSW).Ref_Down-win:SW(nSW).Ref_Up+win);
+            shortData   = Data.Filtered(:,SW(nSW).Ref_DownInd-win:SW(nSW).Ref_UpInd+win);
             % get only the negative portion of the reference peak
-            refData     = Data.Ref(:,SW(nSW).Ref_Down:SW(nSW).Ref_Up);
+            refData     = Data.SWRef(:,SW(nSW).Ref_DownInd:SW(nSW).Ref_UpInd);
             
-            % cross correlation
+            % cross correlate with the reference channel
             cc = swa_xcorr(refData, shortData, win);
             
             % find the maximum correlation and location
             [maxCC, maxID]      = max(cc,[],2);
+            
             % channels with correlation above threshold
-            Channels    = maxCC > Info.Parameters.Channels_CorrThresh; 
+            Channels = false(Info.Recording.dataDim(1),1);
+            Channels(maxCC > Info.Parameters.Channels_CorrThresh) = true; 
             
             % if no channels correlate well with the reference then delete the SW
             % and continue... [should try to correlate with maximum channel]
@@ -79,12 +81,14 @@ switch Info.Parameters.Ref_Method
                 continue
             end
             
-            %% Minimum amplitude threshold (10% of maximum)
+            % Minimum amplitude threshold (10% of maximum)
+            % ````````````````````````````````````````````
             x = nan(length(Info.Electrodes),1);
             x(Channels,:) = min(shortData(Channels,:),[],2);
             Channels(x > Info.Parameters.Ref_NegAmpMin/10) = false;
             
-            %% Cluster Test
+            % Cluster Test
+            % ````````````
             % Only take largest single cluster to avoid outliers
             Clusters = swa_ClusterTest(double(Channels), Info.ChN, 0.01);
             
@@ -101,17 +105,37 @@ switch Info.Parameters.Ref_Method
                 Channels = Clusters == nClusters(keepCluster);
             end
             
-            %% Calculate peak negative amplitude and channel
-            
+            % Calculate peak negative amplitude and channel
+            % `````````````````````````````````````````````
             [SW(nSW).Channels_NegAmp, id] = min(x);
-            SW(nSW).Channels_NegAmpId = SW(Channels(id));
-            %% Test for type 1 or 2 wave
+            SW(nSW).Channels_NegAmpInd = SW(Channels(id));
+            
+            % Cross correlate with the peak (prototypical channel)
+            % only calculate if ref correlation is not 'very high'
+            if maxCC(id) < (Info.Parameters.Channels_CorrThresh+1)/2
+                maxDelay = maxID(id)-win;
+                maxData = Data.Filtered(id, SW(nSW).Ref_DownInd+maxDelay : SW(nSW).Ref_UpInd+maxDelay);
+                
+                cc = swa_xcorr(maxData, shortData, win);
+            
+                % find the maximum correlation and location
+                [maxCC, maxID]      = max(cc,[],2);
+                
+                % channels with correlation above threshold
+                Channels(maxCC > Info.Parameters.Channels_CorrThresh) = true;
+                
+            end
+            
+            % TODO: Test for type 1 or 2 wave
+            % `````````````````````````
             
             
-            %% Processing for multi-peak waves
+            % TODO: Processing for multi-peak waves
+            % ```````````````````````````````
             
             
-            %% Delay Calculation
+            % Delay Calculation
+            % `````````````````
             SW(nSW).Travelling_Delays = nan(length(Info.Electrodes),1);
             SW(nSW).Travelling_Delays(Channels)...
                 = maxID(Channels) - min(maxID(Channels));
@@ -126,13 +150,13 @@ switch Info.Parameters.Ref_Method
             
             waitbar(nSW/length(SW),WaitHandle,sprintf('Slow Wave %d of %d',nSW, length(SW)))
             
-            shortData = Data.Filtered(:,SW(nSW).Ref_PeakId-win:SW(nSW).Ref_PeakId+win);
+            shortData = Data.Filtered(:,SW(nSW).Ref_PeakInd-win:SW(nSW).Ref_PeakInd+win);
             
             %% Minimum amplitude threshold for channels
             [minChAmp, minChId] = min(shortData,[],2);
             SW(nSW).Channels_Active = minChAmp < -Info.Parameters.Ref_NegAmpMin;
             % Save peak negative amplitude and channel
-            [SW(nSW).Channels_NegAmp, SW(nSW).Channels_NegAmpId] = min(minChAmp);
+            [SW(nSW).Channels_NegAmp, SW(nSW).Channels_NegAmpInd] = min(minChAmp);
 
             %% Peak to Peak Check
             % MDC Test for peak to peak amplitude
