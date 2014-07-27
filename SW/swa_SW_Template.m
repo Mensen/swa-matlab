@@ -4,6 +4,8 @@
 
 % for eeglab files
 [Data, Info] = swa_convertFromEEGLAB();
+% or if you have previously analysed some data
+[Data, Info, SW] = swa_load_previous();
 
 %% Initial Parameter Settings
 
@@ -38,22 +40,28 @@ Info.Parameters.Stream_MinDelay = 40; % minimum travel time (ms)
 Info.Parameters.Ref_Method      = 'Envelope';
 Info.Parameters.Filter_Apply    = true;
 
-[Data.SWRef, Info]  = swa_CalculateReference(Data.Raw, Info);
+[Data.SWRef, Info]  = swa_CalculateReference (Data.Raw, Info);
 
-[Data, Info, SW]    = swa_FindSWRef(Data, Info);
+[Data, Info, SW]    = swa_FindSWRef (Data, Info);
 
-[Data, Info, SW]    = swa_FindSWChannels(Data, Info, SW);
+[Data, Info, SW]    = swa_FindSWChannels (Data, Info, SW);
 
-[Info, SW]          = swa_FindSWTravelling(Info, SW);
+[Info, SW]          = swa_FindSWTravelling (Info, SW);
 
 
 % Replace the data with a file pointer if drive space is a concern
 Data.Raw = Info.Recording.dataFile;
 
+% What to do with the filtered dataset?
+% `````````````````````````````````````
 % Remove filtered dataset
 Data.Filtered = [];
 % Or at least make it single precision
 Data.Filtered = single(Data.Filtered);
+% Or save it to a simple binary file (like fdt)
+filteredName = [Info.Recording.dataFile(1:end-4), '_filtered.fdt'];
+swa_save_data(Data.Filtered, filteredName);
+Data.Filtered = filteredName;
 
 % Done! Use the swa_Explorer to visualise the results.
 [saveFile, savePath] = uiputfile('*.mat');
