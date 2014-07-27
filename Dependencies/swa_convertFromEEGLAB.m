@@ -2,8 +2,9 @@ function [Data, Info] = swa_convertFromEEGLAB(fileName)
 
 if nargin < 1
     [fileName, filePath] = uigetfile('*.set');
-    load([filePath, fileName], '-mat');
 end
+load([filePath, fileName], '-mat');
+
 
 Info.Recording.dataFile   = EEG.data;
 Info.Recording.dataDim    =[EEG.nbchan, EEG.pnts];
