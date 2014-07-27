@@ -17,7 +17,7 @@ switch Info.Parameters.Ref_Method
     
     case 'Envelope'
         
-    %% Use the e_loc to avoid outer channels in noisy datasets
+    % Use the e_loc to avoid outer channels in noisy datasets
     if ~isfield(Info.Parameters, 'Ref_UseInside') || Info.Parameters.Ref_UseInside == true
         
         Th = pi/180*[Info.Electrodes.theta];        % Calculate theta values from x,y,z e_loc
@@ -38,7 +38,8 @@ switch Info.Parameters.Ref_Method
         
     end
     
-    %% Get the most negative channels for each sample
+    % get the most negative channels for each sample
+    fprintf(1, 'Calculation: Negative Envelope \n');
     rData   = sort(data);                             % Sort each sample to find the lowest values for each time point
     nCh     = floor(length(Info.Electrodes)*0.025);   % How many channels are the 97.5th percentile
     nData   = mean(rData(2:nCh,:));                   % Get the mean of the most negative channels (leave most negative if artifact)
