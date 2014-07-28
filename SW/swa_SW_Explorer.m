@@ -573,6 +573,47 @@ set(SW_Handles.Plot_Ch(handles.SW(nSW).Travelling_Delays<1), 'Color', 'b', 'Line
 
 handles.SWPlot.Ref = plot(SW_Handles.Axes, handles.Data.SWRef(1,handles.SW(nSW).Ref_PeakInd-win:handles.SW(nSW).Ref_PeakInd+win)','Color', 'r', 'linewidth', 3);
 
+function UpdateTravelling(hObject, ~ , FigureHandle)
+handles = guidata(FigureHandle);
+
+nSW = handles.java.Spinner.getValue();
+
+% Recalculate the Travelling_Delays parameter before running since we 
+% do not know what their delay is
+window  = round(handles.Info.Parameters.Channels_WinSize*handles.Info.Recording.sRate);
+% double the window length for the raw data (for better correlation and filtering)
+rangeRaw   = (handles.SW(nSW).Ref_PeakInd-window*2):(handles.SW(nSW).Ref_PeakInd+window*2);  
+rangeRef   = (handles.SW(nSW).Ref_PeakInd-window):(handles.SW(nSW).Ref_PeakInd+window);  
+
+% filter the data
+rawData     = handles.Data.Raw(handles.SW(nSW).Channels_Active, rangeRaw);
+filtData    = swa_filter_data(rawData, handles.Info);
+
+refData     = handles.Data.SWRef(handles.SW(nSW).Ref_Region(1), rangeRef);
+
+if strcmp(handles.Info.Parameters.Ref_Method, 'Envelope')
+    % calculate the correlations
+    cc = swa_xcorr(refData, filtData, window);
+    [~, maxID]      = max(cc,[],2);
+else
+%     TODO: Recalculation of travelling parameters for non-envelope measures
+    fprintf(1, 'Warning: Recalculation of travelling not yet available for non-envelope methods');
+    return;
+end
+
+% delay calculation
+SW(nSW).Travelling_Delays = nan(length(handles.Info.Electrodes),1);
+SW(nSW).Travelling_Delays(handles.SW(nSW).Channels_Active)...
+    = maxID- min(maxID);
+
+% find the travelling parameters
+[handles.Info, handles.SW] = swa_FindSWTravelling(handles.Info, handles.SW, nSW);
+
+% update the handles structure
+handles = update_SWDelay(handles, 0);
+guidata(handles.Figure, handles);
+
+
 function Channel_Selected(hObject, eventdata, FigureHandle, SW_Handles)
 handles = guidata(FigureHandle);
 

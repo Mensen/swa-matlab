@@ -1,4 +1,4 @@
-function [Info, SW] = swa_FindSWTravelling(Info, SW)
+function [Info, SW] = swa_FindSWTravelling(Info, SW, indSW)
 % Calculate the streamlines for each slow wave
 
 if ~isfield(Info.Parameters, 'Stream_GS');
@@ -21,8 +21,14 @@ XYmesh = XYrange(ones(GS,1),:);
 F = TriScatteredInterp(xloc,yloc,SW(1).Travelling_Delays(:), 'natural');      % No speed difference in methods...
 
 %% Loop for each SW
-h = waitbar(0,'Please wait...', 'Name', 'Finding Streams...');
-for nSW = 1:length(SW)
+if nargin == 3
+    loopRange = indSW;    
+else
+    loopRange = 1:length(SW);
+    h = waitbar(0,'Please wait...', 'Name', 'Finding Streams...');
+end
+
+for nSW = loopRange
     
     Delays      = SW(nSW).Travelling_Delays;
     
@@ -85,8 +91,13 @@ for nSW = 1:length(SW)
         SW(nSW).Travelling_Streams{end+1} = Streams{maxAngleId};
     end
     
-    %% Update waitbar
-    waitbar(nSW/length(SW),h,sprintf('Slow Wave %d of %d',nSW, length(SW)))
-
+    % Update waitbar (if there is one)
+    if exist('h', 'var')
+        waitbar(nSW/length(SW),h,sprintf('Slow Wave %d of %d',nSW, length(SW)))
+    end
+    
 end
-delete(h)       % DELETE the waitbar; don't try to CLOSE it.
+
+if exist('h', 'var')
+    delete(h)       % DELETE the waitbar; don't try to CLOSE it.
+end

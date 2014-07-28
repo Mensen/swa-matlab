@@ -133,10 +133,10 @@ for refWave = 1:size(Data.SWRef,1)
                             % If the new region does then overwrite previous data with larger reference
                             SW(SWid).Ref_Region    = [refWave, SW(SWid).Ref_Region];
                             SW(SWid).Ref_DownInd   = MPP(i);
-                            SW(SWid).Ref_PeakInd    = MNP(i);
+                            SW(SWid).Ref_PeakInd   = MNP(i);
                             SW(SWid).Ref_UpInd     = MPP(i+1);
                             SW(SWid).Ref_PeakAmp   = Data.SWRef(MNP(i));
-                            SW(SWid).Ref_P2PAmp = p2p(i);
+                            SW(SWid).Ref_P2PAmp    = p2p(i);
                             SW(SWid).Ref_NegSlope  = min(slopeData(1,MPP(i):MPP(i+1)));
                             SW(SWid).Ref_PosSlope  = max(slopeData(1,MPP(i):MPP(i+1)));
                         else
