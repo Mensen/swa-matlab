@@ -60,9 +60,9 @@ switch Info.Parameters.Ref_Method
             
             % extract a small portion of the channel data around the
             % reference peak
-            shortData   = Data.Filtered(:,SW(nSW).Ref_DownInd-win:SW(nSW).Ref_UpInd+win);
+            shortData   = Data.Filtered(:,SW(nSW).Ref_PeakInd-win*2:SW(nSW).Ref_PeakInd+win*2);
             % get only the negative portion of the reference peak
-            refData     = Data.SWRef(:,SW(nSW).Ref_DownInd:SW(nSW).Ref_UpInd);
+            refData     = Data.SWRef(:,SW(nSW).Ref_PeakInd-win:SW(nSW).Ref_PeakInd+win);
             
             % cross correlate with the reference channel
             cc = swa_xcorr(refData, shortData, win);
@@ -114,7 +114,7 @@ switch Info.Parameters.Ref_Method
             % only calculate if ref correlation is not 'very high'
             if maxCC(id) < (Info.Parameters.Channels_CorrThresh+1)/2
                 maxDelay = maxID(id)-win;
-                maxData = Data.Filtered(id, SW(nSW).Ref_DownInd+maxDelay : SW(nSW).Ref_UpInd+maxDelay);
+                maxData = Data.Filtered(id, SW(nSW).Ref_PeakInd-win+maxDelay : SW(nSW).Ref_PeakInd+win+maxDelay);
                 
                 cc = swa_xcorr(maxData, shortData, win);
             
