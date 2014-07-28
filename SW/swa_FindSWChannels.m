@@ -16,7 +16,19 @@ if strcmp(Info.Parameters.Ref_Method, 'Envelope')
     end
 end
 
-%% Filter the original signal
+% Filter the original signal
+% ``````````````````````````
+% Check for previously filtered data
+if isfield(Data, 'Filtered')
+    % if the field exists but is empty then filter it
+    if isempty(Data.Filtered)
+        Data.Filtered = swa_filter_data(Data.Raw, Info);
+    end
+% if the field does not exist, filter the raw data
+else
+    Data.Filtered = swa_filter_data(Data.Raw, Info);
+end
+    
 if Info.Parameters.Filter_Apply
     if ~isfield(Data, 'Filtered')
         fprintf(1, 'Calculating: Filtering Dataset...');
