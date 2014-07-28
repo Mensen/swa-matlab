@@ -30,7 +30,7 @@ samplesN2(EEG.swa_scoring.arousals) = false;
 samplesN3 = EEG.swa_scoring.stages == 3;
 samplesN3(EEG.swa_scoring.arousals) = false;
 
-% save the data in a separate file
+% save the data in aEEG = pop_saveset(EEG); separate file
 swa_selectStagesEEGLAB(EEG, samplesN2, [fileName(1:3), '_N2.set']);
 swa_selectStagesEEGLAB(EEG, samplesN3, [fileName(1:3), '_N3.set']);
 
@@ -45,6 +45,9 @@ EEG = pop_loadset();
 
 % filter the data
 EEG = pop_eegfiltnew(EEG, 0.3, 40, [], 0, [], 0);
+
+% take a look at the data manually
+eegplot(EEG.data);
 
 % removing bad data 
 % `````````````````
@@ -66,7 +69,7 @@ EEG = pop_eegfiltnew(EEG, 0.3, 40, [], 0, [], 0);
     % mark everything above 8 deviations from that mean
     x = medData > std(medData)*8;
     % plot some bad data...
-    % plot(1:length(find(x)), EEG.data(:, find(x)), 'color', [0.5 0.5 0.5]);
+    plot(1:length(find(x)), EEG.data(:, find(x)), 'color', [0.5 0.5 0.5]);
 
     % remove those samples from the data
     EEG.data(:, x)          = [];
