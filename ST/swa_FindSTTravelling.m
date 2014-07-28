@@ -113,7 +113,7 @@ for nST = loopRange
     
     % Update waitbar (if there is one)
     if exist('h', 'var')
-        waitbar(nST/length(ST),h,sprintf('Slow Wave %d of %d',nST, length(ST)))
+        waitbar(nST/length(ST),h,sprintf('Saw-Tooth Wave %d of %d',nST, length(ST)))
     end
     
 end
