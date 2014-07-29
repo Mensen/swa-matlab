@@ -1,4 +1,11 @@
 function [output, h] = swa_wave_summary(SW, Info, type, makePlot)
+% type options
+%   globality
+%   ampVtime
+%   wavelengths
+%   anglemap
+%   topo_density
+%   topo_origins
 
 % create the figure if makePlot option is set
 if makePlot
@@ -20,6 +27,26 @@ case 'globality'
         set(get(h.ax, 'ylabel'), 'string', 'Number of Waves');
     end
 
+
+case 'distances'
+    count = 0;
+    for n = 1:length(SW)
+        if iscell(SW(n).Travelling_Streams)
+            count = count+1;
+            streams{count} = SW(n).Travelling_Streams{1};
+        end
+    end
+    output = cellfun(@(x) (sum((x(:,1)-x(:,end)).^2))^0.5, streams); % total displacement
+
+    if makePlot
+        hist(h.ax, output);
+        set(h.ax,...
+            'title', text('string', 'Travel Distance'));
+        
+        set(get(h.ax, 'xlabel'), 'string', 'Distance Travelled');
+        set(get(h.ax, 'ylabel'), 'string', 'Number of Waves');
+    end
+    
 case 'ampVtime'
     output(1,:)=[SW.Ref_PeakAmp];
     output(2,:)=[SW.Ref_PeakInd];
@@ -71,6 +98,40 @@ case 'anglemap'
         set(h.ptch, 'edgeColor', 'w', 'linewidth', 2);
     end
 
-%TODO: correlation between MPP->MNP || MNP->MPP
+case 'topo_density'
+    output  = zeros(Info.Recording.dataDim(1),1);   
+    for n = 1:length(SW)
+        output(SW(n).Channels_Active)       = output(SW(n).Channels_Active) +1;
+    end
 
+    h.plt = swa_Topoplot(...
+        [], Info.Electrodes,...
+        'Data',             output                ,...
+        'GS',               Info.Parameters.Stream_GS,...
+        'Axes',             h.ax                  ,...
+        'NumContours',      10                     ,...
+        'PlotSurface',      0                     );
+    
+    colormap(flipud(hot));
+
+case 'topo_origins'
+    output  = zeros(Info.Recording.dataDim(1),1);   
+    for n = 1:length(SW)
+        output(SW(n).Travelling_Delays<1)  = output(SW(n).Travelling_Delays<1) + 1;
+    end
+
+    h.plt = swa_Topoplot(...
+        [], Info.Electrodes,...
+        'Data',             output                ,...
+        'GS',               Info.Parameters.Stream_GS,...
+        'Axes',             h.ax                  ,...
+        'NumContours',      10                     ,...
+        'PlotSurface',      0                     );
+    
+    colormap(flipud(jet));    
+    
+%TODO: correlation between MPP->MNP || MNP->MPP
+otherwise
+    fprintf(1, 'Error: Not a valid summary type -> %s', type);
+    return;
 end
