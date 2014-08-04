@@ -120,7 +120,7 @@ switch Info.Parameters.Ref_Method
             % Calculate peak negative amplitude and channel
             % `````````````````````````````````````````````
             [SW(nSW).Channels_NegAmp, id] = min(x);
-            SW(nSW).Channels_NegAmpInd = SW(Channels(id));
+            SW(nSW).Channels_NegAmpInd = id;
             
             % Cross correlate with the peak (prototypical channel)
             % only calculate if ref correlation is not 'very high'
