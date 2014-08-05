@@ -209,6 +209,10 @@ set(handles.menu.N3,...
 set(handles.menu.REM,...
     'Callback', {@menu_Export, 5});
 
+% set hypnogram click
+set(handles.axHypno,...
+    'ButtonDownFcn', {@bd_hypnoEpochSelect});
+
 set(handles.lbCh,...
     'Callback', {@updateLabel});
 
@@ -335,7 +339,10 @@ time = [1:EEG.pnts]/EEG.srate/60/60;
 % set the x-limit to the number of stages
 set(handles.axHypno,...
     'XLim', [0 time(end)]);
-   
+% plot the epoch indicator line
+handles.ln_hypno = line([0, 0], [0, 6.5], 'color', [0.5, 0.5, 0.5], 'parent', handles.axHypno);
+
+
 % plot the stages    
 handles.plHypno = plot(time, EEG.swa_scoring.stages,...
     'LineWidth', 2,...
@@ -475,6 +482,9 @@ elseif cEpoch > length(EEG.swa_scoring.stageNames)
     cEpoch = get(handles.cEpoch, 'value', length(EEG.swa_scoring.stageNames));
 end
 
+% update the hypnogram indicator line
+x = cEpoch * EEG.swa_scoring.epochLength/60/60;
+set(handles.ln_hypno, 'Xdata', [x, x]);
 
 % set the stage name to the current stage
 set(handles.StageBar, 'String',...
@@ -705,6 +715,28 @@ setappdata(handles.Figure, 'EEG', EEG);
 
 % update the axes with the new filters
 updateAxes(handles)
+
+function bd_hypnoEpochSelect(hObject, ~)
+% function when the user clicks in the hypnogram
+
+% get the handles
+handles = guidata(hObject);
+% Get the EEG from the figure's appdata
+EEG = getappdata(handles.Figure, 'EEG');
+
+current_point = get(handles.axHypno, 'CurrentPoint');
+
+cEpoch = floor(current_point(1)*60*60*EEG.srate/EEG.swa_scoring.sEpoch);
+
+% set the current epoch
+set(handles.cEpoch, 'value', cEpoch);
+
+% Update the handles in the GUI
+guidata(handles.Figure, handles)
+
+% update the figure
+fcn_epochChange(hObject, [], handles.Figure);
+
 
 
 % Code for selecting and marking events
