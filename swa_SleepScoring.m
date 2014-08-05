@@ -49,21 +49,16 @@ jandles.StatusBar = findjobj(handles.StatusBar);
 jandles.StatusBar.setVerticalAlignment(javax.swing.SwingConstants.CENTER);
 jandles.StatusBar.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
 
-%% Slider
-% handles.sl_Epochs = uicontrol(...
-%     'Style',    'slider',...    
-%     'Backgroundcolor', 'w',...
-%     'Units',    'normalized',...
-%     'Position', [0.15 0.25 0.75 0.025]);
-[handles.java.Slider, handles.sl_Epochs] = javacomponent(javax.swing.JSlider);
-handles.java.Slider.setBackground(javax.swing.plaf.ColorUIResource(1,1,1))
-set(handles.sl_Epochs,...
-    'Parent',   handles.Figure,...      
-    'Units',    'normalized',...
-    'Position', [0.147 0.23 0.756 0.05]);
-set(handles.java.Slider, 'MouseReleasedCallback',{@sliderUpdate, handles.Figure});
-  
-%% Create PopUpMenus and Axes
+% Hidden epoch tracker
+% ````````````````````
+handles.cEpoch = uicontrol(...
+    'Parent',   handles.Figure,...
+    'Style',    'text',...
+    'Visible',  'off',...
+    'Value',    1);
+    
+% Create PopUpMenus and Axes
+% ``````````````````````````
 for i = 1:8
 	handles.axCh(i) = axes(...
         'Parent', handles.Figure,...
@@ -92,7 +87,8 @@ set(handles.axCh(1:end-1),...
 % use the third axes to mark arousals
 set(handles.axCh(3), 'buttondownfcn', {@fcn_select_events, handles.axCh(3), 'buttondown'})
 
-%% Scoring Buttons
+% Scoring Buttons
+% ```````````````
 
 handles.bg_Scoring = uibuttongroup(...
     'Title','Stage',...
@@ -102,27 +98,36 @@ handles.bg_Scoring = uibuttongroup(...
     'BackgroundColor', 'w',...
     'Position',[0.92 0.375 0.05 0.5]);
 % Create radio buttons in the button group.
-handles.rb(1) = uicontrol('Style','radiobutton','String','Wake','UserData', 0,...
-    'Units', 'normalized', 'Position',[0.1 9/12 0.9 0.1],...
+handles.rb(1) = uicontrol('Style','radiobutton',...
+    'String','wake','UserData', 0,...
+    'Units', 'normalized', 'Position',[0.1 11/13 0.9 0.1],...
     'Parent',handles.bg_Scoring,'HandleVisibility','off');
-handles.rb(2) = uicontrol('Style','radiobutton','String','N1','UserData', 1,...
-    'Units', 'normalized', 'Position',[0.1 7/12 0.9 0.1],...
+handles.rb(2) = uicontrol('Style','radiobutton',...
+    'String','nrem1','UserData', 1,...
+    'Units', 'normalized', 'Position',[0.1 9/13 0.9 0.1],...
     'Parent',handles.bg_Scoring,'HandleVisibility','off');
-handles.rb(3) = uicontrol('Style','radiobutton','String','N2','UserData', 2,...
-    'Units', 'normalized', 'Position',[0.1 5/12 0.9 0.1],...
+handles.rb(3) = uicontrol('Style','radiobutton',...
+    'String','nrem2','UserData', 2,...
+    'Units', 'normalized', 'Position',[0.1 7/13 0.9 0.1],...
     'Parent',handles.bg_Scoring,'HandleVisibility','off');
-handles.rb(4) = uicontrol('Style','radiobutton','String','N3','UserData', 3,...
-    'Units', 'normalized', 'Position',[0.1 3/12 0.9 0.1],...
+handles.rb(4) = uicontrol('Style','radiobutton',...
+    'String','nrem3','UserData', 3,...
+    'Units', 'normalized', 'Position',[0.1 5/13 0.9 0.1],...
     'Parent',handles.bg_Scoring,'HandleVisibility','off');
-handles.rb(5) = uicontrol('Style','radiobutton','String','REM','UserData', 5,...
-    'Units', 'normalized', 'Position',[0.1 1/12 0.9 0.1],...
+handles.rb(5) = uicontrol('Style','radiobutton',...
+    'String','rem', 'UserData', 5,...
+    'Units', 'normalized', 'Position',[0.1 3/13 0.9 0.1],...
+    'Parent',handles.bg_Scoring,'HandleVisibility','off');
+handles.rb(6) = uicontrol('Style','radiobutton',...
+    'String','artifact','UserData', 6,...
+    'Units', 'normalized', 'Position',[0.1 1/13 0.9 0.1],...
     'Parent',handles.bg_Scoring,'HandleVisibility','off');
 
 set(handles.bg_Scoring,'SelectedObject',[]);  % No selection
 set(handles.rb, 'BackgroundColor', 'w', 'FontName', 'Century Gothic','FontSize', 10);
 
-%% Create StageBar
-
+% Create StageBar
+% ```````````````
 handles.StageBar = uicontrol(...
     'Parent', handles.Figure,...    
     'Style',    'text',...    
@@ -134,17 +139,20 @@ handles.StageBar = uicontrol(...
     'FontWeight', 'bold',...   
     'FontSize', 10);
 
-%% Create Hyponogram
+% Create Hyponogram
+% `````````````````
 handles.axHypno = axes(...
     'Parent', handles.Figure,...
-    'Position', [0.15 0.050 0.75 0.15],...
-    'YLim',     [0 5.9],...
+    'Position', [0.15 0.050 0.75 0.20],...
+    'YLim',     [0 6.5],...
     'YDir',     'reverse',...
+    'YTickLabel', {'wake', 'nrem1', 'nrem2', 'nrem3', '', 'rem', 'artifact'},...
     'NextPlot', 'add',...
     'FontName', 'Century Gothic',...
     'FontSize', 8);
 
-%% Epoch Length
+% Epoch Length
+% ````````````
 handles.tx_EpochLength = uicontrol(...
     'Parent',   handles.Figure,...   
     'Style',    'text',...    
@@ -163,7 +171,8 @@ handles.et_EpochLength = uicontrol(...
     'FontName', 'Century Gothic',...
     'FontSize', 10);
 
-%% Scale
+% Scale
+% `````
 handles.tx_Scale = uicontrol(...
     'Parent',   handles.Figure,...   
     'Style',    'text',...    
@@ -182,35 +191,8 @@ handles.et_Scale = uicontrol(...
     'FontName', 'Century Gothic',...
     'FontSize', 10);
 
-%% Filter Boxes
-handles.tx_Filter = uicontrol(...
-    'Parent',   handles.Figure,...   
-    'Style',    'text',...    
-    'String',   'Filter Parameters',...
-    'Units',    'normalized',...
-    'Position', [0.025 0.45 0.05 0.035],...
-    'FontName', 'Century Gothic',...
-    'FontSize', 10);
-handles.et_HighPass = uicontrol(...
-    'Parent',   handles.Figure,...   
-    'Style',    'edit',...    
-    'BackgroundColor', 'w',...
-    'String',   '0.5',...
-    'Units',    'normalized',...
-    'Position', [0.025 0.415 0.025 0.035],...
-    'FontName', 'Century Gothic',...
-    'FontSize', 10);
-handles.et_LowPass= uicontrol(...
-    'Parent',   handles.Figure,...   
-    'Style',    'edit',...    
-    'BackgroundColor', 'w',...
-    'String',   '30',...
-    'Units',    'normalized',...
-    'Position', [0.05 0.415 0.025 0.035],...
-    'FontName', 'Century Gothic',...
-    'FontSize', 10);
-
-%% Set Callbacks
+% Set Callbacks
+% `````````````
 % menu callbacks
 set(handles.menu.LoadEEG,...
     'Callback', {@menu_LoadEEG, handles});
@@ -227,11 +209,6 @@ set(handles.menu.N3,...
 set(handles.menu.REM,...
     'Callback', {@menu_Export, 5});
 
-set(handles.et_HighPass,...
-    'Callback', {@checkFilter, 1});
-set(handles.et_LowPass,...
-    'Callback', {@checkFilter, 2});
-
 set(handles.lbCh,...
     'Callback', {@updateLabel});
 
@@ -247,13 +224,15 @@ set(handles.bg_Scoring,...
 set(handles.Figure,...
     'KeyPressFcn', {@cb_KeyPressed,});
 
-%% Make Figure Visible and Maximise
+% Make Figure Visible and Maximise
+% ````````````````````````````````
 set(handles.Figure, 'Visible', 'on');
 drawnow; pause(0.001)
 jFrame = get(handle(handles.Figure),'JavaFrame');
 jFrame.setMaximized(true);   % to maximize the figure
 
 guidata(handles.Figure, handles) 
+
 
 % Menu Functions
 % ``````````````
@@ -286,7 +265,6 @@ eegData = tmp.Data.eegData;
 % eegData = mmo(EEG.data, [EEG.nbchan EEG.pnts EEG.trials], false);
 % EEG = pop_loadset([dataPath, dataFile]);
 
-set(handles.StatusBar, 'String', 'EEG Loaded'); drawnow;
 set(handles.Figure, 'Name', ['Sleep Scoring: ', dataFile]);
 
 % Check for Previous Scoring
@@ -346,17 +324,9 @@ end
 % plot the arousals 
 data(3,  ~EEG.swa_scoring.arousals(1:sEpoch)) = nan;
 handles.current_events = line(1:sEpoch, data(3, :), 'color', 'r', 'parent', handles.axCh(3));
-    
-% Set Slider Values
-% `````````````````
-% edit the java objects directly using object traversal (ie, .set)
-handles.java.Slider.setValue(1);
-handles.java.Slider.setMaximum(nEpochs);
-handles.java.Slider.setMinorTickSpacing(10);
-handles.java.Slider.setMajorTickSpacing(50);
-handles.java.Slider.setPaintTicks(true);
-% handles.java.Slider.setPaintLabels(false);
-handles.java.Slider.setPaintLabels(true);
+
+% set the current epoch
+set(handles.cEpoch, 'Value', 1);
 
 % Set Hypnogram
 % `````````````
@@ -364,8 +334,7 @@ time = [1:EEG.pnts]/EEG.srate/60/60;
 
 % set the x-limit to the number of stages
 set(handles.axHypno,...
-    'XLim', [0 time(end)],...
-    'YLim', [0 5]);
+    'XLim', [0 time(end)]);
    
 % plot the stages    
 handles.plHypno = plot(time, EEG.swa_scoring.stages,...
@@ -389,6 +358,8 @@ guidata(handles.Figure, handles)
 % use setappdata for data storage to avoid passing it around in handles when not necessary
 setappdata(handles.Figure, 'EEG', EEG);
 setappdata(handles.Figure, 'eegData', eegData);
+
+set(handles.StatusBar, 'String', 'EEG Loaded'); drawnow;
 
 % check the filter settings and adjust plots
 checkFilter(handles.Figure, [])
@@ -453,7 +424,7 @@ eegData = getappdata(handles.Figure, 'eegData');
 
 % data section
 sEpoch  = EEG.swa_scoring.sEpoch;
-cEpoch  = handles.java.Slider.getValue;
+cEpoch  = get(handles.cEpoch, 'value');
 range   = (cEpoch*sEpoch-(sEpoch-1)):(cEpoch*sEpoch);
 
 data = eegData(EEG.swa_scoring.montage.channels(:,1),range)-eegData(EEG.swa_scoring.montage.channels(:,2),range);
@@ -473,6 +444,9 @@ event = data(3, :);
 event(:, ~EEG.swa_scoring.arousals(range)) = nan;
 set(handles.current_events, 'yData', event);
 
+set(handles.StatusBar, 'string',...
+   'idle'); drawnow;
+
 function updateLabel(hObject, ~)
 handles = guidata(hObject); % Get handles
 
@@ -485,23 +459,26 @@ EEG.swa_scoring.montage.labels{get(hObject, 'UserData')} = get(hObject, 'string'
 guidata(hObject, handles)
 setappdata(handles.Figure, 'EEG', EEG);
 
-function sliderUpdate(hObject, eventdata, figurehandle)
+function fcn_epochChange(hObject, eventdata, figurehandle)
 % get the handles from the guidata
-    % use the handle for the figure since slider is a java object
 handles = guidata(figurehandle);
 
 % Get the EEG from the figure's appdata
 EEG = getappdata(handles.Figure, 'EEG');
 
-sliderValue = handles.java.Slider.getValue;
-% check if the value is less than 1, and set to 1
-if sliderValue < 1
-    handles.java.Slider.setValue(1);
-    sliderValue = 1;
+cEpoch = get(handles.cEpoch, 'value');
+if cEpoch < 1
+    set(handles.StatusBar, 'String', 'This is the first epoch')
+    cEpoch = set(handles.cEpoch, 'value', 1);
+elseif cEpoch > length(EEG.swa_scoring.stageNames)
+    set(handles.StatusBar, 'String', 'No further epochs')
+    cEpoch = get(handles.cEpoch, 'value', length(EEG.swa_scoring.stageNames));
 end
 
+
 % set the stage name to the current stage
-set(handles.StageBar, 'String', [num2str(sliderValue),': ', EEG.swa_scoring.stageNames{sliderValue}]);
+set(handles.StageBar, 'String',...
+    [num2str(cEpoch),': ', EEG.swa_scoring.stageNames{cEpoch}]);
 
 % update the GUI handles (*updates just fine)
 guidata(handles.Figure, handles)
@@ -510,7 +487,7 @@ setappdata(handles.Figure, 'EEG', EEG);
 % update all the axes
 updateAxes(handles);
 
-function updateScale(hObject, eventdata)
+function updateScale(hObject, ~)
 handles = guidata(hObject); % Get handles
 
 % Get the new scale value
@@ -520,7 +497,7 @@ ylimits = str2double(get(handles.et_Scale, 'String'));
 set(handles.axCh,...
     'YLim', [-ylimits, ylimits]);
 
-function updateStage(hObject, eventdata)
+function updateStage(hObject, ~)
 % get the updated handles from the GUI
 handles = guidata(hObject);
 
@@ -529,12 +506,12 @@ EEG = getappdata(handles.Figure, 'EEG');
 
 % current epoch range
 sEpoch  = str2double(get(handles.et_EpochLength, 'String'))*EEG.srate; % samples per epoch
-cEpoch  = handles.java.Slider.getValue;
+cEpoch  = get(handles.cEpoch, 'value');
 range   = (cEpoch*sEpoch-(sEpoch-1)):(cEpoch*sEpoch);
 
 % set the current sleep stage value and name
 EEG.swa_scoring.stages(range) = get(get(handles.bg_Scoring, 'SelectedObject'), 'UserData');
-EEG.swa_scoring.stageNames{handles.java.Slider.getValue} = get(get(handles.bg_Scoring, 'SelectedObject'), 'String');
+EEG.swa_scoring.stageNames{cEpoch} = get(get(handles.bg_Scoring, 'SelectedObject'), 'String');
 
 % reset the scoring box
 set(handles.bg_Scoring,'SelectedObject',[]);  % No selection
@@ -546,14 +523,14 @@ set(handles.plHypno, 'Ydata', EEG.swa_scoring.stages);
 % set(handles.rb, 'Enable', 'off'); drawnow; set(handles.rb, 'Enable', 'on');
 
 % Update the handles in the GUI
-guidata(handles.Figure, handles)
+guidata(handles.Figure, handles);
 setappdata(handles.Figure, 'EEG', EEG);
 
 % go to the next epoch
-handles.java.Slider.setValue(handles.java.Slider.getValue+1)
-sliderUpdate(hObject, eventdata, handles.Figure)
+set(handles.cEpoch, 'value', cEpoch+1);
+fcn_epochChange(hObject, [], handles.Figure);
 
-function updateEpochLength(hObject, eventdata)
+function updateEpochLength(hObject, ~)
 % get handles
 handles = guidata(hObject); 
 
@@ -580,9 +557,6 @@ sEpoch  = str2double(get(handles.et_EpochLength, 'String'))*EEG.srate;
 % calculate the total number of epochs in the time series
 nEpochs = floor(size(eegData,2)/sEpoch);
 
-% Set Slider
-% ``````````
-handles.java.Slider.setMaximum(nEpochs);
 % set limit to the axes
 % set(handles.axHypno,...
 %     'XLim', [1 nEpochs]);
@@ -590,7 +564,7 @@ set(handles.axCh,...
     'XLim', [1, sEpoch]);
 
 % re-calculate the stage names from the value (e.g. 0 = wake)
-EEG.swa_scoring.stageNames = cell(1,nEpochs);
+EEG.swa_scoring.stageNames = cell(1, nEpochs);
 count = 0;
 for i = 1:sEpoch:nEpochs*sEpoch
     count = count+1;
@@ -605,6 +579,8 @@ for i = 1:sEpoch:nEpochs*sEpoch
             EEG.swa_scoring.stageNames(count) = {'N3'};
         case 5
             EEG.swa_scoring.stageNames(count) = {'REM'};
+        case 6
+            EEG.swa_scoring.stageNames(count) = {'Artifact'};
         otherwise
             EEG.swa_scoring.stageNames(count) = {'Unscored'};
     end
@@ -639,11 +615,13 @@ handles = guidata(hObject);
 % movement keys
 switch eventdata.Key
     case 'rightarrow'
-        handles.java.Slider.setValue(handles.java.Slider.getValue+1);
-        sliderUpdate(hObject, eventdata, handles.Figure)
+        % move to the next epoch
+        set(handles.cEpoch, 'Value', get(handles.cEpoch, 'Value') + 1);
+        fcn_epochChange(hObject, eventdata, handles.Figure)
     case 'leftarrow'
-        handles.java.Slider.setValue(handles.java.Slider.getValue-1);
-        sliderUpdate(hObject, eventdata, handles.Figure)
+        % move to the previous epoch
+        set(handles.cEpoch, 'Value', get(handles.cEpoch, 'Value') - 1);
+        fcn_epochChange(hObject, eventdata, handles.Figure)
     case 'uparrow'
         ylimits = str2double(get(handles.et_Scale, 'String'));
         if ylimits <= 20
@@ -679,6 +657,9 @@ switch eventdata.Character
     case '5'
         set(handles.bg_Scoring,'SelectedObject',handles.rb(5));
         updateStage(hObject, eventdata);
+    case '6'
+        set(handles.bg_Scoring,'SelectedObject',handles.rb(6));
+        updateStage(hObject, eventdata);
 end
 
 guidata(handles.Figure, handles)
@@ -686,6 +667,10 @@ guidata(handles.Figure, handles)
 function checkFilter(figureHandle, ~)
 % get the updated handles structure
 handles = guidata(figureHandle);
+
+% User feedback since this often takes some time
+set(handles.StatusBar, 'string',...
+    'Checking filter parameters'); drawnow;
 
 % Get the EEG from the figure's appdata
 EEG = getappdata(handles.Figure, 'EEG');
@@ -856,7 +841,7 @@ function fcn_mark_event(figurehandle, userData, type)
 handles = guidata(figurehandle);
 EEG     = getappdata(handles.Figure, 'EEG');
 
-cEpoch  = handles.java.Slider.getValue;
+cEpoch  = get(handles.cEpoch, 'value');
 sEpoch  = str2double(get(handles.et_EpochLength, 'String'))*EEG.srate; % samples per epoch
 
 for row = 1:size(userData.range, 1)
@@ -951,7 +936,6 @@ end
 H.menu.Open = uimenu(H.Figure, 'Label', 'Open');
 H.menu.Save = uimenu(H.Figure, 'Label', 'Apply');
 H.menu.Plot = uimenu(H.Figure, 'Label', 'Plot');
-
 
 setMontageData(H, figurehandle)
 
