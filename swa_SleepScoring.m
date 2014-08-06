@@ -15,6 +15,7 @@ handles.Figure = figure(...
     'MenuBar',      'none',...
     'Units',        'normalized',...
     'Outerposition',[0 0.04 .5 0.96]);
+set(handles.Figure, 'CloseRequestFcn', {@fcn_close_request});
 
 %% Menus
 handles.menu.File = uimenu(handles.Figure, 'Label', 'File');
@@ -476,11 +477,12 @@ EEG = getappdata(handles.Figure, 'EEG');
 cEpoch = get(handles.cEpoch, 'value');
 if cEpoch < 1
     set(handles.StatusBar, 'String', 'This is the first epoch')
-    cEpoch = set(handles.cEpoch, 'value', 1);
+    set(handles.cEpoch, 'value', 1);
 elseif cEpoch > length(EEG.swa_scoring.stageNames)
     set(handles.StatusBar, 'String', 'No further epochs')
-    cEpoch = get(handles.cEpoch, 'value', length(EEG.swa_scoring.stageNames));
+    set(handles.cEpoch, 'value', length(EEG.swa_scoring.stageNames));
 end
+cEpoch = get(handles.cEpoch, 'value');
 
 % update the hypnogram indicator line
 x = cEpoch * EEG.swa_scoring.epochLength/60/60;
@@ -580,19 +582,19 @@ for i = 1:sEpoch:nEpochs*sEpoch
     count = count+1;
     switch EEG.swa_scoring.stages(i)
         case 0
-            EEG.swa_scoring.stageNames(count) = {'Wake'};
+            EEG.swa_scoring.stageNames(count) = {'wake'};
         case 1
-            EEG.swa_scoring.stageNames(count) = {'N1'};
+            EEG.swa_scoring.stageNames(count) = {'nrem1'};
         case 2
-            EEG.swa_scoring.stageNames(count) = {'N2'};
+            EEG.swa_scoring.stageNames(count) = {'nrem2'};
         case 3
-            EEG.swa_scoring.stageNames(count) = {'N3'};
+            EEG.swa_scoring.stageNames(count) = {'nrem3'};
         case 5
-            EEG.swa_scoring.stageNames(count) = {'REM'};
+            EEG.swa_scoring.stageNames(count) = {'rem'};
         case 6
-            EEG.swa_scoring.stageNames(count) = {'Artifact'};
+            EEG.swa_scoring.stageNames(count) = {'artifact'};
         otherwise
-            EEG.swa_scoring.stageNames(count) = {'Unscored'};
+            EEG.swa_scoring.stageNames(count) = {'unscored'};
     end
 end
 
@@ -1073,3 +1075,18 @@ H = swa_Topoplot(...
     'PlotContour',      1                                   ,...
     'PlotChannels',     1                                   ,...
     'PlotStreams',      0                                   );
+
+
+% Close request
+% `````````````
+function fcn_close_request(~, ~)
+% User-defined close request function to display a question dialog box
+selection = questdlg('Are you sure?',...
+    '',...
+    'Yes','No','Yes');
+switch selection,
+    case 'Yes'
+        delete(gcf)
+    case 'No'
+        return
+end
