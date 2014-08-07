@@ -54,22 +54,18 @@ Data.Raw = Info.Recording.dataFile;
 
 % What to do with the filtered dataset?
 % `````````````````````````````````````
-% Remove filtered dataset
-Data.Filtered = [];
-% Or at least make it single precision
-Data.Filtered = single(Data.Filtered);
-% Or save it to a simple binary file (like fdt)
+% Save it to a simple binary file (like fdt)
 filteredName = [Info.Recording.dataFile(1:end-4), '_filtered.fdt'];
-swa_save_data(Data.Filtered, filteredName);
+if ~exist(filteredName, 'file')
+    swa_save_data(Data.Filtered, filteredName);
+end
 Data.Filtered = filteredName;
 
 % Done! Use the swa_Explorer to visualise the results.
 [saveFile, savePath] = uiputfile('*.mat');
 save([savePath, saveFile], 'Data', 'Info', 'SW', '-mat');
 
-
 %% -- Template for Regions Reference -- %%
-
 % set envelope specific defaults
 Info.Method = 'MDC';
 Info.Parameters.Ref_Peak2Peak   = 140;
