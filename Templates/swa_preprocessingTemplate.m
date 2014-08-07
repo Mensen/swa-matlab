@@ -19,21 +19,18 @@ swa_SleepScoring;
 % ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 % Load the data set
-[fileName, filePath] = uigetfile('*.set');
+fileName, filePath] = uigetfile('*.set');
 load([filePath, fileName], '-mat');
 
 % get the indices for N2
 samplesN2 = EEG.swa_scoring.stages == 2;
 samplesN2(EEG.swa_scoring.arousals) = false;
+swa_selectStagesEEGLAB(EEG, samplesN2, [fileName(1:3), '_N2.set']);
 
 % get indices for N3
 samplesN3 = EEG.swa_scoring.stages == 3;
 samplesN3(EEG.swa_scoring.arousals) = false;
-
-% save the data in aEEG = pop_saveset(EEG); separate file
-swa_selectStagesEEGLAB(EEG, samplesN2, [fileName(1:3), '_N2.set']);
 swa_selectStagesEEGLAB(EEG, samplesN3, [fileName(1:3), '_N3.set']);
-
 
 % Preprocess the Data
 % ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -49,7 +46,7 @@ EEG = pop_eegfiltnew(EEG, 0.3, 40, [], 0, [], 0);
 % take a look at the data manually
 eegplot(EEG.data);
 
-% removing bad data 
+% removing bad data
 % `````````````````
 
 % bad channels
@@ -57,8 +54,8 @@ eegplot(EEG.data);
     [~, EEG.badchannels, EEG.specdata] = pop_rejchanspec(EEG,...
         'freqlims', [20 40]     ,...
         'stdthresh',[-3.5 3.5]  ,...
-        'plothist', 'off'        );    
-    
+        'plothist', 'off'        );
+
     % remove the bad channels found
     EEG = eeg_interp(EEG, EEG.badchannels);
 
@@ -89,9 +86,9 @@ eegplot(EEG.data);
 % ``````````````````
 
 % run ICA (optional)
+% EEG = pop_runica(EEG, 'extended', 1, 'interupt', 'off');
 
-
-% remove the components
+% remove the components (best to do using plot component properties in the GUI)
 
 
 % change reference
@@ -101,8 +98,8 @@ EEG = pop_reref( EEG, [],...
     'refloc', EEG.chaninfo.nodatchans(:));
 
 % linked mastoid
-mastoids = [94, 190];
-EEG = pop_reref(EEG, mastoids);
+% mastoids = [94, 190];
+% EEG = pop_reref(EEG, mastoids);
 
 % save the data
 EEG = pop_saveset(EEG);
