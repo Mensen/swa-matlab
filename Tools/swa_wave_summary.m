@@ -27,7 +27,6 @@ case 'globality'
         set(get(h.ax, 'ylabel'), 'string', 'Number of Waves');
     end
 
-
 case 'distances'
     count = 0;
     for n = 1:length(SW)
@@ -42,11 +41,11 @@ case 'distances'
         hist(h.ax, output);
         set(h.ax,...
             'title', text('string', 'Travel Distance'));
-        
+
         set(get(h.ax, 'xlabel'), 'string', 'Distance Travelled');
         set(get(h.ax, 'ylabel'), 'string', 'Number of Waves');
     end
-    
+
 case 'ampVtime'
     output(1,:)=[SW.Ref_PeakAmp];
     output(2,:)=[SW.Ref_PeakInd];
@@ -87,7 +86,7 @@ case 'anglemap'
     output = cellfun(@(x) atan2d(x(1,end)- x(1,1),x(2,end)-x(2,1)), streams);
 
     if makePlot
-        h.plt = rose(h.ax, output);
+        h.plt = rose(h.ax, output*(pi/180));
         xc    = get(h.plt, 'Xdata');
         yc    = get(h.plt, 'Ydata');
 
@@ -99,7 +98,7 @@ case 'anglemap'
     end
 
 case 'topo_density'
-    output  = zeros(Info.Recording.dataDim(1),1);   
+    output  = zeros(Info.Recording.dataDim(1),1);
     for n = 1:length(SW)
         output(SW(n).Channels_Active)       = output(SW(n).Channels_Active) +1;
     end
@@ -111,11 +110,11 @@ case 'topo_density'
         'Axes',             h.ax                  ,...
         'NumContours',      10                     ,...
         'PlotSurface',      0                     );
-    
+
     colormap(flipud(hot));
 
 case 'topo_origins'
-    output  = zeros(Info.Recording.dataDim(1),1);   
+    output  = zeros(Info.Recording.dataDim(1),1);
     for n = 1:length(SW)
         output(SW(n).Travelling_Delays<1)  = output(SW(n).Travelling_Delays<1) + 1;
     end
@@ -127,11 +126,12 @@ case 'topo_origins'
         'Axes',             h.ax                  ,...
         'NumContours',      10                     ,...
         'PlotSurface',      0                     );
-    
-    colormap(flipud(jet));    
-    
+
+    colormap(flipud(hot));
+
 %TODO: correlation between MPP->MNP || MNP->MPP
+%TODO: average delay map
 otherwise
-    fprintf(1, 'Error: Not a valid summary type -> %s', type);
+    fprintf(1, 'Error: %s is not a valid summary type', type);
     return;
 end
