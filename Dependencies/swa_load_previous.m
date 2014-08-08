@@ -1,9 +1,9 @@
-function [Data, Info, SW] = swa_load_previous(fileName)
+function [Data, Info, SW] = swa_load_previous(fileName, filePath)
 
 if nargin < 1;
     [fileName, filePath] = uigetfile('*.mat');
 end
-    load([filePath, fileName], '-mat');
+    load(fullfile(filePath, fileName), '-mat');
 
 
 % check for correct file
@@ -12,13 +12,13 @@ if ~exist('Info', 'var')
 end
 
 if ischar(Data.Raw)
-    fid = fopen(Data.Raw);
+    fid = fopen(fullfile(filePath, Data.Raw));
     Data.Raw = fread(fid, Info.Recording.dataDim, 'single');
 end
 
 if isfield(Data, 'Filtered')
     if ischar(Data.Filtered)
-        fid = fopen(Data.Filtered);
+        fid = fopen(fullfile(filePath, Data.Filtered));
         Data.Filtered = fread(fid, Info.Recording.dataDim, 'single');
     end
 end
