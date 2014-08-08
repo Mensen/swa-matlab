@@ -3,7 +3,7 @@ function Info = swa_getInfoDefaults(Info, type, method)
 switch type
     case 'SW'
         % filter parameters
-        Info.Parameters.Filter_Apply    = [];
+        Info.Parameters.Filter_Apply    = true;
         Info.Parameters.Filter_Method   = 'Chebyshev';      % 'Chebyshev'/'Buttersworth'
         Info.Parameters.Filter_hPass    = 0.2;
         Info.Parameters.Filter_lPass    = 4;
@@ -17,7 +17,7 @@ switch type
         Info.Parameters.Ref_NegAmpMin   = 80;               % Only used if Ref_AmpStd not set
         Info.Parameters.Ref_WaveLength  = [0.25 1.25];      % Length criteria between zero crossings
         Info.Parameters.Ref_SlopeMin    = 0.90;             % Percentage cut-off for slopes
-        Info.Parameters.Ref_Peak2Peak   = [];               % Only for MDC
+        Info.Parameters.Ref_Peak2Peak   = 140;              % Only for MDC
         
         % channel detection
         Info.Parameters.Channels_CorrThresh = 0.9;
@@ -35,11 +35,11 @@ switch type
             case 'envelope'    
                 % set envelope specific defaults
                 Info.Parameters.Ref_Method      = 'Envelope';
-                Info.Parameters.Filter_Apply    = true;
                 
             case 'mdc'
                 Info.Parameters.Ref_Method      = 'MDC';
-                Info.Parameters.Ref_Peak2Peak   = 140;
+                Info.Parameters.Ref_ZCorMNP     = 'ZC';
+                Info.Parameters.Ref_AmpStd      = [];              % Standard deviations from mean negativity
         end
        
 end
