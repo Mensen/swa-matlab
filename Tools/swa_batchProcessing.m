@@ -1,4 +1,8 @@
-function swa_batchProcessing(dirName, pattern)
+function swa_batchProcessing(dirName, pattern, save_ext)
+
+if nargin < 3
+    save_ext = '';
+end
 
 % a list of files
 fileList = swa_getFiles(dirName, pattern);
@@ -8,6 +12,7 @@ for n = 1:length(fileList)
     % split the path and name
     [filePath, fileName, ext] = fileparts(fileList{n});
     [Data, Info] = swa_convertFromEEGLAB([fileName, ext], filePath);
+%     [Data, Info, SW] = swa_load_previous([fileName, ext], filePath);
 
     Info = swa_getInfoDefaults(Info, 'SW', 'envelope');
     
@@ -33,7 +38,7 @@ for n = 1:length(fileList)
     Data.Filtered = filteredName;
     
     % save the data, info and sw files themselves into simple mat
-    saveFile = ['swaFile_', fileName, '.mat'];
+    saveFile = ['swaFile_', fileName, save_ext, '.mat'];
     save(fullfile(filePath, saveFile), 'Data', 'Info', 'SW', '-mat');
     
 end
