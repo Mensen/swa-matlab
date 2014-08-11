@@ -19,8 +19,8 @@ swa_SleepScoring;
 % ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 % Load the data set
-fileName, filePath] = uigetfile('*.set');
-load([filePath, fileName], '-mat');
+[fileName, filePath] = uigetfile('*.set');
+load(fullfile(filePath, fileName), '-mat');
 
 % get the indices for N2
 samplesN2 = EEG.swa_scoring.stages == 2;
@@ -35,6 +35,9 @@ swa_selectStagesEEGLAB(EEG, samplesN3, [fileName(1:3), '_N3.set']);
 % Preprocess the Data
 % ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 % * steps can be done within EEGLAB GUI
+
+% clear the memory
+clear all; clc;
 
 % load the specific dataset
 % [fileName, filePath] = uigetfile('*.set');

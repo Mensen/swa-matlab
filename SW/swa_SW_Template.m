@@ -7,47 +7,14 @@
 % or if you have previously analysed some data
 [Data, Info, SW] = swa_load_previous();
 
-%% Initial Parameter Settings
-
-% filter parameters
-Info.Parameters.Filter_Apply    = [];
-Info.Parameters.Filter_Method   = 'Chebyshev';      % 'Chebyshev'/'Buttersworth'
-Info.Parameters.Filter_hPass    = 0.2;
-Info.Parameters.Filter_lPass    = 4;
-Info.Parameters.Filter_order    = 2;
-
-% reference detection
-Info.Parameters.Ref_Method      = [];
-Info.Parameters.Ref_ZCorMNP     = 'MNP';
-Info.Parameters.Ref_UseInside   = 1;                % Use interior head channels or all
-Info.Parameters.Ref_AmpStd      = 4.5;              % Standard deviations from mean negativity
-Info.Parameters.Ref_NegAmpMin   = 80;               % Only used if Ref_AmpStd not set
-Info.Parameters.Ref_WaveLength  = [0.25 1.25];      % Length criteria between zero crossings
-Info.Parameters.Ref_SlopeMin    = 0.90;             % Percentage cut-off for slopes
-Info.Parameters.Ref_Peak2Peak   = [];               % Only for MDC
-
-% channel detection
-Info.Parameters.Channels_CorrThresh = 0.9;
-Info.Parameters.Channels_WinSize    = 0.2;
-
-% travelling parameters
-Info.Parameters.Stream_GS       = 40; % size of interpolation grid
-Info.Parameters.Stream_MinDelay = 40; % minimum travel time (ms)
-
 %% Template for envelope + filter analysis %%
 
-% set envelope specific defaults
-Info.Parameters.Ref_Method      = 'Envelope';
-Info.Parameters.Filter_Apply    = true;
+Info = swa_getInfoDefaults(Info, 'SW', 'envelope');
 
 [Data.SWRef, Info]  = swa_CalculateReference (Data.Raw, Info);
-
 [Data, Info, SW]    = swa_FindSWRef (Data, Info);
-
 [Data, Info, SW]    = swa_FindSWChannels (Data, Info, SW);
-
 [Info, SW]          = swa_FindSWTravelling (Info, SW);
-
 
 % Replace the data with a file pointer if drive space is a concern
 Data.Raw = Info.Recording.dataFile;
@@ -66,16 +33,12 @@ Data.Filtered = filteredName;
 save([savePath, saveFile], 'Data', 'Info', 'SW', '-mat');
 
 %% -- Template for Regions Reference -- %%
-% set envelope specific defaults
-Info.Method = 'MDC';
-Info.Parameters.Ref_Peak2Peak   = 140;
+% set mdc specific defaults
+Info = swa_getInfoDefaults(Info, 'SW', 'MDC');
 
 [Data.SWRef, Info]  = swa_CalculateReference(Data.Raw, Info);
-
 [Data, Info, SW]    = swa_FindSWRef(Data, Info);
-
 [Data, Info, SW]    = swa_FindSWChannels(Data, Info, SW);
-
 [Info, SW]          = swa_FindSWTravelling(Info, SW);
 
 
