@@ -378,8 +378,11 @@ handles = guidata(hObject); % Get handles
 % Get the EEG from the figure's appdata
 EEG = getappdata(handles.Figure, 'EEG');
 
+% Ask where to put file...
+[saveFile, savePath] = uiputfile('*.set');
+
 % since the data has not changed we can just save the EEG part, not the data
-save([EEG.filepath, EEG.filename], 'EEG', '-mat');
+save(fullfile(savePath, saveFile), 'EEG', '-mat');
 
 set(handles.StatusBar, 'String', 'Data Saved')
 
