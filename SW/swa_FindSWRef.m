@@ -10,9 +10,9 @@ end
 if nargin < 3 || isempty(SW)
     SW = struct(...
         'Ref_Region',           [], ...     % region the wave was found in
-        'Ref_DownInd',          [], ...     % index of downward zero crossing
-        'Ref_PeakInd',          [], ...     % index of maximum negativity using Massimini criteria
-        'Ref_UpInd',            [], ...     % index of upward zero crossing
+        'Ref_DownInd',          [], ...     % index of downward zero crossing or previous maxima if using MNP
+        'Ref_PeakInd',          [], ...     % index of maximum negativity
+        'Ref_UpInd',            [], ...     % index of upward zero crossing or subsequent maxima
         'Ref_PeakAmp',          [], ...     % negative peak amplitude
         'Ref_P2PAmp',           [], ...     % only used as a criteria for the non-envelope references
         'Ref_NegSlope',         [], ...     % maximum of negative slope
@@ -25,7 +25,7 @@ if nargin < 3 || isempty(SW)
         'Travelling_DelayMap',  [], ...     % Interpolated map of the delays
         'Travelling_Streams',   [], ...     % Principle direction of travel
         'Code',                 []);        % Code for the wave (type 1 or type 2)
-    
+
     OSWCount = 0; % counts empty as one... fix!
     SWCount  = 0;
 else
@@ -35,26 +35,23 @@ end
 
 % loop for each reference
 for refWave = 1:size(Data.SWRef,1)
-    
+
     switch Info.Parameters.Ref_ZCorMNP
-        
+
         case 'MNP'
-            
             % Peak detection method
             % ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-            
+
             % Get Downward and Upward Zero Crossings (DZC and UZC)
             slopeData   = [0 diff(Data.SWRef(refWave,:))];   % gives the differential of data (slope)
-            
             % Calculate xth percentile slope
             x = sort(slopeData);
             slopeThresh = x(round(length(x)*Info.Parameters.Ref_SlopeMin));
-            
             % Find all the negative peaks
             MNP  = find(diff(sign(slopeData))==2);
             % Find all the positive peaks
             MPP  = find(diff(sign(slopeData))==-2);
-            
+
             % Check for earlier MPP than MNP
             if MNP(1) < MPP(1)
                 MNP(1) = [];
@@ -63,30 +60,30 @@ for refWave = 1:size(Data.SWRef,1)
             if MNP(end) > MPP(end)
                 MNP(end)=[];
             end
-            
+
             % calculate amplitude threshold criteria (before eliminating short waves)
             if ~isempty(Info.Parameters.Ref_AmpStd)
                 StdMor = mad(Data.SWRef(refWave, MNP), 1); % Returns the absolute deviation from the median (to avoid outliers)
                 Info.Parameters.Ref_NegAmpMin = (StdMor*Info.Parameters.Ref_AmpStd)+abs(median(Data.SWRef(MNP))); % Overwrite amp threshold
             end
-            
+
             % iteratively erase small notches
             nb = 1;
             while nb > 0;
                 posBumps = MPP(2:end)-MNP < Info.Parameters.Ref_WaveLength(1)*Info.Recording.sRate/10;
                 MPP([false, posBumps]) = [];
                 MNP(posBumps)     = [];
-                
+
                 negBumps = MNP-MPP(1:end-1) < Info.Parameters.Ref_WaveLength(1)*Info.Recording.sRate/10;
                 MPP(negBumps) = [];
                 MNP(negBumps) = [];
-                
+
                 nb = max(sum(posBumps), sum(negBumps));
             end
-            
+
             % Define badWaves
             badWaves = false(1, length(MNP));
-            
+
             % Wavelength criteria
             % ```````````````````
             % MPP->MPP length
@@ -100,14 +97,14 @@ for refWave = 1:size(Data.SWRef,1)
             badWaves    ( MNP2MPPlength < Info.Parameters.Ref_WaveLength(1)*Info.Recording.sRate/2 ...
                         | MNP2MPPlength > Info.Parameters.Ref_WaveLength(2)*Info.Recording.sRate/2) ...
                         = true;
-            
+
             % Amplitude criteria
             % ```````````````````
             % mark lower than threshold amps and larger than 200uV (artifacts)
             badWaves    ( Data.SWRef(refWave, MNP) > -Info.Parameters.Ref_NegAmpMin...
                 | Data.SWRef(refWave, MNP) < -200)...
                 = true;
-            
+
             % peak to peak amplitude
             p2p = Data.SWRef(MPP(2:end))-Data.SWRef(MNP);
             % peaks should not be calculated for envelope references
@@ -115,7 +112,7 @@ for refWave = 1:size(Data.SWRef,1)
                 badWaves ( p2p < Info.Parameters.Ref_Peak2Peak)...
                     = true;
             end
-            
+
             % Get all the MNP from a previous reference
             % this will return empty for the first reference
             AllPeaks = [SW.Ref_PeakInd];
@@ -162,6 +159,8 @@ for refWave = 1:size(Data.SWRef,1)
                 
             end
             
+        % Zero crossing detection method
+        % ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         case 'ZC'
             
             % Get Downward and Upward Zero Crossings (DZC and UZC)
@@ -178,7 +177,8 @@ for refWave = 1:size(Data.SWRef,1)
             % Check for earlier initial UZC than DZC
             if DZC(1)>UZC(1)
                 UZC(1)=[];
-                if length(DZC) ~= length(UZC) % in case the last DZC does not have a corresponding UZC then delete it
+                % in case the last DZC does not have a corresponding UZC then delete it
+                if length(DZC) ~= length(UZC)
                     DZC(end)=[];
                 end
             end
@@ -191,9 +191,12 @@ for refWave = 1:size(Data.SWRef,1)
             % calculate amplitude threshold criteria
             % do not calculate if the AmpStd has been left empty
             if ~isempty(Info.Parameters.Ref_AmpStd)
-                MNP  = find(diff(sign(slopeData))==2);  % Maximum Negative Point (trough of the wave)
-                StdMor = mad(Data.SWRef(MNP), 1);             % Returns the absolute deviation from the median (to avoid outliers)
-                Info.Parameters.Ref_NegAmpMin = (StdMor*Info.Parameters.Ref_AmpStd)+abs(mean(Data.SWRef(MNP))); % Overwrite amp threshold
+                % Maximum Negative Point (trough of the wave)
+                MNP  = find(diff(sign(slopeData))==2);  
+                % Return the absolute deviation from the median (to avoid outliers)
+                StdMor = mad(Data.SWRef(MNP), 1);
+                % Set the new amplitude threshold in the Info structure and potentially overwrite the old settings
+                Info.Parameters.Ref_NegAmpMin = (StdMor*Info.Parameters.Ref_AmpStd)+abs(mean(Data.SWRef(MNP)));
             end
             
             % Test Wavelength
@@ -207,7 +210,7 @@ for refWave = 1:size(Data.SWRef,1)
             % Eliminate the indices
             UZC(BadZC) = [];
             DZC(BadZC) = [];
-                       
+
             % To check differences between next peaks found...
             AllPeaks = [SW.Ref_PeakInd];
             
