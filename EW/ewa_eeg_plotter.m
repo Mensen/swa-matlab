@@ -1,3 +1,5 @@
+function ewa_eeg_plotter()
+
 %TODO: Main page 
         %Montage channel names on left accompanied with a small button to hide that channel
         %Scale - green lines across one of the channels
@@ -12,18 +14,13 @@
             %ticks or mapping (like sleep scoring) only marked seizure, spike, artifact
         %Display button? way to visualize event related EEG data while scoring?
         %Options button? channel/window length and print button
+
 %TODO: Montage
         %Green line in front of headset
         %headset electrodes smaller due to poor resolution on my computer
         %functional delete/apply buttons, as well as a revert button
         %name of montage top center of headset
         %Tool bar has a drop down menu: for example; new, 10-20, etc.
-
-
-
-
-
-function ewa_eeg_plotter()
 
 % make a window
 % ~~~~~~~~~~~~~
@@ -71,7 +68,7 @@ handles.menu.save       = uimenu(handles.menu.file,...
     'Label', 'save eeg',...
     'Accelerator', 'S');
 
-handles.menu.montage    = uimenu(handles.fig, 'label', 'montage', 'enable', 'on');
+handles.menu.montage    = uimenu(handles.fig, 'label', 'montage', 'enable', 'off');
 
 handles.menu.options    = uimenu(handles.fig, 'label', 'options');
 
@@ -151,7 +148,7 @@ if ~isfield(EEG, 'ewa_montage')
     EEG.ewa_montage.no_channels     = 12;
     EEG.ewa_montage.channels(:,1)   = [1:EEG.ewa_montage.no_channels]';
     EEG.ewa_montage.channels(:,2)   = size(eegData, 1);
-    EEG.ewa_montage.filter_options  = [ones(1,EEG.ewa_montage.no_channels)*0.5; ones(1,EEG.ewa_montage.no_channels)*30]';
+    EEG.ewa_montage.filter_options  = [0.5; 30]';
 end
     
 % update the handles structure
@@ -178,14 +175,10 @@ data = eegData(EEG.ewa_montage.channels(:,1), range) - eegData(EEG.ewa_montage.c
 
 % filter the data
 % ~~~~~~~~~~~~~~~
-% loop each channel for their individual settings
-for i = 1:EEG.ewa_montage.no_channels
-    [EEG.filter.b(i,:), EEG.filter.a(i,:)] = ...
-        butter(2,[EEG.ewa_montage.filter_options(i,1)/(EEG.srate/2),...
-                  EEG.ewa_montage.filter_options(i,2)/(EEG.srate/2)]);
-    % filter the data
-    data(i,:) = single(filtfilt(EEG.filter.b(i,:), EEG.filter.a(i,:), double(data(i,:)'))'); %transpose data twice
-end
+[EEG.filter.b, EEG.filter.a] = ...
+        butter(2,[EEG.ewa_montage.filter_options(1)/(EEG.srate/2),...
+                  EEG.ewa_montage.filter_options(2)/(EEG.srate/2)]);
+data = single(filtfilt(EEG.filter.b, EEG.filter.a, double(data'))'); %transpose data twice
 
 % plot the data
 % ~~~~~~~~~~~~~
@@ -232,10 +225,7 @@ current_point = get(handles.cPoint, 'value');
 range = current_point:current_point+EEG.ewa_montage.epoch_length*EEG.srate-1;
 data = eegData(EEG.ewa_montage.channels(:,1), range) - eegData(EEG.ewa_montage.channels(:,2), range);
 
-for i = 1:EEG.ewa_montage.no_channels
-    % filter the data
-    data(i,:) = single(filtfilt(EEG.filter.b(i,:), EEG.filter.a(i,:), double(data(i,:)'))'); %transpose data twice
-end
+data = single(filtfilt(EEG.filter.b, EEG.filter.a, double(data'))'); %transpose data twice
 
 % plot the data
 % ~~~~~~~~~~~~~
