@@ -144,11 +144,13 @@ end
 % check for previous
 if ~isfield(EEG, 'ewa_montage')
     % assign defaults
-    EEG.ewa_montage.epoch_length    = 30;
-    EEG.ewa_montage.no_channels     = 12;
-    EEG.ewa_montage.channels(:,1)   = [1:EEG.ewa_montage.no_channels]';
-    EEG.ewa_montage.channels(:,2)   = size(eegData, 1);
-    EEG.ewa_montage.filter_options  = [0.5; 30]';
+    EEG.ewa_montage.epoch_length        = 30;
+    EEG.ewa_montage.no_channels         = 12;
+    EEG.ewa_montage.label_channels      = cell(EEG.ewa_montage.no_channels,1);
+    EEG.ewa_montage.label_channels(:)   = deal({'undefined'});
+    EEG.ewa_montage.channels(:,1)       = [1:EEG.ewa_montage.no_channels]';
+    EEG.ewa_montage.channels(:,2)       = size(eegData, 1);
+    EEG.ewa_montage.filter_options      = [0.5; 30]';
 end
     
 % update the handles structure
@@ -196,6 +198,19 @@ handles.plot_eeg = line(range, data,...
                         'color', [0.9, 0.9, 0.9],...
                         'parent', handles.main_ax);
 
+% add channel names to plot
+    % figure out the x position
+for chn = 1:length(EEG.ewa_montage.label_channels)
+    handles.labels(chn) = ...
+        text(30, toAdd(chn,1)+scale/5, EEG.ewa_montage.label_channels{chn},...
+        'parent', handles.main_ax,...
+        'fontsize',   12,...
+        'fontweight', 'bold',...
+        'color',      [0.8, 0.8, 0.8],...
+        'backgroundcolor', [0.1 0.1 0.1],...
+        'buttondownfcn', {@fcn_hide_channel});
+end
+                    
 % change the x limits of the indicator plot
 set(handles.spike_ax,   'xlim', [0, size(eegData, 2)],...
                         'ylim', [0, 1]);
@@ -269,6 +284,25 @@ setappdata(handles.fig, 'EEG', EEG);
 fcn_update_axes(handles.fig);
 
 
+function fcn_hide_channel(object, ~);
+% get the handles from the guidata
+handles = guidata(object);
+% Get the EEG from the figure's appdata
+EEG = getappdata(handles.fig, 'EEG');
+
+ch = find(handles.labels == object);
+
+state = get(handles.plot_eeg(ch), 'visible');
+
+switch state
+    case 'on'
+        set(handles.plot_eeg(ch), 'visible', 'off');
+    case 'off'
+        set(handles.plot_eeg(ch), 'visible', 'on');
+end
+        
+
+
 function cb_key_pressed(object, event)
 % get the relevant data
 handles = guidata(object);
@@ -291,10 +325,17 @@ switch event.Key
     case 'uparrow'
         scale = get(handles.txt_scale, 'value');
         if scale <= 20
-            set(handles.txt_scale, 'value', scale / 2);
+            value = scale / 2;
+            set(handles.txt_scale, 'value', value);
         else
-            set(handles.txt_scale, 'value', scale - 20);
+            value = scale - 20;
+            set(handles.txt_scale, 'value', value);
         end
+        
+        for n = 1:EEG.ewa_montage.no_channels
+            set(handles.labels(n), 'Position', [30, value*n + value/5, 0]);
+        end
+        
         set(handles.txt_scale, 'string', get(handles.txt_scale, 'value'));
         set(handles.main_ax, 'yLim', [0 get(handles.txt_scale, 'value')]*(EEG.ewa_montage.no_channels+1))
         fcn_update_axes(object)
@@ -302,10 +343,17 @@ switch event.Key
     case 'downarrow'
         scale = get(handles.txt_scale, 'value');
         if scale <= 20
-            set(handles.txt_scale, 'value', scale * 2);
+            value = scale * 2;
+            set(handles.txt_scale, 'value', value);
         else
-            set(handles.txt_scale, 'value', scale + 20);
+            value = scale + 20;
+            set(handles.txt_scale, 'value', value);
         end
+        
+        for n = 1:EEG.ewa_montage.no_channels
+            set(handles.labels(n), 'Position', [30, value*n + value/5, 0]);
+        end
+        
         set(handles.txt_scale, 'string', get(handles.txt_scale, 'value'));
         set(handles.main_ax, 'yLim', [0 get(handles.txt_scale, 'value')]*(EEG.ewa_montage.no_channels+1))
         fcn_update_axes(object)
@@ -383,7 +431,7 @@ set(handles.button_apply, 'callback', {@fcn_button_apply});
 % set the initial table values
 data = cell(EEG.ewa_montage.no_channels,3);
 % current montage
-data(:,1) = deal({'undefined'});
+data(:,1) = deal(EEG.ewa_montage.label_channels);
 data(:,[2,3]) = num2cell(EEG.ewa_montage.channels);
 
 % put the data into the table
