@@ -1,11 +1,9 @@
 function ewa_eeg_plotter()
 
 %TODO: Main page 
-        %Montage channel names on left accompanied with a small button to hide that channel
         %Scale - green lines across one of the channels
         %Video scroll with space bar - reasonable speed - pause/play?
         %Auto adjust time scale on bottom for whole night
-        %main axis in seconds
         %left side epoch length/scale boxes
         %top center box stating what is in the epoch (much like sleep scoring)
         %highlight spikes, makes tick below
@@ -194,12 +192,13 @@ data = data+toAdd;
 
 set(handles.main_ax, 'yLim', [0 scale]*(EEG.ewa_montage.no_channels+1))
 
-handles.plot_eeg = line(range, data,...
+time = range/EEG.srate;
+handles.plot_eeg = line(time, data,...
                         'color', [0.9, 0.9, 0.9],...
                         'parent', handles.main_ax);
-
+                  
 % add channel names to plot
-    % figure out the x position
+    % TODO: figure out the x position
 for chn = 1:length(EEG.ewa_montage.label_channels)
     handles.labels(chn) = ...
         text(30, toAdd(chn,1)+scale/5, EEG.ewa_montage.label_channels{chn},...
@@ -221,7 +220,7 @@ handles.indicator = line([range(1), range(1)], [0, 1],...
                         'linewidth', 3,...
                         'parent', handles.spike_ax,...
                         'hittest', 'off');
-                   
+                    
 % set the new parameters
 guidata(handles.fig, handles);
 setappdata(handles.fig, 'EEG', EEG);
@@ -252,9 +251,12 @@ toAdd = repmat(toAdd, [1, length(range)]);
 % space out the data for the single plot
 data = data+toAdd;
 
+time = range/EEG.srate;
+set(handles.plot_eeg, 'xdata', time);
+
 for n = 1:EEG.ewa_montage.no_channels
     set(handles.plot_eeg(n), 'ydata', data(n,:));
-end
+end 
 
 
 function fcn_change_time(object, ~)
