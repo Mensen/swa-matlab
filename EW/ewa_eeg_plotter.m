@@ -56,6 +56,12 @@ handles.spike_ax = axes(...
     'fontName',     'Century Gothic'        ,...
     'fontSize',     8                       );
 
+% invisible name axis
+handles.name_ax = axes(...
+    'parent',       handles.fig             ,...
+    'position',     [0 0.2, 0.1, 0.75]   ,...
+    'visible',      'off');
+
 % create the menu bar
 % ~~~~~~~~~~~~~~~~~~~
 handles.menu.file       = uimenu(handles.fig, 'label', 'file');
@@ -90,11 +96,14 @@ handles.cPoint = uicontrol(...
 
 % set the callbacks
 % ~~~~~~~~~~~~~~~~~
-set(handles.menu.load, 'callback', {@fcn_load_eeg})
-set(handles.menu.montage, 'callback', {@fcn_montage_setup})
+set(handles.menu.load, 'callback', {@fcn_load_eeg});
+set(handles.menu.montage, 'callback', {@fcn_montage_setup});
 
 set(handles.fig,...
     'KeyPressFcn', {@cb_key_pressed,});
+
+set(handles.spike_ax, 'buttondownfcn', {@fcn_time_select});
+
 
 guidata(handles.fig, handles)
 
@@ -190,7 +199,7 @@ toAdd = repmat(toAdd, [1, length(range)]);
 % space out the data for the single plot
 data = data+toAdd;
 
-set(handles.main_ax, 'yLim', [0 scale]*(EEG.ewa_montage.no_channels+1))
+set([handles.main_ax, handles.name_ax], 'yLim', [0 scale]*(EEG.ewa_montage.no_channels+1))
 
 time = range/EEG.srate;
 handles.plot_eeg = line(time, data,...
@@ -201,12 +210,13 @@ handles.plot_eeg = line(time, data,...
     % TODO: figure out the x position
 for chn = 1:length(EEG.ewa_montage.label_channels)
     handles.labels(chn) = ...
-        text(30, toAdd(chn,1)+scale/5, EEG.ewa_montage.label_channels{chn},...
-        'parent', handles.main_ax,...
+        text(0.5, toAdd(chn,1)+scale/5, EEG.ewa_montage.label_channels{chn},...
+        'parent', handles.name_ax,...
         'fontsize',   12,...
         'fontweight', 'bold',...
         'color',      [0.8, 0.8, 0.8],...
         'backgroundcolor', [0.1 0.1 0.1],...
+        'horizontalAlignment', 'center',...
         'buttondownfcn', {@fcn_hide_channel});
 end
                     
@@ -334,10 +344,6 @@ switch event.Key
             set(handles.txt_scale, 'value', value);
         end
         
-        for n = 1:EEG.ewa_montage.no_channels
-            set(handles.labels(n), 'Position', [30, value*n + value/5, 0]);
-        end
-        
         set(handles.txt_scale, 'string', get(handles.txt_scale, 'value'));
         set(handles.main_ax, 'yLim', [0 get(handles.txt_scale, 'value')]*(EEG.ewa_montage.no_channels+1))
         fcn_update_axes(object)
@@ -351,16 +357,22 @@ switch event.Key
             value = scale + 20;
             set(handles.txt_scale, 'value', value);
         end
-        
-        for n = 1:EEG.ewa_montage.no_channels
-            set(handles.labels(n), 'Position', [30, value*n + value/5, 0]);
-        end
-        
+               
         set(handles.txt_scale, 'string', get(handles.txt_scale, 'value'));
         set(handles.main_ax, 'yLim', [0 get(handles.txt_scale, 'value')]*(EEG.ewa_montage.no_channels+1))
         fcn_update_axes(object)
 
 end
+
+function fcn_time_select(object, ~);
+handles = guidata(object);
+
+% get position of click
+clicked_position = get(handles.spike_ax, 'currentPoint');
+
+set(handles.cPoint, 'Value', floor(clicked_position(1,1)));
+fcn_change_time(object, [])
+
 
 
 function fcn_montage_setup(object, ~)
