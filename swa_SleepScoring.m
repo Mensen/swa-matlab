@@ -493,7 +493,9 @@ set(handles.ln_hypno, 'Xdata', [x, x]);
 
 % set the stage name to the current stage
 set(handles.StageBar, 'String',...
-    [num2str(cEpoch),': ', EEG.swa_scoring.stageNames{cEpoch}]);
+    [num2str(cEpoch), ' | ',...
+    datestr((cEpoch*EEG.swa_scoring.epochLength)/(60*60*24), 'HH:MM:SS'), ' | ',...
+    EEG.swa_scoring.stageNames{cEpoch}]);
 
 % update the GUI handles (*updates just fine)
 guidata(handles.Figure, handles)
