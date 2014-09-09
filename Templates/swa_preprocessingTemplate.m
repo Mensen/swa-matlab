@@ -32,6 +32,7 @@ samplesN3 = EEG.swa_scoring.stages == 3;
 samplesN3(EEG.swa_scoring.arousals) = false;
 swa_selectStagesEEGLAB(EEG, samplesN3, [fileName(1:3), '_N3.set']);
 
+
 % Preprocess the Data
 % ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 % * steps can be done within EEGLAB GUI
@@ -46,21 +47,26 @@ EEG = pop_loadset();
 % filter the data
 EEG = pop_eegfiltnew(EEG, 0.3, 40, [], 0, [], 0);
 
-% take a look at the data manually
-eegplot(EEG.data);
-
 % removing bad data
 % `````````````````
+% take a look at the data manually
+    eegplot( EEG.data               ,...
+        'srate',        EEG.srate   ,...
+        'winlength',    30          ,...
+        'dispchans',    16          );
 
 % bad channels
     % find channels based on stds for spectral windows (better)
-    [~, EEG.badchannels, EEG.specdata] = pop_rejchanspec(EEG,...
+    [~, EEG.bad_channels, EEG.specdata] = pop_rejchanspec(EEG,...
         'freqlims', [20 40]     ,...
         'stdthresh',[-3.5 3.5]  ,...
-        'plothist', 'off'        );
+        'plothist', 'off'       );
 
+    % manually remove channels
+    EEG.bad_channels = [EEG.bad_channels, ];
+    
     % remove the bad channels found
-    EEG = eeg_interp(EEG, EEG.badchannels);
+    EEG = pop_select(EEG, 'nochannel', EEG.bad_channels);
 
 % remove bad data segments
     % find the absolute median of the data
@@ -89,9 +95,32 @@ eegplot(EEG.data);
 % ``````````````````
 
 % run ICA (optional)
-% EEG = pop_runica(EEG, 'extended', 1, 'interupt', 'off');
+EEG = pop_runica(EEG, 'extended', 1, 'interupt', 'off');
 
 % remove the components (best to do using plot component properties in the GUI)
+% plot the ica components as time series
+eegplot( EEG.icaact             ,...
+    'srate',        EEG.srate   ,...
+    'winlength',    30          ,...
+    'dispchans',    15          );
+
+% plot the properties of the components (second input = 0)
+pop_prop( EEG, 0, [1  : 16], NaN, {'freqrange' [2 40] });
+pop_prop( EEG, 0, [17 : 32], NaN, {'freqrange' [2 40] });
+pop_prop( EEG, 0, [33 : 48], NaN, {'freqrange' [2 40] });
+pop_prop( EEG, 0, [49 : 64], NaN, {'freqrange' [2 40] });
+% pop_prop( EEG, 0, [65 : 80], NaN, {'freqrange' [2 40] });
+
+% pop_prop changes the local EEG variable automatically when marked as reject
+EEG.bad_components = find(EEG.reject.gcompreject);
+EEG.bad_components = [EEG.bad_components, 224:256];
+EEG = pop_subcomp( EEG , EEG.bad_components);
+EEG = eeg_checkset(EEG);
+
+% interpolate the removed channels
+[previousFile, previousPath] = uigetfile('*.set');
+previousEEG = load(fullfile(previousPath, previousFile), '-mat');
+EEG = eeg_interp(EEG, previousEEG.EEG.chanlocs);
 
 
 % change reference
@@ -105,4 +134,5 @@ EEG = pop_reref( EEG, [],...
 % EEG = pop_reref(EEG, mastoids);
 
 % save the data
+% `````````````
 EEG = pop_saveset(EEG);
