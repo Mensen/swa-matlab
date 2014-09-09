@@ -104,7 +104,6 @@ set(handles.fig,...
 
 set(handles.spike_ax, 'buttondownfcn', {@fcn_time_select});
 
-
 guidata(handles.fig, handles)
 
 
@@ -151,6 +150,7 @@ end
 % check for previous
 if ~isfield(EEG, 'ewa_montage')
     % assign defaults
+    EEG.ewa_montage.display_channels    = 12;
     EEG.ewa_montage.epoch_length        = 30;
     EEG.ewa_montage.no_channels         = 12;
     EEG.ewa_montage.label_channels      = cell(EEG.ewa_montage.no_channels,1);
@@ -166,6 +166,9 @@ guidata(handles.fig, handles)
 setappdata(handles.fig, 'EEG', EEG);
 setappdata(handles.fig, 'eegData', eegData);
 
+% turn on the montage option
+set(handles.menu.montage, 'enable', 'on');
+
 % plot the initial data
 plot_initial_data(handles.fig)
 
@@ -179,8 +182,9 @@ EEG = getappdata(handles.fig, 'EEG');
 eegData = getappdata(handles.fig, 'eegData');
 
 % select the plotting data
-range = 1:EEG.ewa_montage.epoch_length*EEG.srate;
-data = eegData(EEG.ewa_montage.channels(:,1), range) - eegData(EEG.ewa_montage.channels(:,2), range);
+range       = 1:EEG.ewa_montage.epoch_length*EEG.srate;
+channels    = 1:EEG.ewa_montage.display_channels;
+data        = eegData(EEG.ewa_montage.channels(channels,1), range) - eegData(EEG.ewa_montage.channels(channels,2), range);
 
 % filter the data
 % ~~~~~~~~~~~~~~~
@@ -193,13 +197,19 @@ data = single(filtfilt(EEG.filter.b, EEG.filter.a, double(data'))'); %transpose 
 % ~~~~~~~~~~~~~
 % define accurate spacing
 scale = get(handles.txt_scale, 'value');
-toAdd = [1:EEG.ewa_montage.no_channels]'*scale;
+toAdd = [1:EEG.ewa_montage.display_channels]'*scale;
 toAdd = repmat(toAdd, [1, length(range)]);
 
 % space out the data for the single plot
 data = data+toAdd;
 
-set([handles.main_ax, handles.name_ax], 'yLim', [0 scale]*(EEG.ewa_montage.no_channels+1))
+set([handles.main_ax, handles.name_ax], 'yLim', [0 scale]*(EEG.ewa_montage.display_channels+1))
+
+% in the case of replotting delete the old handles
+if isfield(handles, 'plot_eeg')
+    delete(handles.plot_eeg);
+    delete(handles.labels);
+end
 
 time = range/EEG.srate;
 handles.plot_eeg = line(time, data,...
@@ -208,7 +218,8 @@ handles.plot_eeg = line(time, data,...
                   
 % add channel names to plot
     % TODO: figure out the x position
-for chn = 1:length(EEG.ewa_montage.label_channels)
+% plot the labels in their own boxes
+for chn = 1:length(EEG.ewa_montage.label_channels(channels))
     handles.labels(chn) = ...
         text(0.5, toAdd(chn,1)+scale/5, EEG.ewa_montage.label_channels{chn},...
         'parent', handles.name_ax,...
@@ -246,8 +257,9 @@ eegData = getappdata(handles.fig, 'eegData');
         
 % select the plotting data
 current_point = get(handles.cPoint, 'value');
-range = current_point:current_point+EEG.ewa_montage.epoch_length*EEG.srate-1;
-data = eegData(EEG.ewa_montage.channels(:,1), range) - eegData(EEG.ewa_montage.channels(:,2), range);
+range       = current_point:current_point+EEG.ewa_montage.epoch_length*EEG.srate-1;
+channels    = 1:EEG.ewa_montage.display_channels;
+data        = eegData(EEG.ewa_montage.channels(channels, 1), range) - eegData(EEG.ewa_montage.channels(channels, 2), range);
 
 data = single(filtfilt(EEG.filter.b, EEG.filter.a, double(data'))'); %transpose data twice
 
@@ -255,16 +267,23 @@ data = single(filtfilt(EEG.filter.b, EEG.filter.a, double(data'))'); %transpose 
 % ~~~~~~~~~~~~~
 % define accurate spacing
 scale = get(handles.txt_scale, 'value');
-toAdd = [1:EEG.ewa_montage.no_channels]'*scale;
+toAdd = [1:EEG.ewa_montage.display_channels]'*scale;
 toAdd = repmat(toAdd, [1, length(range)]);
 
 % space out the data for the single plot
 data = data+toAdd;
 
+% calculate the time in seconds corresponding to the range in samples
 time = range/EEG.srate;
+
+% set the xlimits explicitely just in case matlab decides to give space
+set(handles.main_ax,  'xlim', [time(1), time(end)]);
+
+% set the x-axis to the time in seconds
 set(handles.plot_eeg, 'xdata', time);
 
-for n = 1:EEG.ewa_montage.no_channels
+% reset the ydata of each line to represent the new data calculated
+for n = 1:EEG.ewa_montage.display_channels
     set(handles.plot_eeg(n), 'ydata', data(n,:));
 end 
 
@@ -314,54 +333,66 @@ switch state
 end
         
 
-
 function cb_key_pressed(object, event)
 % get the relevant data
 handles = guidata(object);
 EEG = getappdata(handles.fig, 'EEG');
 
 % movement keys
-switch event.Key
-    case 'leftarrow'
-        % move to the previous epoch
-        set(handles.cPoint, 'Value',...
-            get(handles.cPoint, 'Value') - EEG.ewa_montage.epoch_length*EEG.srate);
-        fcn_change_time(object, [])
+if isempty(event.Modifier)
+    switch event.Key
+        case 'leftarrow'
+            % move to the previous epoch
+            set(handles.cPoint, 'Value',...
+                get(handles.cPoint, 'Value') - EEG.ewa_montage.epoch_length*EEG.srate);
+            fcn_change_time(object, [])
+            
+        case 'rightarrow'
+            % move to the next epoch
+            set(handles.cPoint, 'Value',...
+                get(handles.cPoint, 'Value') + EEG.ewa_montage.epoch_length*EEG.srate);
+            fcn_change_time(object, [])
+            
+        case 'uparrow'
+            scale = get(handles.txt_scale, 'value');
+            if scale <= 20
+                value = scale / 2;
+                set(handles.txt_scale, 'value', value);
+            else
+                value = scale - 20;
+                set(handles.txt_scale, 'value', value);
+            end
+            
+            set(handles.txt_scale, 'string', get(handles.txt_scale, 'value'));
+            set(handles.main_ax, 'yLim', [0 get(handles.txt_scale, 'value')]*(EEG.ewa_montage.display_channels+1))
+            fcn_update_axes(object)
+            
+        case 'downarrow'
+            scale = get(handles.txt_scale, 'value');
+            if scale <= 20
+                value = scale * 2;
+                set(handles.txt_scale, 'value', value);
+            else
+                value = scale + 20;
+                set(handles.txt_scale, 'value', value);
+            end
+            
+            set(handles.txt_scale, 'string', get(handles.txt_scale, 'value'));
+            set(handles.main_ax, 'yLim', [0 get(handles.txt_scale, 'value')]*(EEG.ewa_montage.display_channels+1))
+            fcn_update_axes(object)
+    end
 
-    case 'rightarrow'
-        % move to the next epoch
-        set(handles.cPoint, 'Value',...
-            get(handles.cPoint, 'Value') + EEG.ewa_montage.epoch_length*EEG.srate);
-        fcn_change_time(object, [])
-
-    case 'uparrow'
-        scale = get(handles.txt_scale, 'value');
-        if scale <= 20
-            value = scale / 2;
-            set(handles.txt_scale, 'value', value);
-        else
-            value = scale - 20;
-            set(handles.txt_scale, 'value', value);
-        end
-        
-        set(handles.txt_scale, 'string', get(handles.txt_scale, 'value'));
-        set(handles.main_ax, 'yLim', [0 get(handles.txt_scale, 'value')]*(EEG.ewa_montage.no_channels+1))
-        fcn_update_axes(object)
-
-    case 'downarrow'
-        scale = get(handles.txt_scale, 'value');
-        if scale <= 20
-            value = scale * 2;
-            set(handles.txt_scale, 'value', value);
-        else
-            value = scale + 20;
-            set(handles.txt_scale, 'value', value);
-        end
-               
-        set(handles.txt_scale, 'string', get(handles.txt_scale, 'value'));
-        set(handles.main_ax, 'yLim', [0 get(handles.txt_scale, 'value')]*(EEG.ewa_montage.no_channels+1))
-        fcn_update_axes(object)
-
+% check whether the ctrl is pressed also
+elseif strcmp(event.Modifier, 'control')
+    
+    switch event.Key
+        case 'c'
+            %TODO: pop_up for channel number
+            
+        case 'uparrow'
+            %             fprintf(1, 'more channels \n');
+    end
+    
 end
 
 function fcn_time_select(object, ~);
@@ -371,8 +402,7 @@ handles = guidata(object);
 clicked_position = get(handles.spike_ax, 'currentPoint');
 
 set(handles.cPoint, 'Value', floor(clicked_position(1,1)));
-fcn_change_time(object, [])
-
+fcn_change_time(object, []);
 
 
 function fcn_montage_setup(object, ~)
