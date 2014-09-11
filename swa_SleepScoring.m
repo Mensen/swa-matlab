@@ -26,6 +26,15 @@ handles.menu.SaveEEG = uimenu(handles.menu.File,...
     'Label', 'Save EEG',...
     'Accelerator', 'S');
 
+handles.menu.Options     = uimenu(handles.Figure, 'Label', 'Options');
+handles.menu.EpochLength = uimenu(handles.menu.Options,...
+    'Label', 'Epoch Length');
+handles.menu.StartTime   = uimenu(handles.menu.Options,...
+    'Label', 'Start Time');
+handles.menu.ColorScheme = uimenu(handles.menu.Options,...
+    'Label', 'Color Scheme',...
+    'Enable', 'off');
+
 handles.menu.Montage      = uimenu(handles.Figure, 'Label', 'Montage', 'Enable', 'off');
 
 handles.menu.Export = uimenu(handles.Figure, 'Label', 'Export', 'Enable', 'off');
@@ -35,6 +44,30 @@ handles.menu.REM = uimenu(handles.menu.Export,'Label', 'REM');
 
 handles.menu.Statistics = uimenu(handles.Figure, 'Label', 'Statistics', 'Enable', 'off');
 % can use html labels here to alter fonts
+
+% menu callbacks
+set(handles.menu.LoadEEG,...
+    'Callback', {@menu_LoadEEG});
+set(handles.menu.SaveEEG,...
+    'Callback', {@menu_SaveEEG});
+
+% option callbacks
+set(handles.menu.EpochLength,...
+    'Callback', {@fcn_options, 'EpochLength'});
+set(handles.menu.StartTime,...
+    'Callback', {@fcn_options, 'StartTime'});
+
+% montage
+set(handles.menu.Montage,...
+    'Callback', {@updateMontage, handles.Figure});
+
+% set export callbacks
+set(handles.menu.N2,...
+    'Callback', {@menu_Export, 2});
+set(handles.menu.N3,...
+    'Callback', {@menu_Export, 3});
+set(handles.menu.REM,...
+    'Callback', {@menu_Export, 5});
 
 %% Status Bar
 handles.StatusBar = uicontrol(...
@@ -90,7 +123,6 @@ set(handles.axCh(3), 'buttondownfcn', {@fcn_select_events, handles.axCh(3), 'but
 
 % Scoring Buttons
 % ```````````````
-
 handles.bg_Scoring = uibuttongroup(...
     'Title','Stage',...
     'FontName', 'Century Gothic',...
@@ -154,23 +186,23 @@ handles.axHypno = axes(...
 
 % Epoch Length
 % ````````````
-handles.tx_EpochLength = uicontrol(...
-    'Parent',   handles.Figure,...   
-    'Style',    'text',...    
-    'String',   'Epoch Length(s)',...
-    'Units',    'normalized',...
-    'Position', [0.025 0.85 0.05 0.035],...
-    'FontName', 'Century Gothic',...
-    'FontSize', 10);
-handles.et_EpochLength = uicontrol(...
-    'Parent',   handles.Figure,...   
-    'Style',    'edit',...    
-    'BackgroundColor', 'w',...
-    'String',   '30',...
-    'Units',    'normalized',...
-    'Position', [0.025 0.815 0.05 0.035],...
-    'FontName', 'Century Gothic',...
-    'FontSize', 10);
+% handles.tx_EpochLength = uicontrol(...
+%     'Parent',   handles.Figure,...   
+%     'Style',    'text',...    
+%     'String',   'Epoch Length(s)',...
+%     'Units',    'normalized',...
+%     'Position', [0.025 0.85 0.05 0.035],...
+%     'FontName', 'Century Gothic',...
+%     'FontSize', 10);
+% handles.et_EpochLength = uicontrol(...
+%     'Parent',   handles.Figure,...   
+%     'Style',    'edit',...    
+%     'BackgroundColor', 'w',...
+%     'String',   '30',...
+%     'Units',    'normalized',...
+%     'Position', [0.025 0.815 0.05 0.035],...
+%     'FontName', 'Century Gothic',...
+%     'FontSize', 10);
 
 % Scale
 % `````
@@ -194,22 +226,6 @@ handles.et_Scale = uicontrol(...
 
 % Set Callbacks
 % `````````````
-% menu callbacks
-set(handles.menu.LoadEEG,...
-    'Callback', {@menu_LoadEEG, handles});
-set(handles.menu.SaveEEG,...
-    'Callback', {@menu_SaveEEG});
-set(handles.menu.Montage,...
-    'Callback', {@updateMontage, handles.Figure});
-
-% set export callbacks
-set(handles.menu.N2,...
-    'Callback', {@menu_Export, 2});
-set(handles.menu.N3,...
-    'Callback', {@menu_Export, 3});
-set(handles.menu.REM,...
-    'Callback', {@menu_Export, 5});
-
 % set hypnogram click
 set(handles.axHypno,...
     'ButtonDownFcn', {@bd_hypnoEpochSelect});
@@ -217,8 +233,8 @@ set(handles.axHypno,...
 set(handles.lbCh,...
     'Callback', {@updateLabel});
 
-set(handles.et_EpochLength,...
-    'Callback', {@updateEpochLength});
+% set(handles.et_EpochLength,...
+%     'Callback', {@updateEpochLength});
 
 set(handles.et_Scale,...
     'Callback', {@updateScale});
@@ -241,7 +257,9 @@ guidata(handles.Figure, handles)
 
 % Menu Functions
 % ``````````````
-function menu_LoadEEG(hObject, eventdata, handles)
+function menu_LoadEEG(hObject, eventdata)
+
+handles = guidata(hObject);
 
 % load dialog box with file type
 [dataFile, dataPath] = uigetfile('*.set', 'Please Select Sleep Data');
@@ -277,12 +295,25 @@ set(handles.Figure, 'Name', ['Sleep Scoring: ', dataFile]);
 if isfield(EEG, 'swa_scoring')
     % if there is a previously scoring file
     % set the epochlength
-    set(handles.et_EpochLength, 'String', num2str(EEG.swa_scoring.epochLength));  
+%     set(handles.et_EpochLength, 'String', num2str(EEG.swa_scoring.epochLength));  
     sEpoch  = EEG.swa_scoring.epochLength*EEG.srate;
     nEpochs = floor(size(eegData,2)/sEpoch);
+
+    % check whether the scoring file matches the length
+    if length(EEG.swa_scoring.stages) ~= EEG.pnts
+        fprintf(1, 'previous scoring file a different size as the data, start new scoring session \n');
+        % pre-allocate the variables
+        % each sample is assigned a stage (255 is default unscored)
+        EEG.swa_scoring.stages      = uint8(ones(1,EEG.pnts)*255);
+        EEG.swa_scoring.arousals    = logical(zeros(1,EEG.pnts)*255);
+        % only every epoch is assigned a name
+        EEG.swa_scoring.stageNames  = cell(1, nEpochs);
+        EEG.swa_scoring.stageNames(:) = {'Unscored'};
+    end
+    
 else
     % get the default setting for the epoch length from the figure
-    EEG.swa_scoring.epochLength = str2double(get(handles.et_EpochLength, 'String'));
+    EEG.swa_scoring.epochLength = 30;
     % calculate samples per epoch
     sEpoch  = EEG.swa_scoring.epochLength*EEG.srate; % samples per epoch 
     % calculate number of epochs in the entire series
@@ -342,7 +373,6 @@ set(handles.axHypno,...
     'XLim', [0 time(end)]);
 % plot the epoch indicator line
 handles.ln_hypno = line([0, 0], [0, 6.5], 'color', [0.5, 0.5, 0.5], 'parent', handles.axHypno);
-
 
 % plot the stages    
 handles.plHypno = plot(time, EEG.swa_scoring.stages,...
@@ -556,21 +586,18 @@ EEG = getappdata(handles.Figure, 'EEG');
 eegData = getappdata(handles.Figure, 'eegData');
 
 % check for minimum (5s) and maximum (120s) and give warning...
-if str2double(get(handles.et_EpochLength, 'String')) > 120
-    set(handles.StatusBar, 'String', 'No more than 120s Epochs')
-    set(handles.et_EpochLength, 'String', '120')
+if EEG.swa_scoring.epochLength > 240
+    set(handles.StatusBar, 'String', 'No more than 240s Epochs')
+    EEG.swa_scoring.epochLength = 240;
     return;
-elseif str2double(get(handles.et_EpochLength, 'String')) < 5
+elseif EEG.swa_scoring.epochLength < 5
     set(handles.StatusBar, 'String', 'No less than 5s Epochs')
-    set(handles.et_EpochLength, 'String', '5')    
+    EEG.swa_scoring.epochLength = 5;  
     return;
 end
 
-% set the new epoch length
-EEG.swa_scoring.epochLength = str2double(get(handles.et_EpochLength, 'String'));
-
 % calculate the number of samples per epoch
-sEpoch  = str2double(get(handles.et_EpochLength, 'String'))*EEG.srate;
+sEpoch  = EEG.swa_scoring.epochLength * EEG.srate;
 % calculate the total number of epochs in the time series
 nEpochs = floor(size(eegData,2)/sEpoch);
 
@@ -744,6 +771,35 @@ guidata(handles.Figure, handles)
 % update the figure
 fcn_epochChange(hObject, [], handles.Figure);
 
+function fcn_options(hObject, ~, type)
+% get the handles
+handles = guidata(hObject);
+% Get the EEG from the figure's appdata
+EEG = getappdata(handles.Figure, 'EEG');
+
+switch type
+    case 'EpochLength'
+     
+        answer = inputdlg('epoch length (s)',...
+            '', 1, {num2str(EEG.swa_scoring.epochLength)});
+
+        % if different from previous
+        if ~isempty(answer)
+            newLength = str2double(answer{1});
+            if newLength ~= EEG.swa_scoring.epochLength
+                EEG.swa_scoring.epochLength = newLength;
+                % update the eeg structure before call
+                setappdata(handles.Figure, 'EEG', EEG);
+                updateEpochLength(hObject, []);
+            end
+        end
+        
+    case 'StartTime'
+        
+        
+end
+
+
 
 
 % Code for selecting and marking events
@@ -894,7 +950,6 @@ end
 
 guidata(handles.Figure, handles);
 setappdata(handles.Figure, 'EEG', EEG);
-
 
 % Montage Options
 % ```````````````
