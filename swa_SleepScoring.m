@@ -526,7 +526,7 @@ handles = guidata(hObject);
 EEG = getappdata(handles.Figure, 'EEG');
 
 % current epoch range
-sEpoch  = str2double(get(handles.et_EpochLength, 'String'))*EEG.srate; % samples per epoch
+sEpoch  = EEG.swa_scoring.epochLength*EEG.srate; % samples per epoch
 cEpoch  = get(handles.cEpoch, 'value');
 range   = (cEpoch*sEpoch-(sEpoch-1)):(cEpoch*sEpoch);
 
@@ -918,7 +918,7 @@ handles = guidata(figurehandle);
 EEG     = getappdata(handles.Figure, 'EEG');
 
 cEpoch  = get(handles.cEpoch, 'value');
-sEpoch  = str2double(get(handles.et_EpochLength, 'String'))*EEG.srate; % samples per epoch
+sEpoch  = EEG.swa_scoring.epochLength*EEG.srate; % samples per epoch
 
 for row = 1:size(userData.range, 1)
     range   = (cEpoch*sEpoch-(sEpoch-1))+floor(userData.range(row, 1)):(cEpoch*sEpoch-(sEpoch-1))+ceil(userData.range(row, 2));
