@@ -67,14 +67,19 @@ handles.name_ax = axes(...
 handles.menu.file       = uimenu(handles.fig, 'label', 'file');
 handles.menu.load       = uimenu(handles.menu.file,...
     'Label', 'load eeg',...
-    'Accelerator', 'L');
+    'Accelerator', 'l');
 handles.menu.save       = uimenu(handles.menu.file,...
     'Label', 'save eeg',...
-    'Accelerator', 'S');
+    'Accelerator', 's');
 
 handles.menu.montage    = uimenu(handles.fig, 'label', 'montage', 'enable', 'off');
 
 handles.menu.options    = uimenu(handles.fig, 'label', 'options');
+handles.menu.disp_chans = uimenu(handles.menu.options,...
+    'label', 'display channels',...
+    'accelerator', 'd');
+
+
 
 % scale indicator
 % ~~~~~~~~~~~~~~~
@@ -98,6 +103,8 @@ handles.cPoint = uicontrol(...
 % ~~~~~~~~~~~~~~~~~
 set(handles.menu.load, 'callback', {@fcn_load_eeg});
 set(handles.menu.montage, 'callback', {@fcn_montage_setup});
+
+set(handles.menu.disp_chans, 'callback', {@fcn_options, 'disp_chans'});
 
 set(handles.fig,...
     'KeyPressFcn', {@cb_key_pressed,});
@@ -209,9 +216,11 @@ set([handles.main_ax, handles.name_ax], 'yLim', [0 scale]*(EEG.ewa_montage.displ
 if isfield(handles, 'plot_eeg')
     delete(handles.plot_eeg);
     delete(handles.labels);
+    delete(handles.indicator);
 end
 
 time = range/EEG.srate;
+set(handles.main_ax,  'xlim', [time(1), time(end)]);
 handles.plot_eeg = line(time, data,...
                         'color', [0.9, 0.9, 0.9],...
                         'parent', handles.main_ax);
@@ -219,6 +228,7 @@ handles.plot_eeg = line(time, data,...
 % add channel names to plot
     % TODO: figure out the x position
 % plot the labels in their own boxes
+handles.labels = zeros(length(EEG.ewa_montage.label_channels(channels)), 1);
 for chn = 1:length(EEG.ewa_montage.label_channels(channels))
     handles.labels(chn) = ...
         text(0.5, toAdd(chn,1)+scale/5, EEG.ewa_montage.label_channels{chn},...
@@ -331,7 +341,17 @@ switch state
     case 'off'
         set(handles.plot_eeg(ch), 'visible', 'on');
 end
-        
+
+
+function fcn_time_select(object, ~)
+handles = guidata(object);
+
+% get position of click
+clicked_position = get(handles.spike_ax, 'currentPoint');
+
+set(handles.cPoint, 'Value', floor(clicked_position(1,1)));
+fcn_change_time(object, []);
+
 
 function cb_key_pressed(object, event)
 % get the relevant data
@@ -395,16 +415,33 @@ elseif strcmp(event.Modifier, 'control')
     
 end
 
-function fcn_time_select(object, ~);
+
+function fcn_options(object, ~, type)
+% get the handles
 handles = guidata(object);
+% Get the EEG from the figure's appdata
+EEG = getappdata(handles.fig, 'EEG');
 
-% get position of click
-clicked_position = get(handles.spike_ax, 'currentPoint');
+switch type
+    case 'disp_chans'
+     
+        answer = inputdlg('number of channels',...
+            '', 1, {num2str( EEG.ewa_montage.display_channels )});
 
-set(handles.cPoint, 'Value', floor(clicked_position(1,1)));
-fcn_change_time(object, []);
+        % if different from previous
+        if ~isempty(answer)
+            newNumber = str2double(answer{1});
+            if newNumber ~= EEG.ewa_montage.display_channels && newNumber <= EEG.ewa_montage.no_channels 
+                EEG.ewa_montage.display_channels = newNumber;
+                % update the eeg structure before call
+                setappdata(handles.fig, 'EEG', EEG);
+                plot_initial_data(object)
+            end
+        end
+end
 
-
+% Montage Functions
+% ^^^^^^^^^^^^^^^^^
 function fcn_montage_setup(object, ~)
 % get the original figure handles
 ohandles = guidata(object);
