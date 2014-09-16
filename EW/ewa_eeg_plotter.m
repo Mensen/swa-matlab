@@ -8,7 +8,6 @@ function ewa_eeg_plotter()
         %top center box stating what is in the epoch (much like sleep scoring)
         %highlight spikes, makes tick below
         %Scoring axis
-            %click where you wish to go
             %ticks or mapping (like sleep scoring) only marked seizure, spike, artifact
         %Display button? way to visualize event related EEG data while scoring?
         %Options button? channel/window length and print button
@@ -16,7 +15,6 @@ function ewa_eeg_plotter()
 %TODO: Montage
         %Green line in front of headset
         %headset electrodes smaller due to poor resolution on my computer
-        %functional delete/apply buttons, as well as a revert button
         %name of montage top center of headset
         %Tool bar has a drop down menu: for example; new, 10-20, etc.
 
@@ -471,6 +469,31 @@ handles.main_ax = axes(...
     'ytick',        []                      ,...
     'fontName',     'Century Gothic'        ,...
     'fontSize',     8                       );
+
+% drop-down list of montages
+% ~~~~~~~~~~~~~~~~~~~~~~~~~~
+montage_dir  = which('ewa_eeg_plotter.m');
+montage_dir  = fullfile(fileparts(montage_dir), 'Montages');
+montage_list = dir(fullfile(montage_dir, '*.emo'));
+
+% check 
+if ~isempty(montage_list)
+    montage_list = {montage_list.name};
+    montage_list = [{''}; montage_list{:}];
+else
+    montage_list = {''};
+end
+
+% create the drop down
+handles.montage_list = uicontrol(       ...
+    'parent',       handles.fig         ,...
+    'style',        'popupmenu'         ,...
+    'backgroundColor', [0.2, 0.2, 0.2]  ,...
+    'units',        'normalized'        ,...
+    'position',     [0.05 0.9 0.2, 0.05],...
+    'string',       montage_list        ,...
+    'fontName',     'Century Gothic'    ,...
+    'fontSize',     8);
 
 % montage table
 handles.table = uitable(...
