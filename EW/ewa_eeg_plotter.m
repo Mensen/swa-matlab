@@ -76,7 +76,9 @@ handles.menu.options    = uimenu(handles.fig, 'label', 'options');
 handles.menu.disp_chans = uimenu(handles.menu.options,...
     'label', 'display channels',...
     'accelerator', 'd');
-
+handles.menu.epoch_length = uimenu(handles.menu.options,...
+    'label', 'epoch length',...
+    'accelerator', 'e');
 
 
 % scale indicator
@@ -102,7 +104,8 @@ handles.cPoint = uicontrol(...
 set(handles.menu.load, 'callback', {@fcn_load_eeg});
 set(handles.menu.montage, 'callback', {@fcn_montage_setup});
 
-set(handles.menu.disp_chans, 'callback', {@fcn_options, 'disp_chans'});
+set(handles.menu.disp_chans,   'callback', {@fcn_options, 'disp_chans'});
+set(handles.menu.epoch_length, 'callback', {@fcn_options, 'epoch_length'});
 
 set(handles.fig,...
     'KeyPressFcn', {@cb_key_pressed,});
@@ -436,7 +439,25 @@ switch type
                 fprintf(1, 'Warning: You requested more channels than available in the montage');
             end
         end
+        
+    case 'epoch_length'
+        
+        answer = inputdlg('length of epoch',...
+            '', 1, {num2str( EEG.ewa_montage.epoch_length )});
+        
+        % if different from previous
+        if ~isempty(answer)
+            newNumber = str2double(answer{1});
+            if newNumber ~= EEG.ewa_montage.epoch_length 
+                EEG.ewa_montage.epoch_length = newNumber;
+                % update the eeg structure before call
+                setappdata(handles.fig, 'EEG', EEG);
+                plot_initial_data(object)
+            end
+        end
+        
 end
+
 
 % Montage Functions
 % ^^^^^^^^^^^^^^^^^
@@ -492,8 +513,13 @@ handles.montage_list = uicontrol(       ...
     'units',        'normalized'        ,...
     'position',     [0.05 0.9 0.2, 0.05],...
     'string',       montage_list        ,...
+    'selectionHighlight', 'off'         ,...
+    'foregroundColor', [0.9, 0.9, 0.9]  ,...
     'fontName',     'Century Gothic'    ,...
     'fontSize',     8);
+
+set(handles.montage_list, 'callback', {@fcn_select_montage});
+
 
 % montage table
 handles.table = uitable(...
@@ -606,6 +632,7 @@ y = [EEG.chanlocs.y];
 if isfield(handles, 'line_arrows')
     try
         delete(handles.line_arrows);
+        handles.line_arrows = [];
     end
 end
 
@@ -651,6 +678,8 @@ switch event
         update_net_arrows(handles.fig)
 end
 
+set(handles.montage_list, 'value', 1);
+
 
 function fcn_button_delete(object, ~)
 % get the handles
@@ -672,7 +701,7 @@ update_net_arrows(handles.fig)
 function fcn_button_apply(object, ~)
 % get the montage handles
 handles = guidata(object);
-EEG         = getappdata(handles.ewa_plotter.fig, 'EEG');
+EEG     = getappdata(handles.ewa_plotter.fig, 'EEG');
 
 % get the table data
 data = get(handles.table, 'data');
@@ -694,3 +723,34 @@ guidata(handles.fig, handles);
 setappdata(handles.ewa_plotter.fig, 'EEG', EEG);
 
 plot_initial_data(handles.ewa_plotter.fig);
+
+
+function fcn_select_montage(object, ~)
+% get the montage handles
+handles = guidata(object);
+EEG     = getappdata(handles.ewa_plotter.fig, 'EEG');
+
+% find the montage directory
+montage_dir  = which('ewa_eeg_plotter.m');
+montage_dir  = fullfile(fileparts(montage_dir), 'Montages');
+
+% get the file name
+montage_name = get(handles.montage_list, 'string');
+montage_name = montage_name{get(handles.montage_list, 'value')};
+
+% check if the empty string was selected
+if ~isempty(montage_name)
+    montage = load(fullfile(montage_dir, montage_name), '-mat');
+    if isfield(montage, 'data')
+        set(handles.table, 'data', montage.data);
+    else
+        fprintf(1, 'Warning: could not find montage data in the file');
+    end
+end
+
+% update the handles in the structure
+guidata(handles.fig, handles);
+setappdata(handles.ewa_plotter.fig, 'EEG', EEG);
+
+% update the arrows on the montage plot
+update_net_arrows(handles.fig)
