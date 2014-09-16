@@ -499,8 +499,7 @@ montage_list = dir(fullfile(montage_dir, '*.emo'));
 
 % check 
 if ~isempty(montage_list)
-    montage_list = {montage_list.name};
-    montage_list = [{''}; montage_list{:}];
+    montage_list = [{''}; {montage_list.name}'];
 else
     montage_list = {''};
 end
@@ -517,8 +516,20 @@ handles.montage_list = uicontrol(       ...
     'foregroundColor', [0.9, 0.9, 0.9]  ,...
     'fontName',     'Century Gothic'    ,...
     'fontSize',     8);
-
 set(handles.montage_list, 'callback', {@fcn_select_montage});
+
+% create the save button
+handles.save_montage = uicontrol(...
+    'parent',       handles.fig,...
+    'style',        'push',...    
+    'string',       '+',...
+    'foregroundColor', 'k',...
+    'units',        'normalized',...
+    'position',     [0.275 0.93 0.02 0.02],...
+    'fontName',     'Century Gothic',...
+    'fontWeight',   'bold',...   
+    'fontSize',     10);
+set(handles.save_montage, 'callback', {@fcn_save_montage});
 
 
 % montage table
@@ -754,3 +765,41 @@ setappdata(handles.ewa_plotter.fig, 'EEG', EEG);
 
 % update the arrows on the montage plot
 update_net_arrows(handles.fig)
+
+
+function fcn_save_montage(object, ~)
+% get the montage handles
+handles = guidata(object);
+
+% get the montage data
+data = get(handles.table, 'data');
+
+% find the montage directory
+montage_dir  = which('ewa_eeg_plotter.m');
+montage_dir  = fullfile(fileparts(montage_dir), 'Montages');
+
+% ask user for the filename
+[fileName, filePath] = uiputfile(fullfile(montage_dir, '*.emo'));
+% check to see if user cancels
+if isempty(fileName)
+    return;
+end
+
+% check to make sure it ends with '.emo' extension
+if ~strcmp(fileName(end-3: end), '.emo')
+    fileName = [fileName, '.emo'];
+end
+
+% save the file
+save(fullfile(filePath, fileName), 'data', '-mat')
+
+% update the montage list
+montage_list = dir(fullfile(montage_dir, '*.emo'));
+montage_list = [{''}; {montage_list.name}'];
+
+new_index = find(strcmp(fileName, montage_list));
+
+% set the drop-down menu
+set(handles.montage_list,...
+    'string', montage_list,...
+    'value', new_index);
