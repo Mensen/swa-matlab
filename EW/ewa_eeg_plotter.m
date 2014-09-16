@@ -159,10 +159,9 @@ if ~isfield(EEG, 'ewa_montage')
     % assign defaults
     EEG.ewa_montage.display_channels    = 12;
     EEG.ewa_montage.epoch_length        = 30;
-    EEG.ewa_montage.no_channels         = 12;
-    EEG.ewa_montage.label_channels      = cell(EEG.ewa_montage.no_channels,1);
+    EEG.ewa_montage.label_channels      = cell(EEG.ewa_montage.display_channels, 1);
     EEG.ewa_montage.label_channels(:)   = deal({'undefined'});
-    EEG.ewa_montage.channels(:,1)       = [1:EEG.ewa_montage.no_channels]';
+    EEG.ewa_montage.channels(:,1)       = [1:EEG.ewa_montage.display_channels]';
     EEG.ewa_montage.channels(:,2)       = size(eegData, 1);
     EEG.ewa_montage.filter_options      = [0.5; 30]';
 end
@@ -203,14 +202,14 @@ data = single(filtfilt(EEG.filter.b, EEG.filter.a, double(data'))'); %transpose 
 % plot the data
 % ~~~~~~~~~~~~~
 % define accurate spacing
-scale = get(handles.txt_scale, 'value');
+scale = get(handles.txt_scale, 'value')*-1;
 toAdd = [1:EEG.ewa_montage.display_channels]'*scale;
 toAdd = repmat(toAdd, [1, length(range)]);
 
 % space out the data for the single plot
 data = data+toAdd;
 
-set([handles.main_ax, handles.name_ax], 'yLim', [0 scale]*(EEG.ewa_montage.display_channels+1))
+set([handles.main_ax, handles.name_ax], 'yLim', [scale 0]*(EEG.ewa_montage.display_channels+1))
 
 % in the case of replotting delete the old handles
 if isfield(handles, 'plot_eeg')
@@ -219,14 +218,13 @@ if isfield(handles, 'plot_eeg')
     delete(handles.indicator);
 end
 
+% calculate the time in seconds
 time = range/EEG.srate;
 set(handles.main_ax,  'xlim', [time(1), time(end)]);
 handles.plot_eeg = line(time, data,...
                         'color', [0.9, 0.9, 0.9],...
                         'parent', handles.main_ax);
                   
-% add channel names to plot
-    % TODO: figure out the x position
 % plot the labels in their own boxes
 handles.labels = zeros(length(EEG.ewa_montage.label_channels(channels)), 1);
 for chn = 1:length(EEG.ewa_montage.label_channels(channels))
@@ -276,7 +274,7 @@ data = single(filtfilt(EEG.filter.b, EEG.filter.a, double(data'))'); %transpose 
 % plot the data
 % ~~~~~~~~~~~~~
 % define accurate spacing
-scale = get(handles.txt_scale, 'value');
+scale = get(handles.txt_scale, 'value')*-1;
 toAdd = [1:EEG.ewa_montage.display_channels]'*scale;
 toAdd = repmat(toAdd, [1, length(range)]);
 
@@ -384,7 +382,7 @@ if isempty(event.Modifier)
             end
             
             set(handles.txt_scale, 'string', get(handles.txt_scale, 'value'));
-            set(handles.main_ax, 'yLim', [0 get(handles.txt_scale, 'value')]*(EEG.ewa_montage.display_channels+1))
+            set(handles.main_ax, 'yLim', [get(handles.txt_scale, 'value')*-1, 0]*(EEG.ewa_montage.display_channels+1))
             fcn_update_axes(object)
             
         case 'downarrow'
@@ -398,7 +396,7 @@ if isempty(event.Modifier)
             end
             
             set(handles.txt_scale, 'string', get(handles.txt_scale, 'value'));
-            set(handles.main_ax, 'yLim', [0 get(handles.txt_scale, 'value')]*(EEG.ewa_montage.display_channels+1))
+            set(handles.main_ax, 'yLim', [get(handles.txt_scale, 'value')*-1, 0]*(EEG.ewa_montage.display_channels+1))
             fcn_update_axes(object)
     end
 
@@ -431,11 +429,13 @@ switch type
         % if different from previous
         if ~isempty(answer)
             newNumber = str2double(answer{1});
-            if newNumber ~= EEG.ewa_montage.display_channels && newNumber <= EEG.ewa_montage.no_channels 
+            if newNumber ~= EEG.ewa_montage.display_channels && newNumber <= length(EEG.ewa_montage.label_channels); 
                 EEG.ewa_montage.display_channels = newNumber;
                 % update the eeg structure before call
                 setappdata(handles.fig, 'EEG', EEG);
                 plot_initial_data(object)
+            else
+                fprintf(1, 'Warning: You requested more channels than available in the montage');
             end
         end
 end
@@ -444,8 +444,8 @@ end
 % ^^^^^^^^^^^^^^^^^
 function fcn_montage_setup(object, ~)
 % get the original figure handles
-ohandles = guidata(object);
-EEG = getappdata(ohandles.fig, 'EEG');
+handles.ewa_plotter = guidata(object);
+EEG = getappdata(handles.ewa_plotter.fig, 'EEG');
 
 % make a window
 % ~~~~~~~~~~~~~
@@ -510,7 +510,7 @@ handles.button_apply = uicontrol(...
 set(handles.button_apply, 'callback', {@fcn_button_apply});
 
 % set the initial table values
-data = cell(EEG.ewa_montage.no_channels,3);
+data = cell(length(EEG.ewa_montage.label_channels), 3);
 % current montage
 data(:,1) = deal(EEG.ewa_montage.label_channels);
 data(:,[2,3]) = num2cell(EEG.ewa_montage.channels);
@@ -519,18 +519,16 @@ data(:,[2,3]) = num2cell(EEG.ewa_montage.channels);
 set(handles.table, 'data', data);
 
 % update handle structure
-handles.original = ohandles.fig;
 guidata(handles.fig, handles);
 
 % plot the net
-plot_net(handles.fig, ohandles.fig)
+plot_net(handles.fig)
 
 
-function plot_net(montage_handle, original_handle)
+function plot_net(montage_handle)
 % get the handles and EEG structure
 handles  = guidata(montage_handle);
-ohandles = guidata(original_handle);
-EEG = getappdata(ohandles.fig, 'EEG');
+EEG = getappdata(handles.ewa_plotter.fig, 'EEG');
 
 if ~isfield(EEG.chanlocs(1), 'x')
    EEG.chanlocs = swa_add2dlocations(EEG.chanlocs); 
@@ -569,16 +567,15 @@ end
 set(handles.plt_markers, 'ButtonDownFcn', {@bdf_select_channel});
 
 guidata(handles.fig, handles);
-setappdata(ohandles.fig, 'EEG', EEG);
+setappdata(handles.ewa_plotter.fig, 'EEG', EEG);
 
-update_net_arrows(handles.fig, ohandles.fig)
+update_net_arrows(handles.fig)
 
 
-function update_net_arrows(montage_handle, original_handle)
+function update_net_arrows(montage_handle)
 % get the handles and EEG structure
 handles     = guidata(montage_handle);
-ohandles    = guidata(original_handle);
-EEG         = getappdata(ohandles.fig, 'EEG');
+EEG         = getappdata(handles.ewa_plotter.fig, 'EEG');
 
 x = [EEG.chanlocs.x];
 y = [EEG.chanlocs.y];
@@ -628,7 +625,7 @@ switch event
         set(handles.table, 'data', data);
         
         % replot the arrows
-        update_net_arrows(handles.fig, handles.original)
+        update_net_arrows(handles.fig)
 end
 
 
@@ -640,9 +637,37 @@ handles = guidata(object);
 jscroll = findjobj(handles.table);
 del_ind = jscroll.getComponent(0).getComponent(0).getSelectedRows+1;
 
+% get the table, delete the rows and reset the table
 data = get(handles.table, 'data');
 data(del_ind, :) = [];
 set(handles.table, 'data', data);
 
+% update the arrows on the montage plot
+update_net_arrows(handles.fig)
+
 
 function fcn_button_apply(object, ~)
+% get the montage handles
+handles = guidata(object);
+EEG         = getappdata(handles.ewa_plotter.fig, 'EEG');
+
+% get the table data
+data = get(handles.table, 'data');
+
+% check the all inputs are valid
+if any(any(cellfun(@(x) ~isa(x, 'double'), data(:,[2,3]))))
+    fprintf(1, 'Warning: check that all channel inputs are numbers\n');
+end
+
+EEG.ewa_montage.label_channels  = data(:,1);
+EEG.ewa_montage.channels        = cell2mat(data(:,[2,3]));
+
+if length(EEG.ewa_montage.label_channels) < EEG.ewa_montage.display_channels
+    EEG.ewa_montage.display_channels = length(EEG.ewa_montage.label_channels);
+    fprintf(1, 'Warning: reduced number of display channels to match montage\n');
+end
+
+guidata(handles.fig, handles);
+setappdata(handles.ewa_plotter.fig, 'EEG', EEG);
+
+plot_initial_data(handles.ewa_plotter.fig);
