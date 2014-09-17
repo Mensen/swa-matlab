@@ -1,3 +1,4 @@
 *.c~
 *.m~
-/EW/Montages/*
+EW/Montages/*
+!EW/Montages/test.emo
