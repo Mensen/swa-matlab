@@ -15,8 +15,6 @@ function ewa_eeg_plotter()
 %TODO: Montage
         %Green line in front of headset
         %headset electrodes smaller due to poor resolution on my computer
-        %name of montage top center of headset
-        %Tool bar has a drop down menu: for example; new, 10-20, etc.
 
 % make a window
 % ~~~~~~~~~~~~~
@@ -779,10 +777,15 @@ montage_dir  = which('ewa_eeg_plotter.m');
 montage_dir  = fullfile(fileparts(montage_dir), 'Montages');
 
 % ask user for the filename
-[fileName, filePath] = uiputfile(fullfile(montage_dir, '*.emo'));
+fileName = inputdlg('new montage name',...
+    '', 1, {'new_montage'});
+
 % check to see if user cancels
 if isempty(fileName)
     return;
+else
+    % if not then get the string
+    fileName = fileName{1};
 end
 
 % check to make sure it ends with '.emo' extension
@@ -791,7 +794,7 @@ if ~strcmp(fileName(end-3: end), '.emo')
 end
 
 % save the file
-save(fullfile(filePath, fileName), 'data', '-mat')
+save(fullfile(montage_dir, fileName), 'data', '-mat')
 
 % update the montage list
 montage_list = dir(fullfile(montage_dir, '*.emo'));
