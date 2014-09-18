@@ -8,7 +8,7 @@ if ~isfield(Info.Parameters, 'Travelling_GS');
 end
 
 %% Check Electrodes for 2D locations (match to grid)
-Info.Electrodes = swa_add2dlocations(Info.Electrodes, Info.Parameters.Stream_GS);
+Info.Electrodes = swa_add2dlocations(Info.Electrodes, Info.Parameters.Travelling_GS);
 fprintf(1,'Calculation: 2D electrode projections (Info.Electrodes). \n');
 
 xloc = [Info.Electrodes.x]; xloc=xloc(:);
