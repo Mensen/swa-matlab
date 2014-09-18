@@ -29,35 +29,6 @@ else
     Data.Filtered = swa_filter_data(Data.Raw, Info);
 end
     
-if Info.Parameters.Filter_Apply
-    if ~isfield(Data, 'Filtered')
-        fprintf(1, 'Calculating: Filtering Dataset...');
-        switch Info.Parameters.Filter_Method
-            case 'Chebyshev'
-                Wp=[Info.Parameters.Filter_hPass Info.Parameters.Filter_lPass]/(Info.Recording.sRate/2); % Filtering parameters
-                Ws=[Info.Parameters.Filter_hPass/5 Info.Parameters.Filter_lPass*2]/(Info.Recording.sRate/2); % Filtering parameters
-                Rp=3;
-                Rs=10;
-                [n, Wn]=cheb2ord(Wp,Ws,Rp,Rs);
-                [bbp,abp]=cheby2(n,Rs,Wn); % Loses no more than 3 dB in pass band and has at least 10 dB attenuation in stop band
-                clear pass* stop* Rp Rs W* n;
-                Data.Filtered = filtfilt(bbp, abp, Data.Raw')';
-                
-            case 'Buttersworth'
-                fhc = Info.Parameters.Filter_hPass/(Info.Recording.sRate/2);
-                flc = Info.Parameters.Filter_lPass/(Info.Recording.sRate/2);
-                [b1,a1] = butter(Info.Parameters.Filter_order,fhc,'high');
-                [b2,a2] = butter(Info.Parameters.Filter_order,flc,'low');
-                
-                Data.Filtered = filtfilt(b1, a1, Data.Raw');
-                Data.Filtered = filtfilt(b2, a2, Data.Filtered)';
-        end
-        fprintf(1, 'Done. \n');
-    else
-        display('Information: Data not re-filtered; using data supplied');
-    end
-end
-
 win = round(Info.Parameters.Channels_WinSize*Info.Recording.sRate);
 
 %% Find corresponding channels from the reference wave
