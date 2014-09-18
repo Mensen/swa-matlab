@@ -24,8 +24,8 @@ switch type
         Info.Parameters.Channels_WinSize    = 0.2;
         
         % travelling parameters
-        Info.Parameters.Stream_GS       = 40; % size of interpolation grid
-        Info.Parameters.Stream_MinDelay = 40; % minimum travel time (ms)
+        Info.Parameters.Travelling_GS       = 40; % size of interpolation grid
+        Info.Parameters.Travelling_MinDelay = 40; % minimum travel time (ms)
         
         if isempty(method)
             method = 'envelope';
