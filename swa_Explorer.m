@@ -24,6 +24,9 @@ handles.fig = figure(...
     'Units',        'pixels',...
     'Outerposition',figPos);
 
+set(handles.fig,...
+    'KeyPressFcn', {@cb_KeyPressed});
+
 %% Menus
 handles.menu.File = uimenu(handles.fig, 'Label', 'File');
 handles.menu.LoadData = uimenu(handles.menu.File,...
@@ -392,10 +395,6 @@ handles.java.Slider.setMaximum(length(handles.SW));
 handles.java.Slider.setMinorTickSpacing(5);
 handles.java.Slider.setMajorTickSpacing(20);
 handles.java.Slider.setPaintTicks(true);
-% handles.java.Slider.setPaintLabels(false);
-% handles.java.Slider.setPaintLabels(true);
-
-% handles.java.Spinner.setValue(1);
 
 %% Draw Initial Plots
 % Origins & Delay Plot
@@ -477,6 +476,26 @@ handles = update_SWPlot(handles);
 handles = update_SWDelay(handles, 0);
 
 guidata(handles.fig, handles);
+
+function cb_KeyPressed(object, eventdata)
+% get the updated handles structure (*not updated properly)
+handles = guidata(object);
+
+% initial plot then update the yData in a loop (faster than replot)
+nSW = handles.java.Spinner.getValue();
+
+% movement keys
+switch eventdata.Key
+    case 'rightarrow'
+        % move to the next wave if not at the end
+        if nSW < handles.java.Slider.getMaximum
+            handles.java.Spinner.setValue(nSW+1);
+        end
+    case 'leftarrow'
+        if nSW > 1
+            handles.java.Spinner.setValue(nSW-1);
+        end
+end
 
 
 %% Plot Controls
@@ -902,7 +921,7 @@ switch handles.SW_Type
     case 'SS'
         range = handles.SW(nSW).Ref_Start-win:handles.SW(nSW).Ref_End+win;
     case 'ST'
-        range = handles.SW(nSW).CWT_NegativePeak-win:(handles.SW(nSW).CWT_NegativePeak+win;
+        range = handles.SW(nSW).CWT_NegativePeak-win:handles.SW(nSW).CWT_NegativePeak+win;
 end
 
 currData    = Data.Raw(handles.SW(nSW).Channels_Active, range);
