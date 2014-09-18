@@ -1,10 +1,10 @@
 function [Info, SW] = swa_FindSWTravelling(Info, SW, indSW)
 % Calculate the streamlines for each slow wave
 
-if ~isfield(Info.Parameters, 'Stream_GS');
-    Info.Parameters.Stream_GS = 20; % size of interpolation grid
+if ~isfield(Info.Parameters, 'Travelling_GS');
+    Info.Parameters.Travelling_GS = 20; % size of interpolation grid
     fprintf(1,'Information: Interpolation grid set at 20x20 by default. \n');
-    Info.Parameters.Stream_MinDelay = 40; % minimum travel time (ms)
+    Info.Parameters.Travelling_MinDelay = 40; % minimum travel time (ms)
 end
 
 %% Check Electrodes for 2D locations (match to grid)
@@ -15,7 +15,7 @@ xloc = [Info.Electrodes.x]; xloc=xloc(:);
 yloc = [Info.Electrodes.y]; yloc=yloc(:);
 
 %% Create the plotting mesh
-GS = Info.Parameters.Stream_GS; 
+GS = Info.Parameters.Travelling_GS; 
 XYrange = linspace(1, GS, GS);
 XYmesh = XYrange(ones(GS,1),:);
 F = TriScatteredInterp(xloc,yloc,SW(1).Travelling_Delays(:), 'natural');      % No speed difference in methods...
@@ -33,7 +33,7 @@ for nSW = loopRange
     Delays      = SW(nSW).Travelling_Delays;
     
     % Check for minimum travel time...
-    if max(Delays) < Info.Parameters.Stream_MinDelay * Info.Recording.sRate/1000
+    if max(Delays) < Info.Parameters.Travelling_MinDelay * Info.Recording.sRate/1000
         continue
     end
     
