@@ -49,7 +49,13 @@ handles.StatusBar = uicontrol(...
     'FontName', 'Century Gothic',...
     'FontSize', 10);
 
-handles.java.StatusBar = findjobj(handles.StatusBar); drawnow;
+handles.java.StatusBar = findjobj(handles.StatusBar); 
+
+% first java call may cause 'no appropriate method' error 
+% as handle is not visible
+drawnow; pause(0.1);
+
+% set the alignment of the status bar
 handles.java.StatusBar.setVerticalAlignment(javax.swing.SwingConstants.CENTER);
 handles.java.StatusBar.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
 
@@ -280,8 +286,8 @@ handles.ax_option(2) = axes(...
 
 % create the drop down menus
 % ~~~~~~~~~~~~~~~~~~~~~~~~~~
-% get the currently available options
 
+% make the drop-down menus as java objects
 [handles.java.options_list(1), handles.options_list(1)] = javacomponent(javax.swing.JComboBox);
 set(handles.options_list(1),...
     'parent',   handles.fig,...      
@@ -300,14 +306,8 @@ set(handles.options_list(2),...
 set(handles.java.options_list(2),...
     'ActionPerformedCallback', {@fcn_select_options, handles.fig, 2});
 
-% TODO: function call to wave_summary that returns options
-options_list = {...
-    'globality'     ,...
-    'ampVtime'      ,...
-    'wavelengths'   ,...
-    'anglemap'      ,...
-    'topo_density'  ,...
-    'topo_origins'  };
+% get the currently available options
+options_list = swa_wave_summary('return options');
 
 % create and set the java models for the options list
 model1 = javax.swing.DefaultComboBoxModel(options_list);
@@ -360,6 +360,7 @@ jFrame = get(handle(handles.fig),'JavaFrame');
 jFrame.setMaximized(true);   % to maximize the figure
 
 guidata(handles.fig, handles);
+
 
 function menu_LoadData(object, ~)
 handles = guidata(object);
@@ -429,20 +430,18 @@ handles.java.Slider.setMajorTickSpacing(20);
 handles.java.Slider.setPaintTicks(true);
 
 %% Draw Initial Plots
-% Origins & Delay Plot
-handles = update_SWOriginsMap(handles, 0);
-
-% Colormap
-colormap(flipud(hot))
-
-set(handles.StatusBar, 'String', 'Idle');
-
 % Update handles structure
 guidata(handles.fig, handles);
 setappdata(handles.fig, 'Data', loaded_file.Data);
 
+% Two summary plots
+fcn_select_options([],[], handles.fig, 1);
+fcn_select_options([],[], handles.fig, 2);
+
 % set the spinner value which initiates other plot updates
 handles.java.Spinner.setValue(1);
+
+set(handles.StatusBar, 'String', 'Idle');
 
 function menu_SaveData(hObject, ~)
 % get the GUI handles
@@ -490,10 +489,10 @@ end
 
 handles.java.Slider.setValue(handles.java.Spinner.getValue())
 
-% Update the plots (except origins and density since they are global)
+% update the plots
 handles = update_SWPlot(handles);
-handles = update_SWDelay(handles, 0);
 handles = update_ButterflyPlot(handles);
+handles = update_SWDelay(handles, 0);
 
 guidata(hObject, handles);
 
@@ -675,13 +674,20 @@ else
 end
 
 function handles = update_SWDelay(handles, nFigure)
+% plot the delay/involvement map
+
+% get the current wave number
 nSW = handles.java.Spinner.getValue();
 
-if nFigure ~= 1; cla(handles.ax_Delay); end
+% clear the axes for a new plot
+if nFigure ~= 1; 
+    cla(handles.ax_Delay); 
+end
 
-% Plot the Delay Map...
-if handles.java.PlotBox.getSelectedIndex()+1 == 1;
+% plot the Delay Map...
+if handles.java.PlotBox.getSelectedIndex()+1 == 1
 
+    % take the delay map from the SW structure if possible
     if ~isempty(handles.SW(nSW).Travelling_DelayMap)
         H = swa_Topoplot...
             (handles.SW(nSW).Travelling_DelayMap, handles.Info.Electrodes,...
@@ -693,7 +699,9 @@ if handles.java.PlotBox.getSelectedIndex()+1 == 1;
             'PlotChannels',     get(handles.Channels_Delay, 'value'),...
             'PlotStreams',      get(handles.Streams_Delay,  'value'),...
             'Streams',          handles.SW(nSW).Travelling_Streams);
-    else % if there is no delay map make one!
+        
+    % if there is no delay map make one   
+    else 
         H = swa_Topoplot...
             ([],                handles.Info.Electrodes,            ...
             'Data',             handles.SW(nSW).Travelling_Delays   ,...
@@ -717,10 +725,11 @@ if handles.java.PlotBox.getSelectedIndex()+1 == 1;
     end
 
 % Or plot the involvement map (peak 2 peak amplitudes for active channels
-elseif handles.java.PlotBox.getSelectedIndex()+1 == 2;
+elseif handles.java.PlotBox.getSelectedIndex()+1 == 2;   
+    
     swa_Topoplot...
         ([],                handles.Info.Electrodes             ,...
-        'Data',             handles.SW(nSW).Channels_Peak2PeakAmp,...
+        'Data',             handles.SW(nSW).Channels_NegAmp     ,...
         'GS',               handles.Info.Parameters.Travelling_GS,...
         'NewFigure',        nFigure                             ,...
         'Axes',             handles.ax_Delay                    ,...
@@ -733,36 +742,29 @@ elseif handles.java.PlotBox.getSelectedIndex()+1 == 2;
     
 end
 
-function handles = update_SWOriginsMap(handles, nFigure)
+function fcn_select_options(~, ~, object, no_axes)
+% function to change the summary plot displayed
 
-% pre-allocate the origins and totals data
-handles.Origins = zeros(length(handles.SW(1).Channels_Active),1);
-handles.Totals  = zeros(length(handles.SW(1).Channels_Active),1);
+% get the handles from the figure
+handles = guidata(object);
 
-for i = 1:length(handles.SW)
-    handles.Origins(handles.SW(i).Travelling_Delays<1)  = handles.Origins(handles.SW(i).Travelling_Delays<1) + 1;
-    handles.Totals(handles.SW(i).Channels_Active)       = handles.Totals(handles.SW(i).Channels_Active) +1;
+% get the data structure
+Data = getappdata(handles.fig, 'Data');
+
+% if handles is empty, return
+if isempty(Data)
+    return
 end
 
-% Plot the origins map
-swa_Topoplot(...
-    [],                 handles.Info.Electrodes,...
-    'Data',             handles.Origins                     ,...
-    'GS',               handles.Info.Parameters.Travelling_GS,...
-    'NewFigure',        nFigure                             ,...
-    'Axes',             handles.ax_Origins                  ,...
-    'NumContours',      4                                   ,...
-    'PlotSurface',      1                                   );
+% clear whatever is on the current axes
+cla(handles.ax_option(no_axes));
 
-% Plot the density map
-swa_Topoplot(...
-    [],                 handles.Info.Electrodes,...
-    'Data',             handles.Totals                     ,...
-    'GS',               handles.Info.Parameters.Travelling_GS,...
-    'NewFigure',        nFigure                             ,...
-    'Axes',             handles.ax_Density                  ,...
-    'NumContours',      4                                   ,...
-    'PlotSurface',      1                                   );
+% get the selected option
+type = handles.java.options_list(no_axes).getSelectedItem;
+
+% draw the selected summary statistic on the axes
+swa_wave_summary(handles.SW, handles.Info,...
+    type, 1, handles.ax_option(no_axes));
 
 
 %% Push Buttons
@@ -1011,8 +1013,6 @@ end
 
 handles = update_SWDelay(handles, 0);
 guidata(handles.fig, handles);
-
-function fcn_select_options(~, ~, object)
 
 function Butterfly_Context(hObject, ~, Direction)
 handles = guidata(hObject);
