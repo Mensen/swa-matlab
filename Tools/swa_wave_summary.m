@@ -1,16 +1,36 @@
-function [output, h] = swa_wave_summary(SW, Info, type, makePlot)
-% type options
-%   globality
-%   ampVtime
-%   wavelengths
-%   anglemap
-%   topo_density
-%   topo_origins
+function [output, h] = swa_wave_summary(SW, Info, type, makePlot, axes_handle)
+% function to output and plot a summary statistic for swa output files
+
+% set default plot parameters
+if nargin < 4
+    makePlot = 0;
+    axes_handle = [];
+end
+
+% if function is called with a single 'return options' argument then return
+% the list of current available summary options
+if isa(SW, 'char')
+    if strcmp(SW, 'return options')
+        output = {...
+            'globality'     ;...
+            'ampVtime'      ;...
+            'wavelengths'   ;...
+            'anglemap'      ;...
+            'topo_density'  ;...
+            'topo_origins'  };
+        return;
+    end
+end
+       
 
 % create the figure if makePlot option is set
 if makePlot
-    h.fig = figure('color', 'w');
-    h.ax  = axes('parent', h.fig);
+    if isempty(axes_handle)
+        h.fig = figure('color', 'w');
+        h.ax  = axes('parent', h.fig);
+    else
+        h.ax  = axes_handle;
+    end
 end
 
 % switch between summary types
@@ -19,12 +39,15 @@ case 'globality'
     output = sum([SW.Channels_Active])/length(SW(1).Channels_Active)*100;
     if makePlot
         hist(h.ax, output);
-        set(h.ax,...
-            'title', text('string', 'Waves Globality'),...
-            'XLim', [0, 100]);
-
-        set(get(h.ax, 'xlabel'), 'string', 'Percentage of channels in the wave');
-        set(get(h.ax, 'ylabel'), 'string', 'Number of Waves');
+        if isempty(axes_handle)
+            % set the title and labels
+            set(h.ax,...
+                'title', text('string', 'Waves Globality'),...
+                'XLim', [0, 100]);
+            
+            set(get(h.ax, 'xlabel'), 'string', 'Percentage of channels in the wave');
+            set(get(h.ax, 'ylabel'), 'string', 'Number of Waves');
+        end
     end
 
 case 'distances'
@@ -39,11 +62,13 @@ case 'distances'
 
     if makePlot
         hist(h.ax, output);
-        set(h.ax,...
-            'title', text('string', 'Travel Distance'));
-
-        set(get(h.ax, 'xlabel'), 'string', 'Distance Travelled');
-        set(get(h.ax, 'ylabel'), 'string', 'Number of Waves');
+        if isempty(axes_handle)
+            set(h.ax,...
+                'title', text('string', 'Travel Distance'));
+            
+            set(get(h.ax, 'xlabel'), 'string', 'Distance Travelled');
+            set(get(h.ax, 'ylabel'), 'string', 'Number of Waves');
+        end
     end
 
 case 'ampVtime'
@@ -56,23 +81,33 @@ case 'ampVtime'
             'markerFaceColor',  'k'     ,...
             'markerEdgeColor',  'r')
 
+        % set the x-axis limits to the maximum of the data
         set(h.ax,...
-            'title', text('string', 'Amplitude over Time'));
-
-        set(get(h.ax, 'xlabel'), 'string', 'Time (samples)');
-        set(get(h.ax, 'ylabel'), 'string', 'Reference Amplitude');
+            'xlim', [0, max(output(2,:))]);
+        
+        if isempty(axes_handle)
+            % set the title and labels
+            set(h.ax,...
+                'title', text('string', 'Amplitude over Time'));
+            
+            set(get(h.ax, 'xlabel'), 'string', 'Time (samples)');
+            set(get(h.ax, 'ylabel'), 'string', 'Reference Amplitude');
+        end
     end
 
 case 'wavelengths'
     output = ([SW.Ref_UpInd]-[SW.Ref_DownInd])/Info.Recording.sRate*1000;
     if makePlot
         hist(h.ax, output);
-        set(h.ax,...
-            'title', text('string', 'Wavelengths'),...
-            'XLim', [0, 1500]);
-
-        set(get(h.ax, 'xlabel'), 'string', 'Wavelengths (ms)');
-        set(get(h.ax, 'ylabel'), 'string', 'Number of Waves');
+        if isempty(axes_handle)
+            % set the title and labels
+            set(h.ax,...
+                'title', text('string', 'Wavelengths'),...
+                'XLim', [0, 1500]);
+            
+            set(get(h.ax, 'xlabel'), 'string', 'Wavelengths (ms)');
+            set(get(h.ax, 'ylabel'), 'string', 'Number of Waves');
+        end
     end
 
 case 'anglemap'
@@ -89,11 +124,15 @@ case 'anglemap'
         h.plt = rose(h.ax, output*(pi/180));
         xc    = get(h.plt, 'Xdata');
         yc    = get(h.plt, 'Ydata');
-
-        set(h.ax,...
-            'title', text('string', 'Angle Map (Longest Stream)'));
+        
+        if isempty(axes_handle)
+            % set the title and labels
+            set(h.ax,...
+                'title', text('string', 'Angle Map (Longest Stream)'));
+        end
+        
         % create a patch object to shade the rose diagram
-        h.ptch = patch(xc, yc, 'b');
+        h.ptch = patch(xc, yc, 'b', 'parent', h.ax);
         set(h.ptch, 'edgeColor', 'w', 'linewidth', 2);
     end
 
@@ -106,12 +145,10 @@ case 'topo_density'
     h.plt = swa_Topoplot(...
         [], Info.Electrodes,...
         'Data',             output                ,...
-        'GS',               Info.Parameters.Stream_GS,...
+        'GS',               Info.Parameters.Travelling_GS,...
         'Axes',             h.ax                  ,...
         'NumContours',      10                     ,...
         'PlotSurface',      0                     );
-
-    colormap(flipud(hot));
 
 case 'topo_origins'
     output  = zeros(Info.Recording.dataDim(1),1);
@@ -122,12 +159,10 @@ case 'topo_origins'
     h.plt = swa_Topoplot(...
         [], Info.Electrodes,...
         'Data',             output                ,...
-        'GS',               Info.Parameters.Stream_GS,...
+        'GS',               Info.Parameters.Travelling_GS,...
         'Axes',             h.ax                  ,...
         'NumContours',      10                     ,...
         'PlotSurface',      0                     );
-
-    colormap(flipud(hot));
 
 %TODO: correlation between MPP->MNP || MNP->MPP
 %TODO: average delay map
