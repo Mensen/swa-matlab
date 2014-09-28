@@ -18,6 +18,10 @@ end
 
 % Filter the original signal
 % ``````````````````````````
+
+% TODO: Solve persistent 'out of memory' issues while raw and filtered
+% files are kept in memory
+
 % Check for previously filtered data
 if isfield(Data, 'Filtered')
     % if the field exists but is empty then filter it
@@ -66,9 +70,9 @@ switch Info.Parameters.Ref_Method
             
             % Minimum amplitude threshold (10% of maximum)
             % ````````````````````````````````````````````
-            x = nan(length(Info.Electrodes),1);
-            x(Channels,:) = min(shortData(Channels,:),[],2);
-            Channels(x > Info.Parameters.Ref_NegAmpMin/10) = false;
+            SW(nSW).Channels_NegAmp = nan(length(Info.Electrodes),1);
+            SW(nSW).Channels_NegAmp(Channels,:) = min(shortData(Channels,:),[],2);
+            Channels(SW(nSW).Channels_NegAmp > Info.Parameters.Ref_NegAmpMin/10) = false;
             
             % Cluster Test
             % ````````````
@@ -88,16 +92,16 @@ switch Info.Parameters.Ref_Method
                 Channels = Clusters == nClusters(keepCluster);
             end
             
-            % Calculate peak negative amplitude and channel
-            % `````````````````````````````````````````````
-            [SW(nSW).Channels_NegAmp, id] = min(x);
-            SW(nSW).Channels_NegAmpInd = id;
-            
             % Cross correlate with the peak (prototypical channel)
             % only calculate if ref correlation is not 'very high'
-            if maxCC(id) < (Info.Parameters.Channels_CorrThresh+1)/2
-                maxDelay = maxID(id)-win;
-                maxData = Data.Filtered(id, SW(nSW).Ref_PeakInd-win+maxDelay : SW(nSW).Ref_PeakInd+win+maxDelay);
+            
+            % find the prototypical channel
+            [~, negative_peak_index] = min(SW(nSW).Channels_NegAmp);
+            
+            if maxCC(negative_peak_index) < (Info.Parameters.Channels_CorrThresh + 1) / 2
+                maxDelay = maxID(negative_peak_index) - win;
+                maxData = Data.Filtered(negative_peak_index,...
+                    SW(nSW).Ref_PeakInd - win + maxDelay : SW(nSW).Ref_PeakInd + win + maxDelay);
                 
                 cc = swa_xcorr(maxData, shortData, win);
             
@@ -115,7 +119,12 @@ switch Info.Parameters.Ref_Method
             
             % TODO: Processing for multi-peak waves
             % ```````````````````````````````
+
             
+            % eliminate the potentially false channels from the cluster test
+            % in the negative amplitudes variable 
+            SW(nSW).Channels_NegAmp(~Channels) = nan;
+
             
             % Delay Calculation
             % `````````````````
@@ -131,43 +140,41 @@ switch Info.Parameters.Ref_Method
         
         for nSW = 1:length(SW)
             
+            % start the waitbar
             waitbar(nSW/length(SW),WaitHandle,sprintf('Slow Wave %d of %d',nSW, length(SW)))
             
+            % only take the relevant data in the window
             shortData = Data.Filtered(:,SW(nSW).Ref_PeakInd-win:SW(nSW).Ref_PeakInd+win);
             
-            %% Minimum amplitude threshold for channels
-            [minChAmp, minChId] = min(shortData,[],2);
-            SW(nSW).Channels_Active = minChAmp < -Info.Parameters.Ref_NegAmpMin;
-            % Save peak negative amplitude and channel
-            [SW(nSW).Channels_NegAmp, SW(nSW).Channels_NegAmpInd] = min(minChAmp);
-
-            %% Peak to Peak Check
-            % MDC Test for peak to peak amplitude
-            posPeakAmp = nan(size(minChAmp));
-            for nCh = find(SW(nSW).Channels_Active == 1)'
-                posPeakAmp(nCh) = max(shortData(nCh,minChId(nCh):end));
-            end
-            SW(nSW).Channels_Active(posPeakAmp-minChAmp < Info.Parameters.Ref_Peak2Peak) = false;
+            % Minimum amplitude threshold for channels
+            [SW(nSW).Channels_NegAmp, minChId] = min(shortData,[],2);
+            SW(nSW).Channels_Active = SW(nSW).Channels_NegAmp < -Info.Parameters.Ref_NegAmpMin;
             
-            %% Wavelength Check
+            % Peak to Peak Check
+            % MDC Test for peak to peak amplitude
+            posPeakAmp = nan(size(shortData, 1));
+            for nCh = find(SW(nSW).Channels_Active == 1)'
+                posPeakAmp(nCh) = max(shortData(nCh, minChId(nCh):end));
+            end
+            SW(nSW).Channels_Active(posPeakAmp-SW(nSW).Channels_NegAmp < Info.Parameters.Ref_Peak2Peak) = false;
+            
+            % Wavelength Check
             % Not performed as some channels do not actually cross zero but
             % show all other characteristics of the slow wave
             
             %% Sufficient Channels Check (more than 0)
             if sum(SW(nSW).Channels_Active)==0
-                ToDelete(end+1)=nSW;
+                ToDelete(end+1) = nSW;
                 continue
             end
             
-            %% Delay Calculation
+            % Delay Calculation
             % Using negative peak id
             SW(nSW).Travelling_Delays = nan(length(Info.Electrodes),1);
             SW(nSW).Travelling_Delays(SW(nSW).Channels_Active)...
                 = minChId(SW(nSW).Channels_Active) - min(minChId(SW(nSW).Channels_Active));
             
             SW(nSW).Channels_Globality   = sum(SW(nSW).Channels_Active)/length(SW(nSW).Channels_Active)*100;            
-            
-            
         end
             
 end
