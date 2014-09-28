@@ -768,49 +768,42 @@ swa_wave_summary(handles.SW, handles.Info,...
 
 
 %% Push Buttons
-function pb_XOrigins_Callback(hObject, ~)
-% get the GUI handles
-handles = guidata(hObject);
-
-swa_Topoplot(...
-    [],                 handles.Info.Electrodes,...
-    'Data',             handles.Origins                     ,...
-    'GS',               handles.Info.Parameters.Travelling_GS,...
-    'NewFigure',        1                                   ,...
-    'Axes',             handles.ax_Origins                  ,...
-    'NumContours',      4                                   ,...
-    'PlotSurface',      1                                   );
-
-function pb_XDensity_Callback(hObject, ~)
-% get the GUI handles
-handles = guidata(hObject);
-
-swa_Topoplot(...
-    [], handles.Info.Electrodes,...
-    'Data',             handles.Totals                     ,...
-    'GS',               handles.Info.Parameters.Travelling_GS,...
-    'NewFigure',        1                                   ,...
-    'Axes',             handles.ax_Density                  ,...
-    'NumContours',      4                                   ,...
-    'PlotSurface',      1                                   );
 
 function pb_XDelay_Callback(hObject, ~)
 handles = guidata(hObject);
 update_SWDelay(handles, 1);
 
 function pb_Delete_Callback(hObject, ~)
+% function to delete an entire wave from the SW structure and redraw the
+% plots
+
+% get the gui handles
 handles = guidata(hObject);
 
-handles.SW(handles.java.Spinner.getValue())=[];
+% get the current wave
+nSW = handles.java.Spinner.getValue();
 
+% delete the wave from the handles structure
+handles.SW(nSW)=[];
+
+% reset the maximum of the slider
 handles.java.Slider.setMaximum(length(handles.SW));
 
-% Update the Origins and Density Maps with new values
-handles = update_SWOriginsMap(handles, 0);
-colormap(flipud(hot));
+% delete the arrow on the butterfly plot then the handle
+delete(handles.arrows_Butterfly(nSW));
+handles.arrows_Butterfly(nSW) = [];
 
+% update the handles structure
 guidata(hObject, handles);
+
+% update the spinner which updates the plots
 SpinnerUpdate([],[], hObject);
+
+% update the wave summary plots
+fcn_select_options([],[], handles.fig, 1);
+fcn_select_options([],[], handles.fig, 2);
+
+
 
 
 %% Manually Edit Waves
