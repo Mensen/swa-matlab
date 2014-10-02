@@ -16,7 +16,7 @@ else
     figPos = [bounds.x bounds.y bounds.width bounds.height];
 end
 
-handles.Figure = figure(...
+handles.fig = figure(...
     'Name',         'Travelling Waves:',...
     'NumberTitle',  'off',...
     'Color',        'w',...
@@ -24,8 +24,11 @@ handles.Figure = figure(...
     'Units',        'pixels',...
     'Outerposition',figPos);
 
+set(handles.fig,...
+    'KeyPressFcn', {@cb_KeyPressed});
+
 %% Menus
-handles.menu.File = uimenu(handles.Figure, 'Label', 'File');
+handles.menu.File = uimenu(handles.fig, 'Label', 'File');
 handles.menu.LoadData = uimenu(handles.menu.File,...
     'Label', 'Load Data',...
     'Accelerator', 'L');
@@ -38,7 +41,7 @@ set(handles.menu.SaveData, 'Callback', {@menu_SaveData});
 
 %% Status Bar
 handles.StatusBar = uicontrol(...
-    'Parent',   handles.Figure,...   
+    'Parent',   handles.fig,...   
     'Style',    'text',...    
     'String',   'Status Updates',...
     'Units',    'normalized',...
@@ -46,32 +49,38 @@ handles.StatusBar = uicontrol(...
     'FontName', 'Century Gothic',...
     'FontSize', 10);
 
-handles.java.StatusBar = findjobj(handles.StatusBar);
+handles.java.StatusBar = findjobj(handles.StatusBar); 
+
+% first java call may cause 'no appropriate method' error 
+% as handle is not visible
+drawnow; pause(0.1);
+
+% set the alignment of the status bar
 handles.java.StatusBar.setVerticalAlignment(javax.swing.SwingConstants.CENTER);
 handles.java.StatusBar.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
 
 %% Slider Spinner and Delete Button
 [handles.java.Slider,handles.Slider] = javacomponent(javax.swing.JSlider);
 set(handles.Slider,...
-    'Parent',   handles.Figure,...      
+    'Parent',   handles.fig,...      
     'Units',    'normalized',...
     'Position', [0.05 0.72 0.32 0.05]);
 % >> handles.java.Slider.set [then tab complete to find available methods]
 handles.java.Slider.setBackground(javax.swing.plaf.ColorUIResource(1,1,1))
-set(handles.java.Slider, 'MouseReleasedCallback',{@SliderUpdate, handles.Figure});
+set(handles.java.Slider, 'MouseReleasedCallback',{@SliderUpdate, handles.fig});
 
 [handles.java.Spinner,handles.Spinner] = javacomponent(javax.swing.JSpinner);
 set(handles.Spinner,...
-    'Parent',   handles.Figure,...      
+    'Parent',   handles.fig,...      
     'Units',    'normalized',...
     'Position', [0.38 0.72 0.05 0.05]);
 % Set the font and size (Found through >>handles.java.Slider.Font)
 handles.java.Spinner.setFont(javax.swing.plaf.FontUIResource('Century Gothic', 0, 25))
 handles.java.Spinner.getEditor().getTextField().setHorizontalAlignment(javax.swing.SwingConstants.CENTER)
-set(handles.java.Spinner, 'StateChangedCallback', {@SpinnerUpdate, handles.Figure});
+set(handles.java.Spinner, 'StateChangedCallback', {@SpinnerUpdate, handles.fig});
 
 handles.pb_Delete = uicontrol(...
-    'Parent',   handles.Figure,...   
+    'Parent',   handles.fig,...   
     'Style',    'pushbutton',...    
     'String',   'X',...
     'Units',    'normalized',...
@@ -83,21 +92,21 @@ set(handles.pb_Delete, 'Callback', {@pb_Delete_Callback});
 %% Channel Set ComboBoxes
 [handles.java.ChannelBox1,handles.ChannelBox1] = javacomponent(javax.swing.JComboBox);
 set(handles.ChannelBox1,...
-    'Parent',   handles.Figure,...      
+    'Parent',   handles.fig,...      
     'Units',    'normalized',...
     'Position', [0.02 0.90 0.03 0.02]);
-set(handles.java.ChannelBox1, 'ActionPerformedCallback', {@SpinnerUpdate, handles.Figure});
+set(handles.java.ChannelBox1, 'ActionPerformedCallback', {@SpinnerUpdate, handles.fig});
 
 [handles.java.ChannelBox2,handles.ChannelBox2] = javacomponent(javax.swing.JComboBox);
 set(handles.ChannelBox2,...
-    'Parent',   handles.Figure,...      
+    'Parent',   handles.fig,...      
     'Units',    'normalized',...
     'Position', [0.02 0.825 0.03 0.02]);  
-set(handles.java.ChannelBox2, 'ActionPerformedCallback', {@SpinnerUpdate, handles.Figure});
+set(handles.java.ChannelBox2, 'ActionPerformedCallback', {@SpinnerUpdate, handles.fig});
 
 %% Plot Titles and Export Button
 handles.Title_SWPlot = uicontrol(...
-    'Parent',   handles.Figure,...   
+    'Parent',   handles.fig,...   
     'Style',    'text',...    
     'String',   'Individual Wave',...
     'Units',    'normalized',...
@@ -105,7 +114,7 @@ handles.Title_SWPlot = uicontrol(...
     'FontName', 'Century Gothic',...
     'FontSize', 11);
 handles.Ex_SWPlot = uicontrol(...
-    'Parent',   handles.Figure,...   
+    'Parent',   handles.fig,...   
     'Style',    'pushbutton',...    
     'String',   '+',...
     'Units',    'normalized',...
@@ -114,47 +123,8 @@ handles.Ex_SWPlot = uicontrol(...
     'FontSize', 11);
 set(handles.Ex_SWPlot, 'Callback', @edit_SWPlot)
 
-
-handles.Title_Origins = uicontrol(...
-    'Parent',   handles.Figure,...   
-    'Style',    'text',...    
-    'String',   'Origins Map',...
-    'Units',    'normalized',...
-    'Position', [0.05 .38 0.2 0.02],...
-    'FontName', 'Century Gothic',...
-    'FontSize', 11);
-handles.Ex_Origins = uicontrol(...
-    'Parent',   handles.Figure,...   
-    'Style',    'pushbutton',...    
-    'String',   '+',...
-    'Units',    'normalized',...
-    'Position', [0.23 .38 0.02 0.02],...
-    'FontName', 'Century Gothic',...
-    'FontSize', 11);
-set(handles.Ex_Origins, 'Callback', @pb_XOrigins_Callback)
-
-
-handles.Title_Density = uicontrol(...
-    'Parent',   handles.Figure,...   
-    'Style',    'text',...    
-    'String',   'Density Map',...
-    'Units',    'normalized',...
-    'Position', [0.25 .38 0.2 0.02],...
-    'FontName', 'Century Gothic',...
-    'FontSize', 11);
-handles.Ex_Density = uicontrol(...
-    'Parent',   handles.Figure,...   
-    'Style',    'pushbutton',...    
-    'String',   '+',...
-    'Units',    'normalized',...
-    'Position', [0.43 .38 0.02 0.02],...
-    'FontName', 'Century Gothic',...
-    'FontSize', 11);
-set(handles.Ex_Density, 'Callback', @pb_XDensity_Callback)
-
-
 handles.Title_Delay = uicontrol(...
-    'Parent',   handles.Figure,...   
+    'Parent',   handles.fig,...   
     'Style',    'text',...    
     'Units',    'normalized',...
     'Position', [0.5 .73 0.45 0.02],...
@@ -162,14 +132,15 @@ handles.Title_Delay = uicontrol(...
     'FontSize', 11);
 [handles.java.PlotBox,handles.PlotBox] = javacomponent(javax.swing.JComboBox);
 set(handles.PlotBox,...
-    'Parent',   handles.Figure,...      
+    'Parent',   handles.fig,...      
     'Units',    'normalized',...
     'Position', [0.65 0.73 0.15 0.02]);
 handles.java.PlotBox.setModel(javax.swing.DefaultComboBoxModel({'Delay Map', 'Involvement Map'}));
 handles.java.PlotBox.setFont(javax.swing.plaf.FontUIResource('Century Gothic', 0, 14));
-set(handles.java.PlotBox, 'ActionPerformedCallback', {@SliderUpdate, handles.Figure});
+set(handles.java.PlotBox, 'ActionPerformedCallback', {@SliderUpdate, handles.fig});
+
 handles.Ex_Delay = uicontrol(...
-    'Parent',   handles.Figure,...   
+    'Parent',   handles.fig,...   
     'Style',    'pushbutton',...    
     'String',   '+',...
     'Units',    'normalized',...
@@ -180,7 +151,7 @@ set(handles.Ex_Delay, 'Callback', @pb_XDelay_Callback)
 
 %% Checkboxes for Delay
 handles.Surface_Delay = uicontrol(...
-    'Parent',   handles.Figure,...   
+    'Parent',   handles.fig,...   
     'Style',    'checkbox',...
     'BackgroundColor', 'w',...
     'String',   'Surface',...
@@ -192,7 +163,7 @@ handles.Surface_Delay = uicontrol(...
 set(handles.Surface_Delay, 'Callback', @UpdateDelay2);
 
 handles.Channels_Delay = uicontrol(...
-    'Parent',   handles.Figure,...   
+    'Parent',   handles.fig,...   
     'Style',    'checkbox',...    
     'BackgroundColor', 'w',...
     'String',   'Channels',...
@@ -204,7 +175,7 @@ handles.Channels_Delay = uicontrol(...
 set(handles.Channels_Delay, 'Callback',  @UpdateDelay2);
 
 handles.Origins_Delay = uicontrol(...
-    'Parent',   handles.Figure,...   
+    'Parent',   handles.fig,...   
     'Style',    'checkbox',... 
     'BackgroundColor', 'w',...
     'String',   'Origins',...
@@ -216,7 +187,7 @@ handles.Origins_Delay = uicontrol(...
 set(handles.Origins_Delay, 'Callback',  @UpdateDelay2);
 
 handles.Streams_Delay = uicontrol(...
-    'Parent',   handles.Figure,...   
+    'Parent',   handles.fig,...   
     'Style',    'checkbox',... 
     'BackgroundColor', 'w',...
     'String',   'Streams',...
@@ -229,7 +200,7 @@ set(handles.Streams_Delay, 'Callback',  @UpdateDelay2);
 
 % Checkboxes for wave plot
 handles.theta_Cb = uicontrol(...
-    'Parent',   handles.Figure,...   
+    'Parent',   handles.fig,...   
     'Style',    'checkbox',...
     'BackgroundColor', 'w',...
     'String',   '<html>&#952</html>',...
@@ -241,7 +212,7 @@ handles.theta_Cb = uicontrol(...
 % set(handles.Surface_Delay, 'Callback', @UpdateDelay2);
 
 handles.alpha_Cb = uicontrol(...
-    'Parent',   handles.Figure,...   
+    'Parent',   handles.fig,...   
     'Style',    'checkbox',...
     'BackgroundColor', 'w',...
     'String',   '<html>&#945</html>',...
@@ -253,7 +224,7 @@ handles.alpha_Cb = uicontrol(...
 
 %% Create Axes
 handles.ax_Butterfly(1) = axes(...
-    'Parent', handles.Figure,...
+    'Parent', handles.fig,...
     'Position', [0.05 0.875 0.9 0.075],...
     'NextPlot', 'add',...
     'FontName', 'Century Gothic',...
@@ -263,7 +234,7 @@ handles.ax_Butterfly(1) = axes(...
     'Ytick', []);
 
 handles.ax_Butterfly(2) = axes(...
-    'Parent', handles.Figure,...
+    'Parent', handles.fig,...
     'Position', [0.05 0.8 0.9 0.075],...
     'NextPlot', 'add',...
     'FontName', 'Century Gothic',...
@@ -272,7 +243,7 @@ handles.ax_Butterfly(2) = axes(...
     'Ytick', []);
 
 handles.ax_SWPlot = axes(...
-    'Parent', handles.Figure,...
+    'Parent', handles.fig,...
     'Position', [0.05 0.4 0.4 0.3],...
     'FontName', 'Century Gothic',...
     'NextPlot', 'add',...
@@ -280,26 +251,8 @@ handles.ax_SWPlot = axes(...
     'box', 'off',...
     'Xtick', []);
 
-handles.ax_Origins = axes(...
-    'Parent', handles.Figure,...
-    'Position', [0.05 0.1 0.2 0.3],...
-    'FontName', 'Century Gothic',...
-    'FontSize', 8,...
-    'box', 'off',...
-    'Xtick', [],...
-    'Ytick', []);
-
-handles.ax_Density = axes(...
-    'Parent', handles.Figure,...
-    'Position', [0.25 0.1 0.2 0.3],...
-    'FontName', 'Century Gothic',...
-    'FontSize', 8,...
-    'box', 'off',...
-    'Xtick', [],...
-    'Ytick', []);
-
 handles.ax_Delay = axes(...
-    'Parent', handles.Figure,...
+    'Parent', handles.fig,...
     'Position', [0.5 0.1 0.45 0.65],...
     'NextPlot', 'add',...
     'FontName', 'Century Gothic',...
@@ -307,6 +260,89 @@ handles.ax_Delay = axes(...
     'box', 'off',...
     'Xtick', [],...
     'Ytick', []);
+
+%% Two Wave Summary Plots
+% TODO: generic drop-down boxed for visualisation options
+
+% create the two axes
+% ~~~~~~~~~~~~~~~~~~~
+handles.ax_option(1) = axes(...
+    'Parent', handles.fig,...
+    'Position', [0.05 0.05 0.2 0.3],...
+    'FontName', 'Century Gothic',...
+    'FontSize', 8,...
+    'box', 'off',...
+    'Xtick', [],...
+    'Ytick', []);
+
+handles.ax_option(2) = axes(...
+    'Parent', handles.fig,...
+    'Position', [0.25 0.05 0.2 0.3],...
+    'FontName', 'Century Gothic',...
+    'FontSize', 8,...
+    'box', 'off',...
+    'Xtick', [],...
+    'Ytick', []);
+
+% create the drop down menus
+% ~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+% make the drop-down menus as java objects
+[handles.java.options_list(1), handles.options_list(1)] = javacomponent(javax.swing.JComboBox);
+set(handles.options_list(1),...
+    'parent',   handles.fig,...      
+    'units',    'normalized',...
+    'position', [0.05 0.35 0.18 0.02],...
+    'backgroundColor', [0.9, 0.9, 0.9]);
+set(handles.java.options_list(1),...
+    'ActionPerformedCallback', {@fcn_select_options, handles.fig, 1});
+
+[handles.java.options_list(2), handles.options_list(2)] = javacomponent(javax.swing.JComboBox);
+set(handles.options_list(2),...
+    'parent',   handles.fig,...      
+    'units',    'normalized',...
+    'position', [0.25 0.35 0.18 0.02],...
+    'backgroundColor', [0.9, 0.9, 0.9]);
+set(handles.java.options_list(2),...
+    'ActionPerformedCallback', {@fcn_select_options, handles.fig, 2});
+
+% get the currently available options
+options_list = swa_wave_summary('return options');
+
+% create and set the java models for the options list
+model1 = javax.swing.DefaultComboBoxModel(options_list);
+model2 = javax.swing.DefaultComboBoxModel(options_list);
+handles.java.options_list(1).setModel(model1);
+handles.java.options_list(2).setModel(model2);
+
+% set the second option box to the second value (0-index value 1)
+handles.java.options_list(2).setSelectedIndex(1)
+
+% export buttons
+% ~~~~~~~~~~~~~~
+handles.Ex_options(1) = uicontrol(...
+    'Parent',       handles.fig         ,...   
+    'Style',        'pushbutton'        ,...    
+    'backgroundColor', [0.9, 0.9, 0.9]  ,...
+    'foregroundColor', [0.1, 0.1, 0.1]  ,...
+    'String',       '+'                 ,...
+    'Units',        'normalized'        ,...
+    'Position',     [0.23 .35 0.02 0.02],...
+    'FontName',     'Century Gothic'    ,...
+    'FontSize',     11                  );
+set(handles.Ex_options(1), 'callback', {@pb_export_options, 1});
+
+handles.Ex_options(2) = uicontrol(...
+    'Parent',       handles.fig         ,...   
+    'Style',        'pushbutton'        ,...    
+    'backgroundColor', [0.9, 0.9, 0.9]  ,...
+    'foregroundColor', [0.1, 0.1, 0.1]  ,...
+    'String',       '+'                 ,...
+    'Units',        'normalized'        ,...
+    'Position',     [0.43 .35 0.02 0.02],...
+    'FontName',     'Century Gothic'    ,...
+    'FontSize',     11                  );
+set(handles.Ex_options(2), 'callback', {@pb_export_options, 2});
 
 %% Context Menus
 handles.menu.ButterflyContext = uicontextmenu;
@@ -320,13 +356,14 @@ set(handles.ax_Butterfly, 'uicontextmenu', handles.menu.ButterflyContext);
 set(handles.ax_SWPlot, 'uicontextmenu', handles.menu.ButterflyContext);
 
 %% Make Figure Visible and Maximise
-jFrame = get(handle(handles.Figure),'JavaFrame');
+jFrame = get(handle(handles.fig),'JavaFrame');
 jFrame.setMaximized(true);   % to maximize the figure
 
-guidata(handles.Figure, handles);
+guidata(handles.fig, handles);
 
-function menu_LoadData(hObject, ~)
-handles = guidata(hObject);
+
+function menu_LoadData(object, ~)
+handles = guidata(object);
 
 [swaFile, swaPath] = uigetfile('*.mat', 'Please Select the Results File');
 if swaFile == 0
@@ -342,29 +379,36 @@ if ~ismember('Data', {varnames.name}) || ~ismember('Info', {varnames.name})
 end    
 
 % Load the data
-set(handles.StatusBar, 'String', 'Busy: Loading Data'); drawnow;
-load ([swaPath,swaFile]);
+loaded_file = load ([swaPath,swaFile]);
+
+% Check for data present or external file
+if ischar(loaded_file.Data.Raw)
+    set(handles.StatusBar, 'String', 'Busy: Loading Data');
+    fid = fopen(loaded_file.Data.Raw);
+    loaded_file.Data.Raw = fread(fid, loaded_file.Info.Recording.dataDim, 'single');
+    fclose(fid);
+end
 
 % Set each handle type separately
-if exist('SW', 'var')
-    handles.SW = SW;
+if isfield(loaded_file, 'SW')
+    handles.SW = loaded_file.SW;
     handles.SW_Type = 'SW';
-elseif exist('ST', 'var')
-    handles.SW = ST;
-    handles.Type = 'ST';
-elseif exist('SS', 'var')
-    handles.SW = SS;
-    handles.Type = 'SS';
+elseif isfield(loaded_file, 'ST')
+    handles.SW = loaded_file.ST;
+    handles.SW_Type = 'ST';
+elseif isfield(loaded_file, 'SS')
+    handles.SW = loaded_file.SS;
+    handles.SW_Type = 'SS';
 else
     set(handles.StatusBar, 'String', 'Information: No SW/ST/SS structure in file');
     return;
 end
 
-% Set the handles
-handles.Info    = Info;
-handles.Data    = Data;
+% place the Info struct in the GUI handles
+handles.Info    = loaded_file.Info;
 
-set(handles.Figure, 'Name', ['Travelling Waves: ', swaFile]);
+% set the figure title to match the file name
+set(handles.fig, 'Name', ['Travelling Waves: ', swaFile]);
 
 % Set the ComboBoxes
 model1 = javax.swing.DefaultComboBoxModel({handles.Info.Electrodes.labels});
@@ -384,46 +428,51 @@ handles.java.Slider.setMaximum(length(handles.SW));
 handles.java.Slider.setMinorTickSpacing(5);
 handles.java.Slider.setMajorTickSpacing(20);
 handles.java.Slider.setPaintTicks(true);
-% handles.java.Slider.setPaintLabels(false);
-% handles.java.Slider.setPaintLabels(true);
-
-% handles.java.Spinner.setValue(1);
 
 %% Draw Initial Plots
-% Origins & Delay Plot
-handles = update_SWOriginsMap(handles, 0);
-
-% Colormap
-colormap(flipud(hot))
-
-set(handles.StatusBar, 'String', 'Idle');
 % Update handles structure
-guidata(hObject, handles);
+guidata(handles.fig, handles);
+setappdata(handles.fig, 'Data', loaded_file.Data);
+
+% Two summary plots
+fcn_select_options([],[], handles.fig, 1);
+fcn_select_options([],[], handles.fig, 2);
+
+% set the spinner value which initiates other plot updates
 handles.java.Spinner.setValue(1);
 
+set(handles.StatusBar, 'String', 'Idle');
+
 function menu_SaveData(hObject, ~)
+% get the GUI handles
 handles = guidata(hObject);
 
+% get the data
+Data = getappdata(handles.fig, 'Data');
+
+% get user input for the save name and path
 [saveName,savePath] = uiputfile('*.mat');
 
+% check if the cancel button was selected
 if saveName == 0; return; end
 
-Data = handles.Data;
+% get the Info alone to save as is
 Info = handles.Info;
 
-switch handles.Type
+% get the correct SW type before saving specifically
+switch handles.SW_Type
     case 'SW'
         SW = handles.SW;
-        save([savePath, saveName], 'Data', 'Info', 'SW', '-mat');
     case 'SS'
         SS   = handles.SW;
-        save([savePath, saveName], 'Data', 'Info', 'SS', '-mat');
     case 'ST'
         ST  = handles.SW;
-        save([savePath, saveName], 'Data', 'Info', 'ST', '-mat');
 end
 
-set(handles.Figure, 'Name', ['Travelling Waves: ', saveName]);
+% save the data
+save([savePath, saveName], 'Data', 'Info', handles.SW_Type, '-mat');
+
+set(handles.fig, 'Name', ['Travelling Waves: ', saveName]);
 
 
 %% Update Controls
@@ -440,10 +489,10 @@ end
 
 handles.java.Slider.setValue(handles.java.Spinner.getValue())
 
-% Update the plots (except origins and density since they are global)
+% update the plots
 handles = update_SWPlot(handles);
-handles = update_SWDelay(handles, 0);
 handles = update_ButterflyPlot(handles);
+handles = update_SWDelay(handles, 0);
 
 guidata(hObject, handles);
 
@@ -457,49 +506,73 @@ handles = update_ButterflyPlot(handles);
 handles = update_SWPlot(handles);
 handles = update_SWDelay(handles, 0);
 
-guidata(handles.Figure, handles);
+guidata(handles.fig, handles);
+
+function cb_KeyPressed(object, eventdata)
+% get the GUI figure handles
+handles = guidata(object);
+
+% initial plot then update the yData in a loop (faster than replot)
+nSW = handles.java.Spinner.getValue();
+
+% movement keys
+switch eventdata.Key
+    case 'rightarrow'
+        % move to the next wave if not at the end
+        if nSW < handles.java.Slider.getMaximum
+            handles.java.Spinner.setValue(nSW+1);
+        end
+    case 'leftarrow'
+        if nSW > 1
+            handles.java.Spinner.setValue(nSW-1);
+        end
+end
 
 
 %% Plot Controls
 function handles = update_ButterflyPlot(handles)
+
+% get the data structure
+Data = getappdata(handles.fig, 'Data');
+
 % initial plot then update the yData in a loop (faster than replot)
 nSW = handles.java.Spinner.getValue();
 Ch1 = handles.java.ChannelBox1.getSelectedIndex()+1; %plus one because of 0indexing in Java
 Ch2 = handles.java.ChannelBox2.getSelectedIndex()+1;
 
 % Calculate the range
-if strcmp(handles.Type, 'SS')
+if strcmp(handles.SW_Type, 'SS')
     winLength = floor((30*handles.Info.sRate - handles.SW(nSW).Ref_Length)/2);
     range = handles.SW(nSW).Ref_Start - winLength  :  handles.SW(nSW).Ref_End + winLength;
 else
-    winLength = floor(10*handles.Info.sRate);
-    range = handles.SW(nSW).Ref_NegativePeak - winLength  :  handles.SW(nSW).Ref_NegativePeak + winLength;
+    winLength = floor(10*handles.Info.Recording.sRate);
+    range = handles.SW(nSW).Ref_PeakInd - winLength  :  handles.SW(nSW).Ref_PeakInd + winLength;
 end
 range(range<1) = [];
-xaxis = range./handles.Info.sRate;
+xaxis = range./handles.Info.Recording.sRate;
 
-if strcmp(handles.Type, 'SS')
+if strcmp(handles.SW_Type, 'SS')
     sPeaks = [handles.SW.Ref_Start]+[handles.SW.Ref_Length]./2./handles.Info.sRate;
 else
-    sPeaks = [handles.SW.Ref_NegativePeak]./handles.Info.sRate;
+    sPeaks = [handles.SW.Ref_PeakInd]./handles.Info.Recording.sRate;
 end
 
-%Initial Plot (50 times takes 1.67s)
+% initial Plot (50 times takes 1.67s)
 if ~isfield(handles, 'lines_Butterfly') %
  
-    handles.lines_Butterfly(1) = plot(handles.ax_Butterfly(1), xaxis, handles.Data.Raw(Ch1,range)', 'k');
-    handles.lines_Butterfly(2) = plot(handles.ax_Butterfly(2), xaxis, handles.Data.Raw(Ch2,range)', 'k');
+    handles.lines_Butterfly(1) = plot(handles.ax_Butterfly(1), xaxis, Data.Raw(Ch1,range)', 'k');
+    handles.lines_Butterfly(2) = plot(handles.ax_Butterfly(2), xaxis, Data.Raw(Ch2,range)', 'k');
     
     set(handles.ax_Butterfly,...
         'YLim', [-50,50],...
         'XLim', [xaxis(1), xaxis(end)]);
     
-    if strcmp(handles.Type, 'SS')
+    if strcmp(handles.SW_Type, 'SS')
         handles.zoomline(1) = line([handles.SW(nSW).Ref_Start/handles.Info.sRate-0.5,   handles.SW(nSW).Ref_Start/handles.Info.sRate-0.5],[-200, 200], 'color', [0.4 0.4 0.4], 'linewidth', 2, 'Parent', handles.ax_Butterfly(1));
         handles.zoomline(2) = line([handles.SW(nSW).Ref_End/handles.Info.sRate+.5,      handles.SW(nSW).Ref_End/handles.Info.sRate+0.5],[-200, 200], 'color', [0.4 0.4 0.4], 'linewidth', 2, 'Parent', handles.ax_Butterfly(1));
     else
-        handles.zoomline(1) = line([handles.SW(nSW).Ref_NegativePeak/handles.Info.sRate-0.5, handles.SW(nSW).Ref_NegativePeak/handles.Info.sRate-0.5],[-200, 200], 'color', [0.4 0.4 0.4], 'linewidth', 2, 'Parent', handles.ax_Butterfly(1));
-        handles.zoomline(2) = line([handles.SW(nSW).Ref_NegativePeak/handles.Info.sRate+.5, handles.SW(nSW).Ref_NegativePeak/handles.Info.sRate+0.5],[-200, 200], 'color', [0.4 0.4 0.4], 'linewidth', 2, 'Parent', handles.ax_Butterfly(1));
+        handles.zoomline(1) = line([handles.SW(nSW).Ref_PeakInd/handles.Info.Recording.sRate-0.5, handles.SW(nSW).Ref_PeakInd/handles.Info.Recording.sRate-0.5],[-200, 200], 'color', [0.4 0.4 0.4], 'linewidth', 2, 'Parent', handles.ax_Butterfly(1));
+        handles.zoomline(2) = line([handles.SW(nSW).Ref_PeakInd/handles.Info.Recording.sRate+.5, handles.SW(nSW).Ref_PeakInd/handles.Info.Recording.sRate+0.5],[-200, 200], 'color', [0.4 0.4 0.4], 'linewidth', 2, 'Parent', handles.ax_Butterfly(1));
     end
     
     % Just plot all the arrows already
@@ -508,39 +581,47 @@ if ~isfield(handles, 'lines_Butterfly') %
 % Re-plotting (50 times takes 0.3s)
 else
     set(handles.lines_Butterfly, 'xData', xaxis);
-    set(handles.lines_Butterfly(1), 'yData', handles.Data.Raw(Ch1,range)');
-    set(handles.lines_Butterfly(2), 'yData', handles.Data.Raw(Ch2,range)');
+    set(handles.lines_Butterfly(1), 'yData', Data.Raw(Ch1,range)');
+    set(handles.lines_Butterfly(2), 'yData', Data.Raw(Ch2,range)');
 
     set(handles.ax_Butterfly,...
         'XLim', [xaxis(1), xaxis(end)]);
     
-    set(handles.zoomline(1), 'xData', [handles.SW(nSW).Ref_Start/handles.Info.sRate-0.5,    handles.SW(nSW).Ref_Start/handles.Info.sRate-0.5]);
-    set(handles.zoomline(2), 'xData', [handles.SW(nSW).Ref_End/handles.Info.sRate+0.5,      handles.SW(nSW).Ref_End/handles.Info.sRate+0.5]);
+    set(handles.zoomline(1), 'xData', [handles.SW(nSW).Ref_DownInd/handles.Info.Recording.sRate-0.5,    handles.SW(nSW).Ref_DownInd/handles.Info.Recording.sRate-0.5]);
+    set(handles.zoomline(2), 'xData', [handles.SW(nSW).Ref_UpInd/handles.Info.Recording.sRate+0.5,      handles.SW(nSW).Ref_UpInd/handles.Info.Recording.sRate+0.5]);
 end
 
 function handles = update_SWPlot(handles)
+
+% get the data structure
+Data = getappdata(handles.fig, 'Data');
+
+% get the current wave number
 nSW = handles.java.Spinner.getValue();
 
 % Calculate the range
-if strcmp(handles.Type, 'SS')
+if strcmp(handles.SW_Type, 'SS')
     winLength = floor((2*handles.Info.sRate - handles.SW(nSW).Ref_Length)/2);
     range = handles.SW(nSW).Ref_Start - winLength  :  handles.SW(nSW).Ref_End + winLength;
 else
-    range = handles.SW(nSW).Ref_NegativePeak - winLength  :  handles.SW(nSW).Ref_NegativePeak + winLength;
+    winLength = floor(2*handles.Info.Recording.sRate);
+    range = handles.SW(nSW).Ref_PeakInd - winLength  :  handles.SW(nSW).Ref_PeakInd + winLength;
 end
 range(range<1) = [];
 
+% check if the plot already exist (if not then initialise, else change
+% ydata)
 if ~isfield(handles, 'SWPlot') % in case plot doesn't already exist
     cla(handles.ax_SWPlot);
     
     % plot all the channels but hide them
-    handles.SWPlot.All      = plot(handles.ax_SWPlot, handles.Data.Raw(:,range)','Color', [0.6 0.6 0.6], 'linewidth', 0.5, 'Visible', 'off');
+    handles.SWPlot.All      = plot(handles.ax_SWPlot, Data.Raw(:, range)', 'Color', [0.6 0.6 0.6], 'linewidth', 0.5, 'Visible', 'off');
     % plot the reference wave
-    handles.SWPlot.Ref      = plot(handles.ax_SWPlot, handles.Data.([handles.Type, 'Ref'])(handles.SW(nSW).Ref_Region(1), range)','Color', 'r', 'linewidth', 3);
+    handles.SWPlot.Ref      = plot(handles.ax_SWPlot, Data.([handles.SW_Type, 'Ref'])(handles.SW(nSW).Ref_Region(1), range)','Color', 'r', 'linewidth', 3);
     % plot wavelets
-    if isfield(handles.Data, 'CWT')
-        for np = 1:length(handles.Data.CWT)
-            handles.SWPlot.CWT(np)   = plot(handles.ax_SWPlot, handles.Data.CWT{np}(handles.SW(nSW).Ref_Region(1),range)','Color', 'b', 'linewidth', 2);
+    if isfield(Data, 'CWT')
+        for np = 1:length(Data.CWT)
+            handles.SWPlot.CWT(np)   = plot(handles.ax_SWPlot, Data.CWT{np}(handles.SW(nSW).Ref_Region(1),range)','Color', 'b', 'linewidth', 2);
         end
     end
     
@@ -549,43 +630,43 @@ if ~isfield(handles, 'SWPlot') % in case plot doesn't already exist
     set(handles.ax_SWPlot, 'XLim', [1, length(range)])
     
 else
-    for i = 1:size(handles.Data.Raw,1) % faster than total replot...
+    for i = 1:size(Data.Raw,1) % faster than total replot...
         set(handles.SWPlot.All(i),...
-            'yData', handles.Data.Raw(i,range),...
+            'yData', Data.Raw(i,range),...
             'Color', [0.6 0.6 0.6], 'linewidth', 0.5, 'Visible', 'off');
     end
     set(handles.SWPlot.All(handles.SW(nSW).Channels_Active), 'Color', [0.6 0.6 0.6], 'LineWidth', 1, 'Visible', 'on');
     %     set(handles.SWPlot.All(handles.SW(nSW).Travelling_Delays<1), 'Color', 'b', 'LineWidth', 2, 'Visible', 'on');
     
-    set(handles.SWPlot.Ref, 'yData', handles.Data.([handles.Type, 'Ref'])(handles.SW(nSW).Ref_Region(1),range));
+    set(handles.SWPlot.Ref, 'yData', Data.([handles.SW_Type, 'Ref'])(handles.SW(nSW).Ref_Region(1),range));
     
-    set(handles.SWPlot.Ref, 'yData', handles.Data.([handles.Type, 'Ref'])(handles.SW(nSW).Ref_Region(1),range));
+    set(handles.SWPlot.Ref, 'yData', Data.([handles.SW_Type, 'Ref'])(handles.SW(nSW).Ref_Region(1),range));
     
     % Find the absolute maximum value and round to higher 10, then add 10 for space
-    dataMax = ceil(abs(max(max(handles.Data.Raw(handles.SW(nSW).Channels_Active, range))))/10)*10+10;
+    dataMax = ceil(abs(max(max(Data.Raw(handles.SW(nSW).Channels_Active, range))))/10)*10+10;
     set(handles.ax_SWPlot, 'YLim', [-dataMax, dataMax])
     
     % Plot the cwt data...
-    if isfield(handles.Data, 'CWT')
-        for np = 1:length(handles.Data.CWT)
+    if isfield(Data, 'CWT')
+        for np = 1:length(Data.CWT)
             % if its spindle power plot below line
-            if strcmp(handles.Type, 'SS')
-                data = handles.Data.CWT{np}(handles.SW(nSW).Ref_Region(1),range);
+            if strcmp(handles.SW_Type, 'SS')
+                data = Data.CWT{np}(handles.SW(nSW).Ref_Region(1),range);
                 set(handles.SWPlot.CWT(1), 'yData', (data./max(data)*dataMax) - dataMax);
             else
-                set(handles.SWPlot.CWT(1), 'yData', handles.Data.CWT{np}(handles.SW(nSW).Ref_Region(1),range));
+                set(handles.SWPlot.CWT(1), 'yData', Data.CWT{np}(handles.SW(nSW).Ref_Region(1),range));
             end
         end
     end
 
 %     % Check theta and alpha checkboxes
 %     if get(handles.theta_Cb, 'value')
-%         set(handles.SWPlot.CWT(1), 'yData', handles.Data.CWT{1}(handles.SW(nSW).Ref_Region(1),range));
+%         set(handles.SWPlot.CWT(1), 'yData', Data.CWT{1}(handles.SW(nSW).Ref_Region(1),range));
 %     else
 %         set(handles.SWPlot.CWT(1), 'yData', []);       
 %     end
 %     if get(handles.alpha_Cb, 'value')
-%         set(handles.SWPlot.CWT(2), 'yData', handles.Data.CWT{2}(handles.SW(nSW).Ref_Region(1),range));
+%         set(handles.SWPlot.CWT(2), 'yData', Data.CWT{2}(handles.SW(nSW).Ref_Region(1),range));
 %     else
 %         set(handles.SWPlot.CWT(2), 'yData', []);             
 %     end
@@ -593,13 +674,20 @@ else
 end
 
 function handles = update_SWDelay(handles, nFigure)
+% plot the delay/involvement map
+
+% get the current wave number
 nSW = handles.java.Spinner.getValue();
 
-if nFigure ~= 1; cla(handles.ax_Delay); end
+% clear the axes for a new plot
+if nFigure ~= 1; 
+    cla(handles.ax_Delay); 
+end
 
-% Plot the Delay Map...
-if handles.java.PlotBox.getSelectedIndex()+1 == 1;
+% plot the Delay Map...
+if handles.java.PlotBox.getSelectedIndex()+1 == 1
 
+    % take the delay map from the SW structure if possible
     if ~isempty(handles.SW(nSW).Travelling_DelayMap)
         H = swa_Topoplot...
             (handles.SW(nSW).Travelling_DelayMap, handles.Info.Electrodes,...
@@ -611,10 +699,12 @@ if handles.java.PlotBox.getSelectedIndex()+1 == 1;
             'PlotChannels',     get(handles.Channels_Delay, 'value'),...
             'PlotStreams',      get(handles.Streams_Delay,  'value'),...
             'Streams',          handles.SW(nSW).Travelling_Streams);
-    else % if there is no delay map make one!
+        
+    % if there is no delay map make one   
+    else 
         H = swa_Topoplot...
-            ([], handles.Info.Electrodes,...
-            'Data',             handles.SW(nSW).Travelling_Delays,...
+            ([],                handles.Info.Electrodes,            ...
+            'Data',             handles.SW(nSW).Travelling_Delays   ,...
             'GS',               handles.Info.Parameters.Travelling_GS,...
             'NewFigure',        nFigure                             ,...
             'Axes',             handles.ax_Delay                    ,...
@@ -635,10 +725,11 @@ if handles.java.PlotBox.getSelectedIndex()+1 == 1;
     end
 
 % Or plot the involvement map (peak 2 peak amplitudes for active channels
-elseif handles.java.PlotBox.getSelectedIndex()+1 == 2;
+elseif handles.java.PlotBox.getSelectedIndex()+1 == 2;   
+    
     swa_Topoplot...
-        ([], handles.Info.Electrodes,...
-        'Data',handles.SW(nSW).Channels_Peak2PeakAmp,...
+        ([],                handles.Info.Electrodes             ,...
+        'Data',             handles.SW(nSW).Channels_NegAmp     ,...
         'GS',               handles.Info.Parameters.Travelling_GS,...
         'NewFigure',        nFigure                             ,...
         'Axes',             handles.ax_Delay                    ,...
@@ -651,92 +742,90 @@ elseif handles.java.PlotBox.getSelectedIndex()+1 == 2;
     
 end
 
-function handles = update_SWOriginsMap(handles, nFigure)
+function fcn_select_options(~, ~, object, no_axes)
+% function to change the summary plot displayed
 
-handles.Origins = zeros(size(handles.Data.Raw,1),1);
-handles.Totals  = zeros(size(handles.Data.Raw,1),1);
+% get the handles from the figure
+handles = guidata(object);
 
-for i = 1:length(handles.SW)
-    handles.Origins(handles.SW(i).Travelling_Delays<1)  = handles.Origins(handles.SW(i).Travelling_Delays<1) + 1;
-    handles.Totals(handles.SW(i).Channels_Active)       = handles.Totals(handles.SW(i).Channels_Active) +1;
+% get the data structure
+Data = getappdata(handles.fig, 'Data');
+
+% if handles is empty, return
+if isempty(Data)
+    return
 end
 
-% Plot the origins map
-H = swa_Topoplot(...
-    [], handles.Info.Electrodes,...
-    'Data',             handles.Origins                     ,...
-    'GS',               handles.Info.Parameters.Travelling_GS,...
-    'NewFigure',        nFigure                             ,...
-    'Axes',             handles.ax_Origins                  ,...
-    'NumContours',      4                                   ,...
-    'PlotSurface',      1                                   );
+% clear whatever is on the current axes
+cla(handles.ax_option(no_axes));
 
-% Plot the density map
-H = swa_Topoplot(...
-    [], handles.Info.Electrodes,...
-    'Data',             handles.Totals                     ,...
-    'GS',               handles.Info.Parameters.Travelling_GS,...
-    'NewFigure',        nFigure                             ,...
-    'Axes',             handles.ax_Density                  ,...
-    'NumContours',      4                                   ,...
-    'PlotSurface',      1                                   );
+% get the selected option
+type = handles.java.options_list(no_axes).getSelectedItem;
+
+% draw the selected summary statistic on the axes
+swa_wave_summary(handles.SW, handles.Info,...
+    type, 1, handles.ax_option(no_axes));
+
 
 %% Push Buttons
-function pb_XOrigins_Callback(hObject, eventdata)
-handles = guidata(hObject);
-H = swa_Topoplot(...
-    [], handles.Info.Electrodes,...
-    'Data',             handles.Origins                     ,...
-    'GS',               handles.Info.Parameters.Travelling_GS,...
-    'NewFigure',        1                                   ,...
-    'Axes',             handles.ax_Origins                  ,...
-    'NumContours',      4                                   ,...
-    'PlotSurface',      1                                   );
 
-function pb_XDensity_Callback(hObject, eventdata)
-handles = guidata(hObject);
-H = swa_Topoplot(...
-    [], handles.Info.Electrodes,...
-    'Data',             handles.Totals                     ,...
-    'GS',               handles.Info.Parameters.Travelling_GS,...
-    'NewFigure',        1                                   ,...
-    'Axes',             handles.ax_Density                  ,...
-    'NumContours',      4                                   ,...
-    'PlotSurface',      1                                   );
-
-function pb_XDelay_Callback(hObject, eventdata, handles)
+function pb_XDelay_Callback(hObject, ~)
 handles = guidata(hObject);
 update_SWDelay(handles, 1);
 
+function pb_Delete_Callback(hObject, ~)
+% function to delete an entire wave from the SW structure and redraw the
+% plots
 
-function pb_Delete_Callback(hObject, eventdata)
+% get the gui handles
 handles = guidata(hObject);
 
-handles.SW(handles.java.Spinner.getValue())=[];
+% get the current wave
+nSW = handles.java.Spinner.getValue();
 
+% delete the wave from the handles structure
+handles.SW(nSW)=[];
+
+% reset the maximum of the slider
 handles.java.Slider.setMaximum(length(handles.SW));
 
-% Update the Origins and Density Maps with new values
-handles = update_SWOriginsMap(handles, 0);
-colormap(flipud(hot));
+% delete the arrow on the butterfly plot then the handle
+delete(handles.arrows_Butterfly(nSW));
+handles.arrows_Butterfly(nSW) = [];
 
+% update the handles structure
 guidata(hObject, handles);
+
+% update the spinner which updates the plots
 SpinnerUpdate([],[], hObject);
 
+% update the wave summary plots
+fcn_select_options([],[], handles.fig, 1);
+fcn_select_options([],[], handles.fig, 2);
 
+
+
+
+%% Manually Edit Waves
 function edit_SWPlot(hObject, ~)
 handles = guidata(hObject);
+
+% get the data structure
+Data = getappdata(handles.fig, 'Data');
+
+% get the current wave number
 nSW = handles.java.Spinner.getValue();
 
 % Calculate the range
-if strcmp(handles.Type, 'SS')
+if strcmp(handles.SW_Type, 'SS')
     winLength = floor((2*handles.Info.sRate - handles.SW(nSW).Ref_Length)/2);
     range = handles.SW(nSW).Ref_Start - winLength  :  handles.SW(nSW).Ref_End + winLength;
 else
-    range = handles.SW(nSW).Ref_NegativePeak - winLength  :  handles.SW(nSW).Ref_NegativePeak + winLength;
+    winLength = floor(2*handles.Info.Recording.sRate);
+    range = handles.SW(nSW).Ref_PeakInd - winLength  :  handles.SW(nSW).Ref_PeakInd + winLength;
 end
 range(range<1) = [];
-xaxis = range./handles.Info.sRate;
+xaxis = range./handles.Info.Recording.sRate;
 
 %% Prepare Figure
 SW_Handles.Figure = figure(...
@@ -791,34 +880,33 @@ set(SW_Handles.pb_Travel,...
 % >> j_pbZoom.set [then tab complete to find available methods]
 j_pbTravel.setIcon(javax.swing.ImageIcon(iconTravel))
 set(j_pbTravel, 'ToolTipText', 'Recalculate Travelling'); 
-set(j_pbTravel, 'MouseReleasedCallback', {@UpdateTravelling, handles.Figure});
+set(j_pbTravel, 'MouseReleasedCallback', {@fcn_UpdateTravelling, handles.fig});
 
 %% Plot the data with the reference negative peak centered %
 SW_Handles.Plot_Ch = plot(SW_Handles.Axes,...
-     xaxis, handles.Data.Raw(:,range)',...
+     xaxis, Data.Raw(:,range)',...
     'Color', [0.8 0.8 0.8],...
     'LineWidth', 0.5,...
     'LineStyle', ':');
-set(SW_Handles.Plot_Ch, 'ButtonDownFcn', {@Channel_Selected, handles.Figure, SW_Handles});
+set(SW_Handles.Plot_Ch, 'ButtonDownFcn', {@Channel_Selected, handles.fig, SW_Handles});
 set(SW_Handles.Plot_Ch(handles.SW(nSW).Channels_Active), 'Color', [0.6 0.6 0.6], 'LineWidth', 1, 'LineStyle', '-');
 % set(SW_Handles.Plot_Ch(handles.SW(nSW).Travelling_Delays<1), 'Color', 'b', 'LineWidth', 2, 'LineStyle', '-');
 
 handles.SWPlot.Ref = plot(SW_Handles.Axes,...
-    xaxis, handles.Data.([handles.Type, 'Ref'])(handles.SW(nSW).Ref_Region(1),range)',...
+    xaxis, Data.([handles.SW_Type, 'Ref'])(handles.SW(nSW).Ref_Region(1),range)',...
     'Color', 'r',...
     'LineWidth', 3);
 
-if ~strcmp(handles.Type, 'SS')
+if ~strcmp(handles.SW_Type, 'SS') && isfield(Data, 'CWT')
     handles.SWPlot.CWT = plot(SW_Handles.Axes,...
-        xaxis, handles.Data.CWT{1}(handles.SW(nSW).Ref_Region(1), range)',...
+        xaxis, Data.CWT{1}(handles.SW(nSW).Ref_Region(1), range)',...
         'Color', 'b',...
         'LineWidth', 3);
 end
 
-
 function Channel_Selected(hObject, ~ , FigureHandle, SW_Handles)
 handles = guidata(FigureHandle);
-% a = get(handles.Figure, 'SelectionType');
+% a = get(handles.fig, 'SelectionType');
 
 nSW = handles.java.Spinner.getValue();
 nCh = find(SW_Handles.Plot_Ch == hObject);
@@ -833,23 +921,37 @@ else
     set(handles.SWPlot.All(nCh), 'Color', [0.6 0.6 0.6], 'LineWidth', 0.5, 'LineStyle', '-', 'Visible', 'off')
 end
 
-guidata(handles.Figure, handles);
+guidata(handles.fig, handles);
 
-function UpdateTravelling(hObject, ~ , FigureHandle)
+function fcn_UpdateTravelling(~, ~ , FigureHandle)
+% executes on button push in the SW_Plot after manually editing channel
+% list
+
+% TODO: change to external function
+% TODO: make it work for SW (problem since currently looking for wavelet data)
+
+% get the GUI handles from the original figure
 handles = guidata(FigureHandle);
 
+% get the data structure
+Data = getappdata(handles.fig, 'Data');
+
+% get the current wave number
 nSW = handles.java.Spinner.getValue();
 
 % Recalculate the Travelling_Delays parameter before running...
-win = round(handles.Info.Parameters.Channels_WinSize*handles.Info.sRate);
+win = round(handles.Info.Parameters.Channels_WinSize*handles.Info.Recording.sRate);
 
-if strcmp(handles.Type, 'SS')
-    range = handles.SW(nSW).Ref_Start-win:handles.SW(nSW).Ref_End+win;
-else
-    range = (handles.SW(nSW).CWT_NegativePeak-win):(handles.SW(nSW).CWT_NegativePeak+win);
+switch handles.SW_Type
+    case 'SW'
+        range = handles.SW(nSW).Ref_PeakInd-win:handles.SW(nSW).Ref_PeakInd+win;       
+    case 'SS'
+        range = handles.SW(nSW).Ref_Start-win:handles.SW(nSW).Ref_End+win;
+    case 'ST'
+        range = handles.SW(nSW).CWT_NegativePeak-win:handles.SW(nSW).CWT_NegativePeak+win;
 end
 
-currData    = handles.Data.Raw(handles.SW(nSW).Channels_Active, range);
+currData    = Data.Raw(handles.SW(nSW).Channels_Active, range);
 
 FreqRange   = handles.Info.Parameters.CWT_hPass:handles.Info.Parameters.CWT_lPass;
 scale       = (centfrq('morl')./FreqRange)*handles.Info.sRate;
@@ -860,7 +962,7 @@ for i = 1:size(currData,1)
 end
 
 % Recalculate the delays and peak2peak amplitudes differently for each type
-if strcmp(handles.Type, 'SS')
+if strcmp(handles.SW_Type, 'SS')
     % calculate the power of each cwt
     powerWindow = ones((handles.Info.sRate/10),1)/(handles.Info.sRate/10); % create 100ms window to convolve with
     powerData = cwtData.^2;
@@ -896,15 +998,14 @@ else
     % to do: peak2peak amplitude adjustment for ST
     [~, Ch_Id] = min(cwtData, [],2);
     
-    handles.SW(nSW).Travelling_Delays = nan(size(handles.Data.Raw,1),1);
+    handles.SW(nSW).Travelling_Delays = nan(size(Data.Raw,1),1);
     handles.SW(nSW).Travelling_Delays(handles.SW(nSW).Channels_Active) = Ch_Id-min(Ch_Id);
     
     [handles.Info, handles.SW] = swa_FindSTTravelling(handles.Info, handles.SW, nSW);
 end
 
 handles = update_SWDelay(handles, 0);
-guidata(handles.Figure, handles);
-
+guidata(handles.fig, handles);
 
 function Butterfly_Context(hObject, ~, Direction)
 handles = guidata(hObject);
@@ -913,6 +1014,6 @@ set(handles.ax_SWPlot,      'YDir', Direction)
 
 
 %% Big plot check-box callback
-function UpdateDelay2(hObject, eventdata)
+function UpdateDelay2(hObject, ~)
 handles = guidata(hObject);
 update_SWDelay(handles, 0);

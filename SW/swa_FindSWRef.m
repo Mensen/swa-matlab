@@ -19,7 +19,6 @@ if nargin < 3 || isempty(SW)
         'Ref_PosSlope',         [], ...     % maximum of slope index in the upswing
         'Channels_Active',      [], ...     % List of channels with a slow wave, in temporal order
         'Channels_NegAmp',      [], ...     % Peak negative amplitude in the channels
-        'Channels_NegAmpInd',   [], ...     % Channel index for the peak negative amplitude
         'Channels_Globality',   [], ...     % Percentage of active channels from total
         'Travelling_Delays',    [], ...     % Delay of negative peak for each channel in samples
         'Travelling_DelayMap',  [], ...     % Interpolated map of the delays

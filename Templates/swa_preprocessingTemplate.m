@@ -84,16 +84,34 @@ EEG = pop_eegfiltnew(EEG, 0.3, 40, [], 0, [], 0);
     EEG                     = eeg_checkset(EEG);
 
 % bad segments based on spectrum
-%     [EEG, badregions] = pop_rejcont(EEG,...
-%         'epochlength',  20,...
-%         'threshold',    10,...
-%         'contiguous',   2,...
-%         'addlength',    0.5,...
-%         'onlyreturnselection', 'on',...
-%         'verbose',      'off');
+    [~, EEG.bad_regions] = pop_rejcont(EEG,...
+        'freqlimit',    [20, 40],...  % lower and upper limits of frequencies
+        'epochlength',  5,...         % window size to examine (in s)
+        'overlap',      2,...         % amount of overlap in the windows
+        'threshold',    10,...        % frequency upper threshold in dB
+        'contiguous',   2,...         % number of contiguous epochs necessary to label a region as artifactual
+        'addlength',    0.5,...       % seconds to add to each artifact side
+        'onlyreturnselection', 'on',... % do not actually remove it, just label it
+        'taper',        'hamming',... % taper to use before FFT
+        'verbose',      'off');
 
-% ``````````````````
+% bad segments based on frequency analysis    (for epoched data) 
+%     [~, EEG.bad_regions] = pop_rejspec(EEG, 1,...
+%         'freqlimits',    [20, 40],...  % lower and upper limits of frequencies
+%         'method',       'multitaper',... % window size to examine (in s)
+%         'threshold',    [-10, 10]);    
+    
+% plot the first bad region
+    window = 2*EEG.srate;
+    plot(EEG.data(:, EEG.bad_regions(1,1)-window:EEG.bad_regions(1,2)+window)',...
+        'color', [0.8, 0.8, 0.8]);
+    
+% remove the bad_regions
+    EEG = pop_select(EEG, 'nopoint', EEG.bad_regions);
 
+    
+% independent components analysis 
+% ```````````````````````````````
 % run ICA (optional)
 EEG = pop_runica(EEG, 'extended', 1, 'interupt', 'off');
 
@@ -118,6 +136,7 @@ EEG = pop_subcomp( EEG , EEG.bad_components);
 EEG = eeg_checkset(EEG);
 
 % interpolate the removed channels
+% ````````````````````````````````
 [previousFile, previousPath] = uigetfile('*.set');
 previousEEG = load(fullfile(previousPath, previousFile), '-mat');
 EEG = eeg_interp(EEG, previousEEG.EEG.chanlocs);
