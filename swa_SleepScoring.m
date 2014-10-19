@@ -110,7 +110,7 @@ handles.label_axes = axes(...
     'visible',      'off');
 
 % use the third axes to mark arousals
-% set(handles.channel_axes(3), 'buttondownfcn', {@fcn_select_events, handles.channel_axes(3), 'buttondown'})
+set(handles.channel_axes, 'buttondownfcn', {@fcn_select_events, handles.channel_axes, 'buttondown'})
 
 % Scoring Buttons
 % ```````````````
@@ -216,9 +216,9 @@ guidata(handles.fig, handles)
 
 % Menu Functions
 % ``````````````
-function menu_LoadEEG(hObject, ~)
+function menu_LoadEEG(object, ~)
 
-handles = guidata(hObject);
+handles = guidata(object);
 
 % load dialog box with file type
 [dataFile, dataPath] = uigetfile('*.set', 'Please Select Sleep Data');
@@ -325,8 +325,8 @@ fcn_initial_plot(handles.fig)
 set(handles.StatusBar, 'String', 'EEG Loaded'); drawnow;
 
 
-function menu_SaveEEG(hObject, ~)
-handles = guidata(hObject); % Get handles
+function menu_SaveEEG(object, ~)
+handles = guidata(object); % Get handles
 
 % Get the EEG from the figure's appdata
 EEG = getappdata(handles.fig, 'EEG');
@@ -340,8 +340,8 @@ save(fullfile(savePath, saveFile), 'EEG', '-mat');
 set(handles.StatusBar, 'String', 'Data Saved')
 
 
-function menu_Export(hObject, ~, stage)
-handles = guidata(hObject); % Get handles
+function menu_Export(object, ~, stage)
+handles = guidata(object); % Get handles
 
 % get the eegData structure out of the figure
 EEG = getappdata(handles.fig, 'EEG');
@@ -515,7 +515,7 @@ end
 set(handles.StatusBar, 'string',...
    'idle'); drawnow;
 
-function fcn_epochChange(hObject, ~, figurehandle)
+function fcn_epochChange(object, ~, figurehandle)
 % get the handles from the guidata
 handles = guidata(figurehandle);
 
@@ -551,8 +551,8 @@ setappdata(handles.fig, 'EEG', EEG);
 % update all the axes
 updateAxes(handles);
 
-function updateScale(hObject, ~)
-handles = guidata(hObject); % Get handles
+function updateScale(object, ~)
+handles = guidata(object); % Get handles
 
 % Get the new scale value
 ylimits = str2double(get(handles.et_Scale, 'String'));
@@ -561,9 +561,9 @@ ylimits = str2double(get(handles.et_Scale, 'String'));
 set(handles.channel_axes,...
     'YLim', [-ylimits, ylimits]);
 
-function updateStage(hObject, ~)
+function updateStage(object, ~)
 % get the updated handles from the GUI
-handles = guidata(hObject);
+handles = guidata(object);
 
 % Get the EEG from the figure's appdata
 EEG = getappdata(handles.fig, 'EEG');
@@ -589,11 +589,11 @@ setappdata(handles.fig, 'EEG', EEG);
 
 % go to the next epoch
 set(handles.cEpoch, 'value', cEpoch+1);
-fcn_epochChange(hObject, [], handles.fig);
+fcn_epochChange(object, [], handles.fig);
 
-function updateEpochLength(hObject, ~)
+function updateEpochLength(object, ~)
 % get handles
-handles = guidata(hObject); 
+handles = guidata(object); 
 
 % get the eegData structure out of the figure
 EEG = getappdata(handles.fig, 'EEG');
@@ -666,9 +666,9 @@ setappdata(handles.fig, 'EEG', EEG);
 updateAxes(handles);
 
 
-function cb_KeyPressed(hObject, eventdata)
+function cb_KeyPressed(object, eventdata)
 % get the updated handles structure (*not updated properly)
-handles = guidata(hObject);
+handles = guidata(object);
 
 % get the EG structure out of the figure
 EEG = getappdata(handles.fig, 'EEG');
@@ -678,11 +678,11 @@ switch eventdata.Key
     case 'rightarrow'
         % move to the next epoch
         set(handles.cEpoch, 'Value', get(handles.cEpoch, 'Value') + 1);
-        fcn_epochChange(hObject, [], handles.fig)
+        fcn_epochChange(object, [], handles.fig)
     case 'leftarrow'
         % move to the previous epoch
         set(handles.cEpoch, 'Value', get(handles.cEpoch, 'Value') - 1);
-        fcn_epochChange(hObject, [], handles.fig)
+        fcn_epochChange(object, [], handles.fig)
         
     case 'uparrow'
         scale = get(handles.et_Scale, 'value');
@@ -720,22 +720,22 @@ end
 switch eventdata.Character
     case '0'
         set(handles.bg_Scoring,'SelectedObject',handles.rb(1));
-        updateStage(hObject, eventdata);
+        updateStage(object, eventdata);
     case '1'
         set(handles.bg_Scoring,'SelectedObject',handles.rb(2));
-        updateStage(hObject, eventdata);
+        updateStage(object, eventdata);
     case '2'
         set(handles.bg_Scoring,'SelectedObject',handles.rb(3));
-        updateStage(hObject, eventdata);
+        updateStage(object, eventdata);
     case '3'
         set(handles.bg_Scoring,'SelectedObject',handles.rb(4));
-        updateStage(hObject, eventdata);
+        updateStage(object, eventdata);
     case '5'
         set(handles.bg_Scoring,'SelectedObject',handles.rb(5));
-        updateStage(hObject, eventdata);
+        updateStage(object, eventdata);
     case '6'
         set(handles.bg_Scoring,'SelectedObject',handles.rb(6));
-        updateStage(hObject, eventdata);
+        updateStage(object, eventdata);
 end
 
 guidata(handles.fig, handles)
@@ -764,11 +764,11 @@ setappdata(handles.fig, 'EEG', EEG);
 % update the axes with the new filters
 updateAxes(handles)
 
-function bd_hypnoEpochSelect(hObject, ~)
+function bd_hypnoEpochSelect(object, ~)
 % function when the user clicks in the hypnogram
 
 % get the handles
-handles = guidata(hObject);
+handles = guidata(object);
 % Get the EEG from the figure's appdata
 EEG = getappdata(handles.fig, 'EEG');
 
@@ -783,11 +783,11 @@ set(handles.cEpoch, 'value', cEpoch);
 guidata(handles.fig, handles)
 
 % update the figure
-fcn_epochChange(hObject, [], handles.fig);
+fcn_epochChange(object, [], handles.fig);
 
-function fcn_options(hObject, ~, type)
+function fcn_options(object, ~, type)
 % get the handles
-handles = guidata(hObject);
+handles = guidata(object);
 % Get the EEG from the figure's appdata
 EEG = getappdata(handles.fig, 'EEG');
 
@@ -804,7 +804,7 @@ switch type
                 EEG.swa_scoring.epochLength = newLength;
                 % update the eeg structure before call
                 setappdata(handles.fig, 'EEG', EEG);
-                updateEpochLength(hObject, []);
+                updateEpochLength(object, []);
             end
         end
         
@@ -818,7 +818,7 @@ switch type
             EEG.swa_scoring.startTime = round(86400*mod(datenum(answer{1}),1 ));
             % update the eeg structure before call
             setappdata(handles.fig, 'EEG', EEG);
-            fcn_epochChange(hObject, [], handles.fig);
+            fcn_epochChange(object, [], handles.fig);
         end
         
 end
@@ -828,12 +828,12 @@ end
 
 % Code for selecting and marking events
 % ````````````````````````````````````
-function fcn_select_events(~, ~, hObject, event)
+function fcn_select_events(~, ~, object, event)
 
-H = guidata(hObject); % Get handles
+handles = guidata(object); % Get handles
 
 % get the userData if there was some already (otherwise returns empty)
-userData = getappdata(H.channel_axes(3), 'x_range');
+userData = getappdata(handles.channel_axes, 'x_range');
 
 % if there was no userData, then pre-allocate the userData
 if isempty(userData)
@@ -845,11 +845,11 @@ end
 selecting = numel(userData.range)>0 && any(isnan(userData.range(end,:)));
 
 % get the current point
-p = get(H.channel_axes(3), 'CurrentPoint');
+p = get(handles.channel_axes, 'CurrentPoint');
 p = p(1,1:2);
 
-xLim = get(H.channel_axes(3), 'xlim');
-yLim = get(H.channel_axes(3), 'ylim');
+xLim = get(handles.channel_axes, 'xlim');
+yLim = get(handles.channel_axes, 'ylim');
 
 % limit cursor coordinates to axes...
 if p(1)<xLim(1), p(1)=xLim(1); end;
@@ -864,10 +864,10 @@ switch lower(event)
           if any(p(1)>=userData.range(:,1) & p(1)<=userData.range(:,2))
               % the user has clicked in one of the existing selections
               
-              fcn_mark_event(H.Figure, userData, get(gcf,'selectiontype'));
+              fcn_mark_event(handles.fig, userData, get(gcf,'selectiontype'));
               
               % refresh the axes
-              updateAxes(H);
+              updateAxes(handles);
               
 %               % after box has been clicked delete the box
 %               delete(userData.box(ishandle(userData.box)));
@@ -877,9 +877,9 @@ switch lower(event)
       end
       
       % set the figure's windowbuttonmotionfunction
-      set(H.Figure, 'WindowButtonMotionFcn', {@fcn_select_events, hObject, 'Motion'});
+      set(handles.fig, 'WindowButtonMotionFcn', {@fcn_select_events, object, 'Motion'});
       % set the figure's windowbuttonupfunction
-      set(H.Figure, 'WindowButtonUpFcn',     {@fcn_select_events, hObject, 'ButtonUp'});
+      set(handles.fig, 'WindowButtonUpFcn',     {@fcn_select_events, object, 'ButtonUp'});
       
       % add a new selection range
       userData.range(end+1,1:4) = nan;
@@ -889,7 +889,7 @@ switch lower(event)
       % add a new selection box
       xData = [nan nan nan nan nan];
       yData = [nan nan nan nan nan];
-      userData.box(end+1) = line(xData, yData, 'parent', H.channel_axes(3));
+      userData.box(end+1) = line(xData, yData, 'parent', handles.channel_axes);
       
   case lower('Motion')
       
@@ -945,14 +945,14 @@ switch lower(event)
       % set the figure callbacks to empty to avoid unnecessary calls when
       % not in specific plot
         % set the figure's windowbuttonmotionfunction
-      set(H.Figure, 'WindowButtonMotionFcn', []);
+      set(handles.fig, 'WindowButtonMotionFcn', []);
         % set the figure's windowbuttonupfunction
-      set(H.Figure, 'WindowButtonUpFcn',     []);
+      set(handles.fig, 'WindowButtonUpFcn',     []);
     
-end % switch event
+end
 
 % put the selection back in the figure
-setappdata(H.channel_axes(3), 'x_range', userData);
+setappdata(handles.channel_axes, 'x_range', userData);
 
 function fcn_mark_event(figurehandle, userData, type)
 
