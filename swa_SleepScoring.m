@@ -240,6 +240,12 @@ if ~exist('EEG', 'var')
     return;
 end
 
+% TODO: make loading compatible with old .dat files from EEGLAB
+if strcmp(EEG.data(end-3: end), '.dat')
+    fprintf(1, 'Warning: currently not compatible with .dat files, use EEGLAB to convert to .fdt files');
+    return;
+end
+
 % memory map the actual data...
 tmp = memmapfile(EEG.data,...
                 'Format', {'single', [EEG.nbchan EEG.pnts EEG.trials], 'eegData'});

@@ -10,6 +10,12 @@ fprintf(1, 'loading set file: %s...', fileName);
 load(fullfile(filePath, fileName), '-mat');
 fprintf(1, 'done \n');
 
+% TODO: make loading compatible with old .dat files from EEGLAB
+if strcmp(EEG.data(end-3: end), '.dat')
+    fprintf(1, 'Warning: currently not compatible with .dat files, use EEGLAB to convert to .fdt files');
+    return;
+end
+
 % allocate the data information to the Info structure
 Info.Recording.dataFile   = EEG.data;
 Info.Recording.dataDim    =[EEG.nbchan, EEG.pnts];
