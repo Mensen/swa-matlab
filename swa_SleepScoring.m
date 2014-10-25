@@ -87,7 +87,7 @@ jStatusBar.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
 
 % Hidden epoch tracker
 % ````````````````````
-handles.cEpoch = uicontrol(...
+handles.current_epoch = uicontrol(...
     'Parent',   handles.fig,...
     'Style',    'text',...
     'Visible',  'off',...
@@ -330,7 +330,6 @@ fcn_initial_plot(handles.fig)
 
 set(handles.StatusBar, 'String', 'EEG Loaded'); drawnow;
 
-
 function menu_SaveEEG(object, ~)
 handles = guidata(object); % Get handles
 
@@ -344,7 +343,6 @@ EEG = getappdata(handles.fig, 'EEG');
 save(fullfile(savePath, saveFile), 'EEG', '-mat');
 
 set(handles.StatusBar, 'String', 'Data Saved')
-
 
 function menu_Export(object, ~, stage)
 handles = guidata(object); % Get handles
@@ -384,7 +382,6 @@ if ~isempty(saveName)
     save([savePath, saveName], 'Data', 'Info', '-mat', '-v7.3')
     set(handles.StatusBar, 'String', 'Idle')
 end
-
 
 function fcn_initial_plot(object)
 % initial plot of the eeg data and hypnogram
@@ -443,10 +440,14 @@ set(handles.channel_axes,  'xlim', [time(1), time(end)]);
 
 % plot the data
 handles.channel_plots = line(time, data,...
-                        'color', [0.1, 0.1, 0.1],...
-                        'parent', handles.channel_axes);
+                            'color', [0.1, 0.1, 0.1],...
+                            'parent', handles.channel_axes);
                   
-% TODO: plot the arousals
+% plot the arousals
+data(:, ~EEG.swa_scoring.arousals(range)) = nan;
+handles.plot_arousal = line(time, data,...
+                            'color', [0.9, 0, 0],...
+                            'parent', handles.channel_axes);
 
 % plot the labels in their own boxes
 handles.labels = zeros(length(EEG.swa_scoring.montage.channels(channels)), 1);
@@ -462,7 +463,7 @@ for chn = 1:length(EEG.swa_scoring.montage.labels)
 end
                     
  % set the current epoch
-set(handles.cEpoch, 'Value', 1);
+set(handles.current_epoch, 'Value', 1);
 
 % Set Hypnogram
 % `````````````
@@ -493,8 +494,8 @@ eegData = getappdata(handles.fig, 'eegData');
 
 % data section
 sEpoch  = EEG.swa_scoring.sEpoch;
-cEpoch  = get(handles.cEpoch, 'value');
-range   = (cEpoch*sEpoch-(sEpoch-1)):(cEpoch*sEpoch);
+current_epoch  = get(handles.current_epoch, 'value');
+range   = (current_epoch*sEpoch-(sEpoch-1)):(current_epoch*sEpoch);
 
 % rereference the data
 data = eegData(EEG.swa_scoring.montage.channels(:,1),range)...
@@ -505,7 +506,7 @@ scale = get(handles.et_Scale, 'value')*-1;
 toAdd = [1:8]'*scale;
 toAdd = repmat(toAdd, [1, length(range)]);
 
- % loop for each individual channels settings
+% loop for each individual channels settings
 % plot the new data
 for n = 1:8
     data(n,:) = single(filtfilt(EEG.filter.b(n,:), EEG.filter.a(n,:),...
@@ -514,12 +515,10 @@ for n = 1:8
 end
 
 % plot the events
-% event = data(3, :);
-% event(:, ~EEG.swa_scoring.arousals(range)) = nan;
-% set(handles.current_events, 'yData', event);
-
-set(handles.StatusBar, 'string',...
-   'idle'); drawnow;
+data(:, ~EEG.swa_scoring.arousals(range)) = nan;
+for n = 1:8
+    set(handles.plot_arousal(n), 'yData', data(n, :) + toAdd(n, :))
+end
 
 function fcn_epochChange(object, ~, figurehandle)
 % get the handles from the guidata
@@ -528,27 +527,27 @@ handles = guidata(figurehandle);
 % Get the EEG from the figure's appdata
 EEG = getappdata(handles.fig, 'EEG');
 
-cEpoch = get(handles.cEpoch, 'value');
-if cEpoch < 1
+current_epoch = get(handles.current_epoch, 'value');
+if current_epoch < 1
     set(handles.StatusBar, 'String', 'This is the first epoch')
-    set(handles.cEpoch, 'value', 1);
-elseif cEpoch > length(EEG.swa_scoring.stageNames)
+    set(handles.current_epoch, 'value', 1);
+elseif current_epoch > length(EEG.swa_scoring.stageNames)
     set(handles.StatusBar, 'String', 'No further epochs')
-    set(handles.cEpoch, 'value', length(EEG.swa_scoring.stageNames));
+    set(handles.current_epoch, 'value', length(EEG.swa_scoring.stageNames));
 end
-cEpoch = get(handles.cEpoch, 'value');
+current_epoch = get(handles.current_epoch, 'value');
 
 % update the hypnogram indicator line
-x = cEpoch * EEG.swa_scoring.epochLength/60/60;
+x = current_epoch * EEG.swa_scoring.epochLength/60/60;
 set(handles.ln_hypno, 'Xdata', [x, x]);
 
 % set the stage name to the current stage
 % calculate the current time
 current_time = datestr(...
-    (EEG.swa_scoring.startTime+cEpoch*EEG.swa_scoring.epochLength-30)/(60*60*24),...
+    (EEG.swa_scoring.startTime+current_epoch*EEG.swa_scoring.epochLength-30)/(60*60*24),...
     'HH:MM:SS');
 set(handles.StageBar, 'String',...
-    [num2str(cEpoch), ' | ', current_time, ' | ', EEG.swa_scoring.stageNames{cEpoch}]);
+    [num2str(current_epoch), ' | ', current_time, ' | ', EEG.swa_scoring.stageNames{current_epoch}]);
 
 % update the GUI handles (*updates just fine)
 guidata(handles.fig, handles)
@@ -576,12 +575,12 @@ EEG = getappdata(handles.fig, 'EEG');
 
 % current epoch range
 sEpoch  = EEG.swa_scoring.epochLength*EEG.srate; % samples per epoch
-cEpoch  = get(handles.cEpoch, 'value');
-range   = (cEpoch*sEpoch-(sEpoch-1)):(cEpoch*sEpoch);
+current_epoch  = get(handles.current_epoch, 'value');
+range   = (current_epoch*sEpoch-(sEpoch-1)):(current_epoch*sEpoch);
 
 % set the current sleep stage value and name
 EEG.swa_scoring.stages(range) = get(get(handles.bg_Scoring, 'SelectedObject'), 'UserData');
-EEG.swa_scoring.stageNames{cEpoch} = get(get(handles.bg_Scoring, 'SelectedObject'), 'String');
+EEG.swa_scoring.stageNames{current_epoch} = get(get(handles.bg_Scoring, 'SelectedObject'), 'String');
 
 % reset the scoring box
 set(handles.bg_Scoring,'SelectedObject',[]);  % No selection
@@ -594,7 +593,7 @@ guidata(handles.fig, handles);
 setappdata(handles.fig, 'EEG', EEG);
 
 % go to the next epoch
-set(handles.cEpoch, 'value', cEpoch+1);
+set(handles.current_epoch, 'value', current_epoch+1);
 fcn_epochChange(object, [], handles.fig);
 
 function updateEpochLength(object, ~)
@@ -683,11 +682,11 @@ EEG = getappdata(handles.fig, 'EEG');
 switch eventdata.Key
     case 'rightarrow'
         % move to the next epoch
-        set(handles.cEpoch, 'Value', get(handles.cEpoch, 'Value') + 1);
+        set(handles.current_epoch, 'Value', get(handles.current_epoch, 'Value') + 1);
         fcn_epochChange(object, [], handles.fig)
     case 'leftarrow'
         % move to the previous epoch
-        set(handles.cEpoch, 'Value', get(handles.cEpoch, 'Value') - 1);
+        set(handles.current_epoch, 'Value', get(handles.current_epoch, 'Value') - 1);
         fcn_epochChange(object, [], handles.fig)
         
     case 'uparrow'
@@ -780,10 +779,10 @@ EEG = getappdata(handles.fig, 'EEG');
 
 current_point = get(handles.axHypno, 'CurrentPoint');
 
-cEpoch = floor(current_point(1)*60*60*EEG.srate/EEG.swa_scoring.sEpoch);
+current_epoch = floor(current_point(1)*60*60*EEG.srate/EEG.swa_scoring.sEpoch);
 
 % set the current epoch
-set(handles.cEpoch, 'value', cEpoch);
+set(handles.current_epoch, 'value', current_epoch);
 
 % Update the handles in the GUI
 guidata(handles.fig, handles)
@@ -830,8 +829,6 @@ switch type
 end
 
 
-
-
 % Code for selecting and marking events
 % ````````````````````````````````````
 function fcn_select_events(~, ~, object, event)
@@ -867,18 +864,15 @@ switch lower(event)
   
   case lower('ButtonDown')        
       if ~isempty(userData.range)
+          % the user has clicked in one of the existing selections
           if any(p(1)>=userData.range(:,1) & p(1)<=userData.range(:,2))
-              % the user has clicked in one of the existing selections
               
+              % call the function to mark events
               fcn_mark_event(handles.fig, userData, get(gcf,'selectiontype'));
               
               % refresh the axes
               updateAxes(handles);
               
-%               % after box has been clicked delete the box
-%               delete(userData.box(ishandle(userData.box)));
-%               userData.range = [];
-%               userData.box   = [];
           end
       end
       
@@ -938,10 +932,10 @@ switch lower(event)
       
       if ~isempty(userData.range)
           % ensure that the selection is sane
-          if diff(userData.range(end,1:2))<0
+          if diff(userData.range(end,1:2)) < 0
               userData.range(end,1:2) = userData.range(end,[2 1]);
           end
-          if diff(userData.range(end,3:4))<0
+          if diff(userData.range(end,3:4)) < 0
               userData.range(end,3:4) = userData.range(end,[4 3]);
           end
           % only select along the x-axis
@@ -961,25 +955,42 @@ end
 setappdata(handles.channel_axes, 'x_range', userData);
 
 function fcn_mark_event(figurehandle, userData, type)
+% function called when clicking within a user created box
 
 % get the figure handles and data
 handles = guidata(figurehandle);
 EEG     = getappdata(handles.fig, 'EEG');
 
-cEpoch  = get(handles.cEpoch, 'value');
-sEpoch  = EEG.swa_scoring.epochLength*EEG.srate; % samples per epoch
+% current epoch
+epoch_start = (get(handles.current_epoch, 'value')-1) * EEG.swa_scoring.epochLength;
 
+% calculate ranges for all selected boxes
+time_range = epoch_start + userData.range(:, [1,2]);
+sample_range = floor(time_range * EEG.srate);
+
+% convert the selected boxes into sample ranges for arousal marking
 for row = 1:size(userData.range, 1)
-    range   = (cEpoch*sEpoch-(sEpoch-1))+floor(userData.range(row, 1)):(cEpoch*sEpoch-(sEpoch-1))+ceil(userData.range(row, 2));
+    
+    % put the arousal events in the eeg event structure
+    % TODO: events will be out of temporal order
+    EEG.event(end+1).type = 'arousal';
+    EEG.event(end).latency = sample_range(row, 1);
+    EEG.event(end).duration = abs(diff(sample_range(row, :)));  
+    
+    % if left click mark as arousal
+    range = sample_range(row, 1):sample_range(row, 2);
     if strcmp(type, 'normal')
         EEG.swa_scoring.arousals(range) = true;
+    % if right click mark as normal
     else
         EEG.swa_scoring.arousals(range) = false;
     end
 end
 
+% update the handles and EEG structure to the figure
 guidata(handles.fig, handles);
 setappdata(handles.fig, 'EEG', EEG);
+
 
 % Montage Options
 % ```````````````
@@ -1171,6 +1182,7 @@ H = swa_Topoplot(...
 % `````````````
 function fcn_close_request(~, ~)
 % User-defined close request function to display a question dialog box
+
 selection = questdlg('Are you sure?',...
     '',...
     'Yes','No','Yes');
