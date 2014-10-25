@@ -384,7 +384,7 @@ loaded_file = load ([swaPath,swaFile]);
 % Check for data present or external file
 if ischar(loaded_file.Data.Raw)
     set(handles.StatusBar, 'String', 'Busy: Loading Data');
-    fid = fopen(loaded_file.Data.Raw);
+    fid = fopen(full(swa_Path, loaded_file.Data.Raw));
     loaded_file.Data.Raw = fread(fid, loaded_file.Info.Recording.dataDim, 'single');
     fclose(fid);
 end
