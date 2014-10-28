@@ -263,8 +263,6 @@ handles.ax_Delay = axes(...
     'Ytick', []);
 
 %% Two Wave Summary Plots
-% TODO: generic drop-down box for visualisation options
-
 % create the two axes
 % ~~~~~~~~~~~~~~~~~~~
 handles.ax_option(1) = axes(...
@@ -287,7 +285,6 @@ handles.ax_option(2) = axes(...
 
 % create the drop down menus
 % ~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 % make the drop-down menus as java objects
 [handles.java.options_list(1), handles.options_list(1)] = javacomponent(javax.swing.JComboBox);
 set(handles.options_list(1),...
@@ -788,11 +785,8 @@ function fcn_select_options(~, ~, object, no_axes)
 % get the handles from the figure
 handles = guidata(object);
 
-% get the data structure
-Data = getappdata(handles.fig, 'Data');
-
 % if handles is empty, return
-if isempty(Data)
+if ~isfield(handles, 'SW')
     return
 end
 
@@ -842,6 +836,19 @@ SpinnerUpdate([],[], hObject);
 % update the wave summary plots
 fcn_select_options([],[], handles.fig, 1);
 fcn_select_options([],[], handles.fig, 2);
+
+function pb_export_options(object, ~, axes_number)
+
+% get the gui handles
+handles = guidata(object);
+
+% get the selected option
+type = handles.java.options_list(axes_number).getSelectedItem;
+
+% draw the selected summary statistic on the axes
+swa_wave_summary(handles.SW, handles.Info,...
+    type, 1);
+
 
 
 %% Manually Edit Waves
