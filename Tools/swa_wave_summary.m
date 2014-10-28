@@ -5,6 +5,8 @@ function [output, h] = swa_wave_summary(SW, Info, type, makePlot, axes_handle)
 if nargin < 4
     makePlot = 0;
     axes_handle = [];
+elseif nargin < 5
+    axes_handle = [];
 end
 
 % if function is called with a single 'return options' argument then return
@@ -19,6 +21,9 @@ if isa(SW, 'char')
             'anglemap'      ;...
             'topo_density'  ;...
             'topo_origins'  };
+        return;
+    else
+        fprintf(1, 'Warning: Use ''return options'' as input to see current plotting options');
         return;
     end
 end
