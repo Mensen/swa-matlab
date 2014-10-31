@@ -46,12 +46,9 @@ for refWave = 1:size(Data.STRef,1)
     
     %% --Continuous Wavelet Transform -- %%
     FreqRange   = Info.Parameters.CWT_hPass:Info.Parameters.CWT_lPass;
-%     Scale_theta  = swa_frq2scal(FreqRange, 'morl', 1/Info.sRate);       % Own Function!
-    Scale_theta  = (centfrq('morl')./FreqRange)*Info.sRate;
-%     Scale_alpha  = swa_frq2scal(8:12, 'morl', 1/Info.sRate);            % Own Function!
-    Scale_alpha = (centfrq('morl')./[8:12])*Info.sRate;
+    Scale_theta  = (centfrq('morl')./FreqRange) * Info.Recording.sRate;
+    Scale_alpha = (centfrq('morl')./[8:12]) * Info.Recording.sRate;
 
-    
     Data.CWT{1}(refWave,:) = mean(cwt(Data.STRef(refWave,:), Scale_theta, 'morl'));
     Data.CWT{2}(refWave,:) = mean(cwt(Data.STRef(refWave,:), Scale_alpha, 'morl'));
     
@@ -95,13 +92,13 @@ for refWave = 1:size(Data.STRef,1)
         
         %% -- Wavelength/Time Criteria -- %%
         % MPP -> MNP Hard Time Criteria
-        if abs(MPP(i)-MNP(i)) > (1/(Info.Parameters.CWT_hPass-0.5)/2)*Info.sRate || abs(MPP(i)-MNP(i)) < (1/(Info.Parameters.CWT_lPass+0.5)/2)*Info.sRate
+        if abs(MPP(i)-MNP(i)) > (1/(Info.Parameters.CWT_hPass-0.5)/2)*Info.Recording.sRate || abs(MPP(i)-MNP(i)) < (1/(Info.Parameters.CWT_lPass+0.5)/2)*Info.Recording.sRate
             Info.Failed.FailedAtLength = Info.Failed.FailedAtLength + 1;
             continue;
         end
 
         % MPP -> MNP Soft Time Criteria (Must pass additional MNP Amplitude Test)  
-        if abs(MPP(i)-MNP(i)) > (1/(Info.Parameters.CWT_hPass-0.1)/2)*Info.sRate || abs(MPP(i)-MNP(i)) < (1/(Info.Parameters.CWT_lPass+0.1)/2)*Info.sRate
+        if abs(MPP(i)-MNP(i)) > (1/(Info.Parameters.CWT_hPass-0.1)/2)*Info.Recording.sRate || abs(MPP(i)-MNP(i)) < (1/(Info.Parameters.CWT_lPass+0.1)/2)*Info.Recording.sRate
             if Data.CWT{1}(refWave, MNP(i)) > -Info.Parameters.CWT_AmpThresh(refWave)*2
                 Info.Failed.FailedAtLength = Info.Failed.FailedAtLength + 1;
                 continue;
@@ -110,13 +107,13 @@ for refWave = 1:size(Data.STRef,1)
         end        
         
         % MNP -> MPP2 Hard Time Criteria
-        if abs(MNP(i)-MPP(i+1)) > (1/(Info.Parameters.CWT_hPass-0.5)/2)*Info.sRate || abs(MNP(i)-MPP(i+1)) < (1/(Info.Parameters.CWT_lPass+0.5)/2)*Info.sRate
+        if abs(MNP(i)-MPP(i+1)) > (1/(Info.Parameters.CWT_hPass-0.5)/2)*Info.Recording.sRate || abs(MNP(i)-MPP(i+1)) < (1/(Info.Parameters.CWT_lPass+0.5)/2)*Info.Recording.sRate
             Info.Failed.FailedAtLength = Info.Failed.FailedAtLength + 1;
             continue;
         end
 
         % MNP -> MPP2 Soft Time Criteria (Must pass additional MNP Amplitude Test)       
-        if abs(MNP(i)-MPP(i+1)) > (1/(Info.Parameters.CWT_hPass-0.2)/2)*Info.sRate || abs(MNP(i)-MPP(i+1)) < (1/(Info.Parameters.CWT_lPass+0.2)/2)*Info.sRate
+        if abs(MNP(i)-MPP(i+1)) > (1/(Info.Parameters.CWT_hPass-0.2)/2)*Info.Recording.sRate || abs(MNP(i)-MPP(i+1)) < (1/(Info.Parameters.CWT_lPass+0.2)/2)*Info.Recording.sRate
             if Data.CWT{1}(refWave, MNP(i)) > -Info.Parameters.CWT_AmpThresh(refWave)*2
                 Info.Failed.FailedAtLength = Info.Failed.FailedAtLength + 1;
                 continue;
@@ -129,7 +126,7 @@ for refWave = 1:size(Data.STRef,1)
         
         % Check for burst here in order to temporarily lower the threshold...
         if STCount > 1
-            if abs(ST(STCount).CWT_End-MPP(i)) < Info.sRate*Info.Parameters.Burst_Length
+            if abs(ST(STCount).CWT_End-MPP(i)) < Info.Recording.sRate*Info.Parameters.Burst_Length
                 % if there is a previous wave...
                 if MPP2MNP < Info.Parameters.CWT_AmpThresh(refWave)*1.8
                     Info.Failed.FailedAtAmp  = Info.Failed.FailedAtAmp+1;
@@ -149,7 +146,7 @@ for refWave = 1:size(Data.STRef,1)
         
                 % Check for burst here in order to temporarily lower the threshold...
         if STCount > 1
-            if abs(ST(STCount).CWT_End-MPP(i)) < Info.sRate*Info.Parameters.Burst_Length
+            if abs(ST(STCount).CWT_End-MPP(i)) < Info.Recording.sRate*Info.Parameters.Burst_Length
                 % if there is a previous wave...
                 if  MNP2MPP < Info.Parameters.CWT_AmpThresh(refWave)*1.8
                     Info.Failed.FailedAtAmp  = Info.Failed.FailedAtAmp+1;
@@ -243,8 +240,8 @@ for refWave = 1:size(Data.STRef,1)
         
         %% Plot Some Waves
 %         if STCount > 10 && STCount < 15
-%             Range = (1:size(Data.REM,2))/Info.sRate;
-%               window = 1*Info.sRate;
+%             Range = (1:size(Data.Raw,2))/Info.Recording.sRate;
+%               window = 1*Info.Recording.sRate;
 %             if MNP(i)>window
 %                 figure('color', 'w'); plot(Range(MNP(i)-window:MNP(i)+window), Data.STRef(refWave,MNP(i)-window:MNP(i)+window), 'k'); hold on; plot(Range(MNP(i)-window:MNP(i)+window), Data.CWT{1}(refWave,MNP(i)-window:MNP(i)+window), 'b'); plot(Range(MNP(i)-window:MNP(i)+window), Data.CWT{2}(refWave,MNP(i)-window:MNP(i)+window), 'g');
 %                 figure('color', 'w'); plot(Data.STRef(refWave,MNP(i)-window:MNP(i)+window), 'k'); hold on; plot(Data.CWT{1}(refWave,MNP(i)-window:MNP(i)+window)); plot(Data.CWT{2}(refWave,MNP(i)-window:MNP(i)+window), 'g');
@@ -286,14 +283,14 @@ BurstId = 0;
 
 for i = 1:length(ST)-1 
         
-    if FlagST(i) && ST(i+1).Ref_NegativePeak-ST(i).Ref_NegativePeak < Info.sRate*Info.Parameters.Burst_Length
+    if FlagST(i) && ST(i+1).Ref_NegativePeak-ST(i).Ref_NegativePeak < Info.Recording.sRate*Info.Parameters.Burst_Length
     
         BurstCount = 1;
         Growing = i;
         
         for j = i:length(ST)-1
                                   
-            if ST(j+1).Ref_NegativePeak-ST(j).Ref_NegativePeak < Info.sRate*Info.Parameters.Burst_Length
+            if ST(j+1).Ref_NegativePeak-ST(j).Ref_NegativePeak < Info.Recording.sRate*Info.Parameters.Burst_Length
                 
                 Growing(end+1) = j+1;
                 BurstCount = BurstCount + 1;
@@ -309,7 +306,7 @@ for i = 1:length(ST)-1
         
     [ST(Growing).Burst_BurstId]         = deal(BurstId);
     [ST(Growing).Burst_NumberOfWaves]   = deal(BurstCount);
-    [ST(Growing).Burst_Density]         = deal((BurstCount/(ST(j+1).Ref_NegativePeak-ST(i).Ref_NegativePeak))*Info.sRate);
+    [ST(Growing).Burst_Density]         = deal((BurstCount/(ST(j+1).Ref_NegativePeak-ST(i).Ref_NegativePeak))*Info.Recording.sRate);
     
     end
 end

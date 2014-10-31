@@ -330,7 +330,7 @@ jFrame.setMaximized(true);   % to maximize the figure
 
 guidata(handles.Figure, handles);
 
-function menu_LoadData(hObject, eventdata)
+function menu_LoadData(hObject, ~)
 handles = guidata(hObject);
 
 [swaFile, swaPath] = uigetfile('*.mat', 'Please Select the Results File');
@@ -345,6 +345,14 @@ load ([swaPath,swaFile]);
 if ~exist('ST', 'var')
     set(handles.StatusBar, 'String', 'Information: No SW structure in file');
     return;
+end
+
+% Check for data present or external file
+if ischar(Data.Raw)
+    set(handles.StatusBar, 'String', 'Busy: Loading Data');
+    fid = fopen(fullfile(swaPath, Data.Raw));
+    Data.Raw = fread(fid, Info.Recording.dataDim, 'single');
+    fclose(fid);
 end
 
 set(handles.Figure, 'Name', ['Travelling Waves: ', swaFile]);
@@ -390,7 +398,7 @@ guidata(hObject, handles);
 handles.java.Spinner.setValue(1);
 
 
-function menu_SaveData(hObject, eventdata)
+function menu_SaveData(hObject, ~)
 handles = guidata(hObject);
 
 [saveName,savePath] = uiputfile('*.mat');
@@ -446,26 +454,26 @@ nSW = handles.java.Spinner.getValue();
 Ch1 = handles.java.ChannelBox1.getSelectedIndex()+1; %plus one because of 0indexing in Java
 Ch2 = handles.java.ChannelBox2.getSelectedIndex()+1;
 
-win = round(10*handles.Info.sRate); % ten seconds on each side of the wave
+win = round(10*handles.Info.Recording.sRate); % ten seconds on each side of the wave
 
 range = round((handles.SW(nSW).Ref_NegativePeak-win):(handles.SW(nSW).Ref_NegativePeak+win));
 range(range<1)=[]; %eliminate negative values in case SW is early in the data
-xaxis = range./handles.Info.sRate;
+xaxis = range./handles.Info.Recording.sRate;
 
-sPeaks = [handles.SW.Ref_NegativePeak]./handles.Info.sRate;
+sPeaks = [handles.SW.Ref_NegativePeak]./handles.Info.Recording.sRate;
 
 %Initial Plot (50 times takes 1.67s)
 if ~isfield(handles, 'lines_Butterfly') %
  
-    handles.lines_Butterfly(1) = plot(handles.ax_Butterfly(1), xaxis, handles.Data.REM(Ch1,range)', 'k');
-    handles.lines_Butterfly(2) = plot(handles.ax_Butterfly(2), xaxis, handles.Data.REM(Ch2,range)', 'k');
+    handles.lines_Butterfly(1) = plot(handles.ax_Butterfly(1), xaxis, handles.Data.Raw(Ch1,range)', 'k');
+    handles.lines_Butterfly(2) = plot(handles.ax_Butterfly(2), xaxis, handles.Data.Raw(Ch2,range)', 'k');
     
     set(handles.ax_Butterfly,...
         'YLim', [-50,50],...
         'XLim', [xaxis(1), xaxis(end)]);
     
-    handles.zoomline(1) = line([handles.SW(nSW).Ref_NegativePeak/handles.Info.sRate-0.5, handles.SW(nSW).Ref_NegativePeak/handles.Info.sRate-0.5],[-200, 200], 'color', [0.4 0.4 0.4], 'linewidth', 2, 'Parent', handles.ax_Butterfly(1));
-    handles.zoomline(2) = line([handles.SW(nSW).Ref_NegativePeak/handles.Info.sRate+.5, handles.SW(nSW).Ref_NegativePeak/handles.Info.sRate+0.5],[-200, 200], 'color', [0.4 0.4 0.4], 'linewidth', 2, 'Parent', handles.ax_Butterfly(1));
+    handles.zoomline(1) = line([handles.SW(nSW).Ref_NegativePeak/handles.Info.Recording.sRate-0.5, handles.SW(nSW).Ref_NegativePeak/handles.Info.Recording.sRate-0.5],[-200, 200], 'color', [0.4 0.4 0.4], 'linewidth', 2, 'Parent', handles.ax_Butterfly(1));
+    handles.zoomline(2) = line([handles.SW(nSW).Ref_NegativePeak/handles.Info.Recording.sRate+.5, handles.SW(nSW).Ref_NegativePeak/handles.Info.Recording.sRate+0.5],[-200, 200], 'color', [0.4 0.4 0.4], 'linewidth', 2, 'Parent', handles.ax_Butterfly(1));
     
     % Just plot all the arrows already
     handles.arrows_Butterfly = text(sPeaks, ones(1, length(sPeaks))*30, '\downarrow', 'FontSize', 20, 'HorizontalAlignment', 'center', 'Clipping', 'on', 'Parent', handles.ax_Butterfly(1));
@@ -473,19 +481,19 @@ if ~isfield(handles, 'lines_Butterfly') %
 % Re-plotting (50 times takes 0.3s)
 else
     set(handles.lines_Butterfly, 'xData', xaxis);
-    set(handles.lines_Butterfly(1), 'yData', handles.Data.REM(Ch1,range)');
-    set(handles.lines_Butterfly(2), 'yData', handles.Data.REM(Ch2,range)');
+    set(handles.lines_Butterfly(1), 'yData', handles.Data.Raw(Ch1,range)');
+    set(handles.lines_Butterfly(2), 'yData', handles.Data.Raw(Ch2,range)');
 
     set(handles.ax_Butterfly,...
         'XLim', [xaxis(1), xaxis(end)]);
     
-    set(handles.zoomline(1), 'xData', [handles.SW(nSW).Ref_NegativePeak/handles.Info.sRate-0.5, handles.SW(nSW).Ref_NegativePeak/handles.Info.sRate-0.5]);
-    set(handles.zoomline(2), 'xData', [handles.SW(nSW).Ref_NegativePeak/handles.Info.sRate+0.5, handles.SW(nSW).Ref_NegativePeak/handles.Info.sRate+0.5]);
+    set(handles.zoomline(1), 'xData', [handles.SW(nSW).Ref_NegativePeak/handles.Info.Recording.sRate-0.5, handles.SW(nSW).Ref_NegativePeak/handles.Info.Recording.sRate-0.5]);
+    set(handles.zoomline(2), 'xData', [handles.SW(nSW).Ref_NegativePeak/handles.Info.Recording.sRate+0.5, handles.SW(nSW).Ref_NegativePeak/handles.Info.Recording.sRate+0.5]);
 end
 
 function handles = update_SWPlot(handles)
 nSW = handles.java.Spinner.getValue();
-win = round(0.5*handles.Info.sRate);
+win = round(0.5*handles.Info.Recording.sRate);
 
 range = handles.SW(nSW).Ref_NegativePeak-win:handles.SW(nSW).Ref_NegativePeak+win;
 range(range<1) = [];
@@ -493,7 +501,7 @@ range(range<1) = [];
 if ~isfield(handles, 'SWPlot') % in case plot doesn't already exist
     cla(handles.ax_SWPlot);
     
-    handles.SWPlot.All      = plot(handles.ax_SWPlot, handles.Data.REM(:,range)','Color', [0.6 0.6 0.6], 'linewidth', 0.5, 'Visible', 'off');
+    handles.SWPlot.All      = plot(handles.ax_SWPlot, handles.Data.Raw(:,range)','Color', [0.6 0.6 0.6], 'linewidth', 0.5, 'Visible', 'off');
     handles.SWPlot.Ref      = plot(handles.ax_SWPlot, handles.Data.STRef(handles.SW(nSW).Ref_Region(1), range)','Color', 'r', 'linewidth', 3);
     
     handles.SWPlot.CWT(1)   = plot(handles.ax_SWPlot, handles.Data.CWT{1}(handles.SW(nSW).Ref_Region(1),range)','Color', 'b', 'linewidth', 2);
@@ -505,9 +513,9 @@ if ~isfield(handles, 'SWPlot') % in case plot doesn't already exist
     set(handles.ax_SWPlot, 'XLim', [1, win*2+1])
     
 else
-    for i = 1:size(handles.Data.REM,1) % faster than total replot...
+    for i = 1:size(handles.Data.Raw,1) % faster than total replot...
          set(handles.SWPlot.All(i),...
-             'yData', handles.Data.REM(i,range),...
+             'yData', handles.Data.Raw(i,range),...
              'Color', [0.6 0.6 0.6], 'linewidth', 0.5, 'Visible', 'off');
     end
     set(handles.SWPlot.All(handles.SW(nSW).Channels_Active), 'Color', [0.6 0.6 0.6], 'LineWidth', 1, 'Visible', 'on');
@@ -527,7 +535,7 @@ else
     end
     
     % Find the absolute maximum value and round to higher 10, then add 10 for space
-    dataMax = ceil(abs(max(max(handles.Data.REM(handles.SW(nSW).Channels_Active, range))))/10)*10+10;
+    dataMax = ceil(abs(max(max(handles.Data.Raw(handles.SW(nSW).Channels_Active, range))))/10)*10+10;
     set(handles.ax_SWPlot, 'YLim', [-dataMax, dataMax])
 
 end
@@ -603,8 +611,8 @@ end
 
 function handles = update_SWOriginsMap(handles, nFigure)
 
-handles.Origins = zeros(size(handles.Data.REM,1),1);
-handles.Totals  = zeros(size(handles.Data.REM,1),1);
+handles.Origins = zeros(size(handles.Data.Raw,1),1);
+handles.Totals  = zeros(size(handles.Data.Raw,1),1);
 for i = 1:length(handles.SW)
     handles.Origins(handles.SW(i).Travelling_Delays<1)  = handles.Origins(handles.SW(i).Travelling_Delays<1) + 1;
     handles.Totals(handles.SW(i).Channels_Active)       = handles.Totals(handles.SW(i).Channels_Active) +1;
@@ -665,11 +673,11 @@ SpinnerUpdate([],[], hObject);
 function edit_SWPlot(hObject, ~)
 handles = guidata(hObject);
 nSW = handles.java.Spinner.getValue();
-win = round(0.5*handles.Info.sRate);
+win = round(0.5*handles.Info.Recording.sRate);
 
 range = round((handles.SW(nSW).Ref_NegativePeak-win):(handles.SW(nSW).Ref_NegativePeak+win));
 range(range<1) = [];
-xaxis = range./handles.Info.sRate;
+xaxis = range./handles.Info.Recording.sRate;
 
 %% Prepare Figure
 SW_Handles.Figure = figure(...
@@ -728,7 +736,7 @@ set(j_pbTravel, 'MouseReleasedCallback', {@UpdateTravelling, handles.Figure});
 
 %% Plot the data with the reference negative peak centered %
 SW_Handles.Plot_Ch = plot(SW_Handles.Axes,...
-     xaxis, handles.Data.REM(:,range)',...
+     xaxis, handles.Data.Raw(:,range)',...
     'Color', [0.8 0.8 0.8],...
     'LineWidth', 0.5,...
     'LineStyle', ':');
@@ -773,13 +781,13 @@ handles = guidata(FigureHandle);
 nSW = handles.java.Spinner.getValue();
 
 % Recalculate the Travelling_Delays parameter before running...
-Window = round(handles.Info.Parameters.Channels_WinSize*handles.Info.sRate);
+Window = round(handles.Info.Parameters.Channels_WinSize*handles.Info.Recording.sRate);
 wData = (handles.SW(nSW).CWT_NegativePeak-Window):(handles.SW(nSW).CWT_NegativePeak+Window);  
 
-Data.REM = handles.Data.REM(handles.SW(nSW).Channels_Active, wData);
+Data.REM = handles.Data.Raw(handles.SW(nSW).Channels_Active, wData);
 
 FreqRange   = handles.Info.Parameters.CWT_hPass:handles.Info.Parameters.CWT_lPass;
-Scale_theta  = swa_frq2scal(FreqRange, 'morl', 1/handles.Info.sRate);    % Own Function!
+Scale_theta  = swa_frq2scal(FreqRange, 'morl', 1/handles.Info.Recording.sRate);    % Own Function!
 
 Channels_Theta = zeros(size(Data.REM));
 WaitHandle = waitbar(0,'Please wait...', 'Name', 'Calculating Wavelets');
@@ -791,7 +799,7 @@ delete(WaitHandle);
 
 [Ch_Min, Ch_Id] = min(Channels_Theta, [],2);
 
-handles.SW(nSW).Travelling_Delays = nan(size(handles.Data.REM,1),1);
+handles.SW(nSW).Travelling_Delays = nan(size(handles.Data.Raw,1),1);
 handles.SW(nSW).Travelling_Delays(handles.SW(nSW).Channels_Active) = Ch_Id-min(Ch_Id);
 
 [handles.Info, handles.SW] = swa_FindSTTravelling(handles.Info, handles.SW, nSW);

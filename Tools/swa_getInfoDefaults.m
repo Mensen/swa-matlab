@@ -42,4 +42,23 @@ switch type
                 Info.Parameters.Ref_AmpStd      = [];              % Standard deviations from mean negativity
         end
        
+    case 'ST'
+
+        % Reference and Filter Parameters
+        Info.Parameters.Ref_Method          = 'Midline';
+        Info.Parameters.Filter_Apply        = false; % No filter needed for CWT method...
+        
+        % Wavelet Parameters for Detection
+        Info.Parameters.CWT_hPass           = 2;
+        Info.Parameters.CWT_lPass           = 5;
+        
+        Info.Parameters.CWT_StdThresh       = 1.75;    % Explore defaults
+        Info.Parameters.CWT_AmpThresh       = [];
+        Info.Parameters.CWT_ThetaAlpha      = 1.2;
+        Info.Parameters.Burst_Length        = 1;       % Maximum time between waves in seconds
+        
+        Info.Parameters.Channels_WinSize    = 0.060; % in seconds
+        
+        Info.Parameters.Travelling_GS       = 40; % Gridsize for delay map
+        Info.Parameters.Travelling_MinDelay = 20; % minimum travel time in ms
 end
