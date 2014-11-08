@@ -13,6 +13,7 @@ function DefineInterface
 handles.colorscheme = struct(...
     'fg_col_1',     [0.9, 0.9, 0.9] , ...     
     'fg_col_2',     [0.8, 0.8, 0.8] , ...    
+    'fg_col_3',     [0.5, 0.5, 0.5] , ...        
     'bg_col_1',     [0.1, 0.1, 0.1] , ...
     'bg_col_2',     [0.2, 0.2, 0.2] , ...
     'bg_col_3',     [0.15, 0.15, 0.15] );
@@ -115,14 +116,14 @@ handles.channel_axes = axes(...
     'xtick',        []                      ,...
     'ytick',        []                      );
 
+% click axes to mark events
+set(handles.channel_axes, 'buttondownfcn', {@fcn_select_events, handles.channel_axes, 'buttondown'})
+
 % invisible name axis
 handles.label_axes = axes(...
     'parent',       handles.fig             ,...
     'position',     [0 0.275, 0.1, 0.675]   ,...
     'visible',      'off');
-
-% use the third axes to mark arousals
-set(handles.channel_axes, 'buttondownfcn', {@fcn_select_events, handles.channel_axes, 'buttondown'})
 
 % Scoring Buttons
 % ```````````````
@@ -182,7 +183,7 @@ handles.StageBar = uicontrol(...
     'FontSize', 10);
 
 % create hyponogram
-handles.axHypno = axes(...
+handles.axes_hypnogram = axes(...
     'Parent',   handles.fig,...
     'Position', [0.05 0.050 0.85 0.20],...
     'color',    handles.colorscheme.bg_col_2 ,...
@@ -204,14 +205,14 @@ handles.et_Scale = uicontrol(...
     'String',   '200',...
     'value',    200,...
     'Units',    'normalized',...
-    'Position', [0.9, 0.08 + 0.245, 0.05, 0.035],...
+    'Position', [0.825, 0.275, 0.075, 0.035],...
     'FontName', 'Century Gothic',...
     'FontSize', 10);
 
 % Set Callbacks
 % `````````````
 % set hypnogram click
-set(handles.axHypno,...
+set(handles.axes_hypnogram,...
     'ButtonDownFcn', {@bd_hypnoEpochSelect});
 
 set(handles.et_Scale,...
@@ -281,8 +282,8 @@ if isfield(EEG, 'swa_scoring')
     % if there is a previously scoring file
     % set the epochlength
 %     set(handles.et_EpochLength, 'String', num2str(EEG.swa_scoring.epochLength));  
-    sEpoch  = EEG.swa_scoring.epochLength*EEG.srate;
-    nEpochs = floor(size(eegData,2)/sEpoch);
+    samples_in_epoch  = EEG.swa_scoring.epochLength*EEG.srate;
+    number_of_epochs = floor(size(eegData,2)/samples_in_epoch);
 
     % check whether the scoring file matches the length
     if length(EEG.swa_scoring.stages) ~= EEG.pnts
@@ -292,7 +293,7 @@ if isfield(EEG, 'swa_scoring')
         EEG.swa_scoring.stages      = uint8(ones(1,EEG.pnts)*255);
         EEG.swa_scoring.arousals    = logical(zeros(1,EEG.pnts)*255);
         % only every epoch is assigned a name
-        EEG.swa_scoring.stageNames  = cell(1, nEpochs);
+        EEG.swa_scoring.stageNames  = cell(1, number_of_epochs);
         EEG.swa_scoring.stageNames(:) = {'Unscored'};
     end
     % check for startTime
@@ -305,16 +306,16 @@ else
     % get the default setting for the epoch length from the figure
     EEG.swa_scoring.epochLength = 30;
     % calculate samples per epoch
-    sEpoch  = EEG.swa_scoring.epochLength*EEG.srate; % samples per epoch 
+    samples_in_epoch  = EEG.swa_scoring.epochLength*EEG.srate; % samples per epoch 
     % calculate number of epochs in the entire series
-    nEpochs = floor(size(eegData,2)/sEpoch);
+    number_of_epochs = floor(size(eegData,2)/samples_in_epoch);
     
     % pre-allocate the variables
     % each sample is assigned a stage (255 is default unscored)
     EEG.swa_scoring.stages      = uint8(ones(1,EEG.pnts)*255);
     EEG.swa_scoring.arousals    = logical(zeros(1,EEG.pnts)*255);    
     % only every epoch is assigned a name
-    EEG.swa_scoring.stageNames  = cell(1,nEpochs);
+    EEG.swa_scoring.stageNames  = cell(1,number_of_epochs);
     EEG.swa_scoring.stageNames(:) = {'Unscored'};
 
     EEG.swa_scoring.startTime = 0;
@@ -327,8 +328,8 @@ else
 end
 % ``````````````
 
-% save the sEpoch to the EEG structure
-EEG.swa_scoring.sEpoch = sEpoch;
+% save the samples_in_epoch to the EEG structure
+EEG.swa_scoring.samples_in_epoch = samples_in_epoch;
 
 % enable the menu items
 set(handles.menu.Export, 'Enable', 'on');
@@ -343,6 +344,9 @@ guidata(handles.fig, handles)
 % use setappdata for data storage to avoid passing it around in handles when not necessary
 setappdata(handles.fig, 'EEG', EEG);
 setappdata(handles.fig, 'eegData', eegData);
+
+% set the current epoch
+set(handles.current_epoch, 'Value', 1);
 
 % draw the initial eeg
 fcn_initial_plot(handles.fig)
@@ -413,8 +417,11 @@ EEG = getappdata(handles.fig, 'EEG');
 eegData = getappdata(handles.fig, 'eegData');
 
 % select the plotting data
-range       = 1:EEG.swa_scoring.epochLength * EEG.srate;
-channels    = 1:EEG.swa_scoring.display_channels;
+samples_in_epoch = EEG.swa_scoring.samples_in_epoch;
+current_epoch = get(handles.current_epoch, 'value');
+range = (current_epoch - 1) * samples_in_epoch + 1 : ...
+    (current_epoch * samples_in_epoch);
+channels = 1:EEG.swa_scoring.display_channels;
 
 % re-reference the data
 data = eegData(EEG.swa_scoring.montage.channels(channels,1), range)...
@@ -437,8 +444,8 @@ end
 % plot the data
 % ~~~~~~~~~~~~~
 % define accurate spacing
-scale = get(handles.et_Scale, 'value')*-1;
-toAdd = [1:8]'*scale;
+scale = get(handles.et_Scale, 'value') * -1;
+toAdd = [1:EEG.swa_scoring.display_channels]'*scale;
 toAdd = repmat(toAdd, [1, length(range)]);
 
 % space out the data for the single plot
@@ -448,9 +455,13 @@ set([handles.channel_axes, handles.label_axes],...
     'yLim', [scale 0]*(EEG.swa_scoring.display_channels+1));
 
 % in the case of replotting delete the old handles
-if isfield(handles, 'plot_channels')
+if isfield(handles, 'channel_plots')
     delete(handles.channel_plots);
     delete(handles.labels);
+    delete(handles.scale_lines);
+    delete(handles.line_hypno);
+    delete(handles.plot_arousal);
+    delete(handles.plot_hypno);
 end
 
 % calculate the time in seconds
@@ -459,9 +470,20 @@ set(handles.channel_axes,  'xlim', [time(1), time(end)]);
 
 % plot the data
 handles.channel_plots = line(time, data,...
-                            'color',  handles.colorscheme.fg_col_2,...
-                            'parent', handles.channel_axes);
-                  
+    'color',  handles.colorscheme.fg_col_2,...
+    'parent', handles.channel_axes);
+
+% draw scale lines
+handles.scale_lines(1) = line([time(1), time(end)],...
+    [toAdd(3, 1) - scale/2, toAdd(3, 1) - scale/2]);
+handles.scale_lines(2) = line([time(1), time(end)],...
+    [toAdd(3, 1) + scale/2, toAdd(3, 1) + scale/2]);
+    
+set(handles.scale_lines,...
+    'color', handles.colorscheme.fg_col_3,...
+    'linestyle', '--',...
+    'parent', handles.channel_axes);                   
+                        
 % plot the arousals
 data(:, ~EEG.swa_scoring.arousals(range)) = nan;
 handles.plot_arousal = line(time, data,...
@@ -481,23 +503,20 @@ for chn = 1:length(EEG.swa_scoring.montage.labels)
         'horizontalAlignment', 'center');
 end
                     
- % set the current epoch
-set(handles.current_epoch, 'Value', 1);
-
 % Set Hypnogram
 % `````````````
 time = [1:EEG.pnts]/EEG.srate/60/60;
 
 % set the x-limit to the number of stages
-set(handles.axHypno,...
+set(handles.axes_hypnogram,...
     'XLim', [0 time(end)]);
 % plot the epoch indicator line
-handles.ln_hypno = line([0, 0], [0, 6.5],...
+handles.line_hypno = line([0, 0], [0, 6.5],...
     'color', [0.5, 0.5, 0.5],...
-    'parent', handles.axHypno);
+    'parent', handles.axes_hypnogram);
 
 % plot the stages    
-handles.plHypno = plot(time, EEG.swa_scoring.stages,...
+handles.plot_hypno = plot(time, EEG.swa_scoring.stages,...
     'LineWidth', 2,...
     'Color',    handles.colorscheme.fg_col_2);
 
@@ -514,9 +533,9 @@ EEG = getappdata(handles.fig, 'EEG');
 eegData = getappdata(handles.fig, 'eegData');
 
 % data section
-sEpoch  = EEG.swa_scoring.sEpoch;
+samples_in_epoch  = EEG.swa_scoring.samples_in_epoch;
 current_epoch  = get(handles.current_epoch, 'value');
-range   = (current_epoch*sEpoch-(sEpoch-1)):(current_epoch*sEpoch);
+range   = (current_epoch*samples_in_epoch-(samples_in_epoch-1)):(current_epoch*samples_in_epoch);
 
 % rereference the data
 data = eegData(EEG.swa_scoring.montage.channels(:,1),range)...
@@ -526,6 +545,12 @@ data = eegData(EEG.swa_scoring.montage.channels(:,1),range)...
 scale = get(handles.et_Scale, 'value')*-1;
 toAdd = [1:8]'*scale;
 toAdd = repmat(toAdd, [1, length(range)]);
+
+% adjust the scale lines
+set(handles.scale_lines(1), 'ydata',...
+    [toAdd(3, 1) - scale/2, toAdd(3, 1) - scale/2]);
+set(handles.scale_lines(2), 'ydata',...
+    [toAdd(3, 1) + scale/2, toAdd(3, 1) + scale/2]);
 
 % loop for each individual channels settings
 % plot the new data
@@ -560,7 +585,7 @@ current_epoch = get(handles.current_epoch, 'value');
 
 % update the hypnogram indicator line
 x = current_epoch * EEG.swa_scoring.epochLength/60/60;
-set(handles.ln_hypno, 'Xdata', [x, x]);
+set(handles.line_hypno, 'Xdata', [x, x]);
 
 % set the stage name to the current stage
 % calculate the current time
@@ -587,6 +612,7 @@ ylimits = str2double(get(handles.et_Scale, 'String'));
 set(handles.channel_axes,...
     'YLim', [-ylimits, ylimits]);
 
+
 function updateStage(object, ~)
 % get the updated handles from the GUI
 handles = guidata(object);
@@ -595,9 +621,9 @@ handles = guidata(object);
 EEG = getappdata(handles.fig, 'EEG');
 
 % current epoch range
-sEpoch  = EEG.swa_scoring.epochLength*EEG.srate; % samples per epoch
+samples_in_epoch  = EEG.swa_scoring.epochLength*EEG.srate; % samples per epoch
 current_epoch  = get(handles.current_epoch, 'value');
-range   = (current_epoch*sEpoch-(sEpoch-1)):(current_epoch*sEpoch);
+range   = (current_epoch*samples_in_epoch-(samples_in_epoch-1)):(current_epoch*samples_in_epoch);
 
 % set the current sleep stage value and name
 EEG.swa_scoring.stages(range) = get(get(handles.button_group, 'SelectedObject'), 'UserData');
@@ -607,7 +633,7 @@ EEG.swa_scoring.stageNames{current_epoch} = get(get(handles.button_group, 'Selec
 set(handles.button_group,'SelectedObject',[]);  % No selection
 
 % change the scores value
-set(handles.plHypno, 'Ydata', EEG.swa_scoring.stages);
+set(handles.plot_hypno, 'Ydata', EEG.swa_scoring.stages);
 
 % Update the handles in the GUI
 guidata(handles.fig, handles);
@@ -617,7 +643,7 @@ setappdata(handles.fig, 'EEG', EEG);
 set(handles.current_epoch, 'value', current_epoch+1);
 fcn_epochChange(object, [], handles.fig);
 
-function updateEpochLength(object, ~)
+function fcn_update_epoch_length(object, ~)
 % get handles
 handles = guidata(object); 
 
@@ -636,21 +662,14 @@ elseif EEG.swa_scoring.epochLength < 5
     return;
 end
 
-% calculate the number of samples per epoch
-sEpoch  = EEG.swa_scoring.epochLength * EEG.srate;
-% calculate the total number of epochs in the time series
-nEpochs = floor(size(eegData,2)/sEpoch);
-
-% set limit to the axes
-% set(handles.axHypno,...
-%     'XLim', [1 nEpochs]);
-set(handles.channel_axes,...
-    'XLim', [1, sEpoch]);
+% calculate the total number of epochs in dataset
+samples_in_epoch = EEG.swa_scoring.epochLength * EEG.srate;
+number_of_epochs = floor(size(eegData,2)/samples_in_epoch);
 
 % re-calculate the stage names from the value (e.g. 0 = wake)
-EEG.swa_scoring.stageNames = cell(1, nEpochs);
+EEG.swa_scoring.stageNames = cell(1, number_of_epochs);
 count = 0;
-for i = 1:sEpoch:nEpochs*sEpoch
+for i = 1:samples_in_epoch:number_of_epochs*samples_in_epoch
     count = count+1;
     switch EEG.swa_scoring.stages(i)
         case 0
@@ -670,26 +689,18 @@ for i = 1:sEpoch:nEpochs*sEpoch
     end
 end
 
-set(handles.StatusBar, 'String', 'Idle')
-
-% set the xdata and ydata to equal lengths
-for i = 1:8
-    set(handles.channel_plots(i), 'Xdata', 1:sEpoch, 'Ydata', 1:sEpoch);
-end
-set(handles.current_events, 'Xdata', 1:sEpoch, 'Ydata', 1:sEpoch);
-
 % update the hypnogram
-set(handles.plHypno, 'Ydata', EEG.swa_scoring.stages);
+set(handles.plot_hypno, 'yData', EEG.swa_scoring.stages);
 
-% save the sEpoch to the EEG structure
-EEG.swa_scoring.sEpoch = sEpoch;
+% save the samples_in_epoch to the EEG structure
+EEG.swa_scoring.samples_in_epoch = samples_in_epoch;
 
 % update the GUI handles
 guidata(handles.fig, handles) 
 setappdata(handles.fig, 'EEG', EEG);
 
-% update all the axes
-updateAxes(handles);
+% redraw the axes
+fcn_initial_plot(object)
 
 
 function cb_KeyPressed(object, eventdata)
@@ -798,9 +809,9 @@ handles = guidata(object);
 % Get the EEG from the figure's appdata
 EEG = getappdata(handles.fig, 'EEG');
 
-current_point = get(handles.axHypno, 'CurrentPoint');
+current_point = get(handles.axes_hypnogram, 'CurrentPoint');
 
-current_epoch = floor(current_point(1)*60*60*EEG.srate/EEG.swa_scoring.sEpoch);
+current_epoch = floor(current_point(1)*60*60*EEG.srate/EEG.swa_scoring.samples_in_epoch);
 
 % set the current epoch
 set(handles.current_epoch, 'value', current_epoch);
@@ -830,7 +841,7 @@ switch type
                 EEG.swa_scoring.epochLength = newLength;
                 % update the eeg structure before call
                 setappdata(handles.fig, 'EEG', EEG);
-                updateEpochLength(object, []);
+                fcn_update_epoch_length(object, []);
             end
         end
         
