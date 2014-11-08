@@ -469,10 +469,10 @@ handles.plot_arousal = line(time, data,...
                             'parent', handles.channel_axes);
 
 % plot the labels in their own boxes
-handles.labels = zeros(length(EEG.swa_scoring.montage.channels(channels)), 1);
+handles.labels = zeros(EEG.swa_scoring.display_channels, 1);
 for chn = 1:length(EEG.swa_scoring.montage.labels)
     handles.labels(chn) = text(...
-        0.5, toAdd(chn,1)+scale/5, EEG.swa_scoring.montage.labels{chn},...
+        0.5, toAdd(chn,1) + scale/5, EEG.swa_scoring.montage.labels{chn},...
         'parent', handles.label_axes,...
         'fontsize',   10,...
         'fontweight', 'bold',...
@@ -1169,8 +1169,8 @@ EEG.swa_scoring.montage.channels = cell2mat([get(H.pmCh, 'Value'), get(H.pmRe, '
 EEG.swa_scoring.montage.filterSettings = [str2double(get(H.lbHP, 'String')), str2double(get(H.lbLP, 'String'))];
 
 % update all the labels (even if they didn't change)
-for i = 1:8
-    set(handles.lbCh(i), 'string', EEG.swa_scoring.montage.labels{i})
+for i = 1:EEG.swa_scoring.display_channels
+    set(handles.labels(i), 'string', EEG.swa_scoring.montage.labels{i})
 end
 
 % set the data
