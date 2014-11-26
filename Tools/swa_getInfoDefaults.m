@@ -13,13 +13,15 @@ switch type
         Info.Parameters.Ref_Method      = [];
         Info.Parameters.Ref_ZCorMNP     = 'MNP';
         Info.Parameters.Ref_UseInside   = 1;                % Use interior head channels or all
-        Info.Parameters.Ref_AmpStd      = 4;                % Standard deviations from mean negativity
+        Info.Parameters.Ref_AmpStd      = 5;                % Standard deviations from mean negativity
         Info.Parameters.Ref_NegAmpMin   = 80;               % Only used if Ref_AmpStd not set
         Info.Parameters.Ref_WaveLength  = [0.25 1.25];      % Length criteria between zero crossings
         Info.Parameters.Ref_SlopeMin    = 0.90;             % Percentage cut-off for slopes
         Info.Parameters.Ref_Peak2Peak   = 140;              % Only for MDC
         
         % channel detection
+        Info.Parameters.Channels_Method     = 'correlation'; % correlation/threshold
+        Info.Parameters.Channels_AdjThresh  = 1;             % amount to adjust threshold if using threshold method
         Info.Parameters.Channels_CorrThresh = 0.90;
         Info.Parameters.Channels_WinSize    = 0.10;
         
