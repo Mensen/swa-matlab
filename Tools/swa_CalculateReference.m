@@ -37,19 +37,27 @@ switch Info.Parameters.Ref_Method
         data = data(insideCh,:);
         
     end
-    
+
     % get the most negative channels for each sample
+    % ``````````````````````````````````````````````
     fprintf(1, 'Calculation: Negative Envelope \n');
-    rData   = sort(data);                             % Sort each sample to find the lowest values for each time point
-    nCh     = floor(length(Info.Electrodes)*0.025);   % How many channels are the 97.5th percentile
-    nData   = mean(rData(2:nCh,:));                   % Get the mean of the most negative channels (leave most negative if artifact)
-    
+    % Sort each sample to find the lowest values for each time point
+    rData   = sort(data);
+    % How many channels are the 97.5th percentile (or if < 3 = 3)
+    nCh     = max(3, floor(length(Info.Electrodes)*0.025));  
+    % Get the mean of the most negative channels
+    % if there are more than 3 channels skip the most negative since it could be artifact
+    if nCh > 3
+        nData = mean(rData(2:nCh,:));
+    else
+        nData = mean(rData(1:nCh,:));
+    end
+
     case 'MDC'
-    
         % Get the electrodes in the four regions
         Th = pi/180*[Info.Electrodes.theta];        % Calculate theta values from x,y,z e_loc
         Rd = [Info.Electrodes.radius];              % Calculate radian values from x,y,z e_loc
-        
+
         x = Rd.*cos(Th);                            % Calculate 2D projected X
         y = Rd.*sin(Th);                            % Calculate 2D projected Y
         
@@ -118,6 +126,7 @@ end
 
 if Info.Parameters.Filter_Apply
     
+    % check for necessary defaults
     if ~isfield(Info.Parameters, 'Filter_Method');
         fprintf(1, 'Information: No filter parameters given, suing defaults \n');
         Info.Parameters.Filter_Method = 'Chebyshev';
@@ -125,38 +134,14 @@ if Info.Parameters.Filter_Apply
         Info.Parameters.Filter_lPass = 4;
         Info.Parameters.Filter_order = 2;
     end
-    
-    
+        
+    % filter the data
     fprintf(1, 'Calculation: Applying %s filter for [%0.1f, %0.1f] Hz...', Info.Parameters.Filter_Method, Info.Parameters.Filter_hPass, Info.Parameters.Filter_lPass);
-    
-    switch Info.Parameters.Filter_Method
-        case 'Chebyshev'
-            Wp=[Info.Parameters.Filter_hPass Info.Parameters.Filter_lPass]/(Info.Recording.sRate/2); % Filtering parameters
-            Ws=[Info.Parameters.Filter_hPass/5 Info.Parameters.Filter_lPass*2]/(Info.Recording.sRate/2); % Filtering parameters
-            Rp=3;
-            Rs=10;
-            [n, Wn]=cheb2ord(Wp,Ws,Rp,Rs);
-            [bbp,abp]=cheby2(n,Rs,Wn); % Loses no more than 3 dB in pass band and has at least 10 dB attenuation in stop band
-            % fprintf(1, 'Filtering Reference Channel(s)...');
-            filtData=filtfilt(bbp, abp, nData')';
-            % fprintf(1, 'Done. \n');
-            
-        case 'Buttersworth'
-            fhc = Info.Parameters.Filter_hPass/(Info.Recording.sRate/2);
-            flc = Info.Parameters.Filter_lPass/(Info.Recording.sRate/2);
-            [b1,a1] = butter(Info.Parameters.Filter_order,fhc,'high');
-            [b2,a2] = butter(Info.Parameters.Filter_order,flc,'low');
-            
-            % fprintf(1, 'Filtering Reference Channel(s)...');
-            filtData = filtfilt(b1, a1, nData');
-            filtData = (filtfilt(b2, a2, filtData))';
-            % fprintf(1, 'Done. \n');
-    end
-    
+    filtData = swa_filter_data(nData, Info);
     fprintf(1, 'Done \n');
     
 else
-    
+    % just return the calculated reference
     filtData = nData;
 end
     
