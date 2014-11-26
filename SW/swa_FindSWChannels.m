@@ -1,13 +1,26 @@
-function [Data, Info, SW] = swa_FindSWChannels(Data, Info, SW)
+function [Data, Info, SW] = swa_FindSWChannels(Data, Info, SW, flag_wait)
+% function to find the slow waves present at each channel given the parameters
+% already calculated for the reference wave
 
+% check inputs
+if nargin < 3
+    error('current function requires at least 3 inputs: Data, Info, and SW')
+end
+
+if nargin < 4
+    flag_wait = 1;
+end
+
+% check for previous channel neighbours calculation
 if ~isfield(Info, 'ChN');
     fprintf(1,'Calculating: Channel Neighbours...');
     Info.ChN = swa_ChN(Info.Electrodes);
-    fprintf(1,'Done. \n');
+    fprintf(1,' done. \n');
 else
-    fprintf(1,'Information: Using channels neigbourhood in ''Info''. \n');
+    fprintf(1,'Information: Using channels neighbourhood in ''Info''. \n');
 end
 
+% check for sufficient parameter inputs
 if strcmp(Info.Parameters.Ref_Method, 'Envelope')
     if ~isfield(Info.Parameters, 'Channels_CorrThresh')
         fprintf(1, 'Warning: No further SW parameters found in Info; using defaults \n');
@@ -17,7 +30,7 @@ if strcmp(Info.Parameters.Ref_Method, 'Envelope')
 end
 
 % Filter the original signal
-% ``````````````````````````
+% ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 % TODO: Solve persistent 'out of memory' issues while raw and filtered
 % files are kept in memory
@@ -32,24 +45,47 @@ if isfield(Data, 'Filtered')
 else
     Data.Filtered = swa_filter_data(Data.Raw, Info);
 end
-    
-win = round(Info.Parameters.Channels_WinSize*Info.Recording.sRate);
 
-%% Find corresponding channels from the reference wave
-WaitHandle = waitbar(0,'Please wait...', 'Name', 'Finding Slow Waves...');
+% calculate the window size in samples around center point
+win = round(Info.Parameters.Channels_WinSize * Info.Recording.sRate);
+
+
+% Find corresponding channels from the reference wave
+% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+if flag_wait
+    WaitHandle = waitbar(0,'Please wait...', 'Name', 'Finding Slow Waves...');
+end
+
+% pre-allocate delete flag
 ToDelete=[];
-switch Info.Parameters.Ref_Method
-    case 'Envelope'
+
+% Switch between the channel detection methods
+switch Info.Parameters.Channels_Method
+    
+    % Correlation Method
+    % ^^^^^^^^^^^^^^^^^^
+    case 'correlation'
         
         for nSW = 1:length(SW)
-            
-            waitbar(nSW/length(SW),WaitHandle,sprintf('Slow Wave %d of %d',nSW, length(SW)))
+
+            if flag_wait
+                waitbar(nSW/length(SW),WaitHandle,sprintf('Slow Wave %d of %d',nSW, length(SW)))
+            end
+
+            % check that the search window doesn't cross data start or end
+            % TODO: improve check as these may be legitimate slow waves
+            if SW(nSW).Ref_PeakInd - win * 2 < 1 || SW(nSW).Ref_PeakInd + win * 2 > Info.Recording.dataDim(2)
+                ToDelete(end+1)=nSW;
+                continue
+            end
             
             % extract a small portion of the channel data around the
             % reference peak
-            shortData   = Data.Filtered(:,SW(nSW).Ref_PeakInd-win*2:SW(nSW).Ref_PeakInd+win*2);
+            shortData   = Data.Filtered(:,SW(nSW).Ref_PeakInd - win * 2 ...
+                        : SW(nSW).Ref_PeakInd + win * 2);
             % get only the negative portion of the reference peak
-            refData     = Data.SWRef(:,SW(nSW).Ref_PeakInd-win:SW(nSW).Ref_PeakInd+win);
+            refData     = Data.SWRef(:, SW(nSW).Ref_PeakInd - win ...
+                        : SW(nSW).Ref_PeakInd + win);
             
             % cross correlate with the reference channel
             cc = swa_xcorr(refData, shortData, win);
@@ -113,14 +149,11 @@ switch Info.Parameters.Ref_Method
                 
             end
             
-            % TODO: Test for type 1 or 2 wave
-            % `````````````````````````
-            
-            
-            % TODO: Processing for multi-peak waves
+            % TODO: Test for type 1 or 2 waves
             % ```````````````````````````````
+            % TODO: Processing for multi-peak waves
+            % `````````````````````````````````````
 
-            
             % eliminate the potentially false channels from the cluster test
             % in the negative amplitudes variable 
             SW(nSW).Channels_NegAmp(~Channels) = nan;
@@ -135,20 +168,26 @@ switch Info.Parameters.Ref_Method
             SW(nSW).Channels_Globality  = sum(Channels)/length(Channels)*100;
             SW(nSW).Channels_Active 	= Channels;
         end
-                
-    case 'MDC'
+
+
+    % Thresholding Method
+    % ^^^^^^^^^^^^^^^^^^^    
+    case 'threshold'
         
         for nSW = 1:length(SW)
             
             % start the waitbar
-            waitbar(nSW/length(SW),WaitHandle,sprintf('Slow Wave %d of %d',nSW, length(SW)))
-            
+            if flag_wait
+                waitbar(nSW/length(SW),WaitHandle,sprintf('Slow Wave %d of %d',nSW, length(SW)))
+            end
+
             % only take the relevant data in the window
             shortData = Data.Filtered(:,SW(nSW).Ref_PeakInd-win:SW(nSW).Ref_PeakInd+win);
             
             % Minimum amplitude threshold for channels
             [SW(nSW).Channels_NegAmp, minChId] = min(shortData,[],2);
-            SW(nSW).Channels_Active = SW(nSW).Channels_NegAmp < -Info.Parameters.Ref_NegAmpMin;
+            SW(nSW).Channels_Active = SW(nSW).Channels_NegAmp < ...
+                -Info.Parameters.Ref_NegAmpMin * Info.Parameters.Channels_AdjThresh;
             
             % Peak to Peak Check
             % MDC Test for peak to peak amplitude
@@ -156,13 +195,16 @@ switch Info.Parameters.Ref_Method
             for nCh = find(SW(nSW).Channels_Active == 1)'
                 posPeakAmp(nCh) = max(shortData(nCh, minChId(nCh):end));
             end
-            SW(nSW).Channels_Active(posPeakAmp-SW(nSW).Channels_NegAmp < Info.Parameters.Ref_Peak2Peak) = false;
+            SW(nSW).Channels_Active(posPeakAmp-SW(nSW).Channels_NegAmp < ...
+                Info.Parameters.Ref_Peak2Peak * Info.Parameters.Channels_AdjThresh) = false;
+            
+            % TODO: slope check
             
             % Wavelength Check
             % Not performed as some channels do not actually cross zero but
             % show all other characteristics of the slow wave
             
-            %% Sufficient Channels Check (more than 0)
+            % Sufficient Channels Check (more than 0)
             if sum(SW(nSW).Channels_Active)==0
                 ToDelete(end+1) = nSW;
                 continue
@@ -179,6 +221,11 @@ switch Info.Parameters.Ref_Method
             
 end
 
+% close the wait bar
+if flag_wait
+    delete(WaitHandle)       % DELETE the waitbar; don't try to CLOSE it.
+end
+
+% delete the bad waves
 fprintf(1, 'Information: %d slow waves were removed due insufficient criteria \n', length(ToDelete));
-delete(WaitHandle)       % DELETE the waitbar; don't try to CLOSE it.
 SW(ToDelete)=[];
