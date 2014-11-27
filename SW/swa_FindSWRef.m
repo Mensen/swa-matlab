@@ -217,14 +217,22 @@ for refWave = 1:size(Data.SWRef,1)
             for n = 1:length(DZC)
                 
                 % Test for negative amplitude
+                % ```````````````````````````````
                 [NegPeakAmp,NegPeakId] = min(Data.SWRef(1,DZC(n):UZC(n)));
                 if abs(NegPeakAmp) < Info.Parameters.Ref_NegAmpMin
                     continue;
                 end
                 NegPeakId = NegPeakId+DZC(n);
                 
-                % MDC Test for peak to peak amplitude
-                PosPeakAmp = max(Data.SWRef(1,UZC(n):UZC(n)+2*Info.Recording.sRate));
+                % Test for peak to peak amplitude
+                % ```````````````````````````````
+                sample_range = UZC(n):UZC(n) + 2 * Info.Recording.sRate;
+                % make sure range is within end border
+                if sample_range(end) > size(Data.SWRef, 2)
+                    sample_range = UZC(n):size(Data.SWRef, 2);
+                end
+                % calculate the positive peak after the zero crossing
+                PosPeakAmp = max(Data.SWRef(1, sample_range));
                 if strcmp(Info.Parameters.Ref_Method,'MDC')
                     if PosPeakAmp-NegPeakAmp < Info.Parameters.Ref_Peak2Peak
                         continue;
@@ -232,12 +240,14 @@ for refWave = 1:size(Data.SWRef,1)
                 end
                 
                 % Test for positive slope
+                % ```````````````````````````````
                 MaxPosSlope = max(slopeData(1,DZC(n):UZC(n)));
                 if MaxPosSlope < slopeThresh
                     continue;
                 end
                 
                 % Check if the SW has already been found in another reference channel
+                % ```````````````````````````````
                 if refWave > 1
                     [c, SWid] = max(double(AllPeaks > DZC(n)) + double(AllPeaks < UZC(n)));
                     if c == 2
@@ -283,7 +293,7 @@ for refWave = 1:size(Data.SWRef,1)
             return;
     end
     
-    if nargin == 3
+    if refWave > 1
         fprintf(1, 'Information: %d slow waves added to structure \n', length(SW)-OSWCount);
     else
         fprintf(1, 'Information: %d slow waves found in data series \n', length(SW)-OSWCount);
