@@ -111,12 +111,12 @@ switch type
                 set(h.ax,...
                     'title', text('string', 'Wavelengths'),...
                     'XLim', [0, 1500]);
-                
+
                 set(get(h.ax, 'xlabel'), 'string', 'Wavelengths (ms)');
                 set(get(h.ax, 'ylabel'), 'string', 'Number of Waves');
             end
         end
-        
+
     case 'anglemap'
         count = 0;
         for n = 1:length(SW)
@@ -125,24 +125,30 @@ switch type
                 streams{count} = SW(n).Travelling_Streams{1};
             end
         end
-        output = cellfun(@(x) atan2d(x(1,end)- x(1,1),x(2,end)-x(2,1)), streams);
-        
+
+        % check for any streams present
+        if isa('streams', 'var')
+            output = cellfun(@(x) atan2d(x(1,end)- x(1,1),x(2,end)-x(2,1)), streams);
+        else
+            output = [];
+        end
+
         if makePlot
             h.plt = rose(h.ax, output*(pi/180));
             xc    = get(h.plt, 'Xdata');
             yc    = get(h.plt, 'Ydata');
-            
+
             if isempty(axes_handle)
                 % set the title and labels
                 set(h.ax,...
                     'title', text('string', 'Angle Map (Longest Stream)'));
             end
-            
+
             % create a patch object to shade the rose diagram
             h.ptch = patch(xc, yc, 'b', 'parent', h.ax);
             set(h.ptch, 'edgeColor', 'w', 'linewidth', 2);
         end
-        
+
     case 'topo_density'
         output  = zeros(Info.Recording.dataDim(1),1);
         for n = 1:length(SW)
