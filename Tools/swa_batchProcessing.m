@@ -48,9 +48,6 @@ for n = 1:length(fileList)
     Info = swa_getInfoDefaults(Info, 'SW', 'envelope');
 
     % change the defaults
-    [Info.Electrodes, id] = swa_subsampleChannels(Info.Electrodes, 20, 0);
-    Data.Raw = Data.Raw(id, :);
-    Info.Recording.dataDim(1) = sum(id);
 
     % find the waves
     [Data.SWRef, Info]  = swa_CalculateReference (Data.Raw, Info);
