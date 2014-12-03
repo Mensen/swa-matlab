@@ -11,6 +11,18 @@ if nargin < 4
     flag_wait = 1;
 end
 
+% check that some waves were found
+% check for empty structure
+if length(SW) < 1
+    fprintf(1, 'Warning: Wave structure is empty \n');
+    return
+elseif length(SW) < 2
+    if isempty(SW.Ref_Region)
+        fprintf(1, 'Warning: Wave structure is empty \n');
+        return
+    end
+end
+
 % check for previous channel neighbours calculation
 if ~isfield(Info, 'ChN');
     fprintf(1,'Calculating: Channel Neighbours...');
@@ -33,7 +45,7 @@ end
 % ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 % TODO: Solve persistent 'out of memory' issues while raw and filtered
-% files are kept in memory
+% files are kept in memory (potentially just filter relevant parts of data only)
 
 % Check for previously filtered data
 if isfield(Data, 'Filtered')
@@ -48,7 +60,6 @@ end
 
 % calculate the window size in samples around center point
 win = round(Info.Parameters.Channels_WinSize * Info.Recording.sRate);
-
 
 % Find corresponding channels from the reference wave
 % ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -65,7 +76,7 @@ switch Info.Parameters.Channels_Method
     % Correlation Method
     % ^^^^^^^^^^^^^^^^^^
     case 'correlation'
-        
+
         for nSW = 1:length(SW)
 
             if flag_wait
@@ -78,21 +89,21 @@ switch Info.Parameters.Channels_Method
                 ToDelete(end+1)=nSW;
                 continue
             end
-            
             % extract a small portion of the channel data around the
+
             % reference peak
             shortData   = Data.Filtered(:,SW(nSW).Ref_PeakInd - win * 2 ...
                         : SW(nSW).Ref_PeakInd + win * 2);
             % get only the negative portion of the reference peak
-            refData     = Data.SWRef(:, SW(nSW).Ref_PeakInd - win ...
-                        : SW(nSW).Ref_PeakInd + win);
-            
+            refData     = mean(Data.SWRef(SW(nSW).Ref_Region, SW(nSW).Ref_PeakInd - win ...
+                        : SW(nSW).Ref_PeakInd + win), 1);
+
             % cross correlate with the reference channel
             cc = swa_xcorr(refData, shortData, win);
-            
+
             % find the maximum correlation and location
             [maxCC, maxID]      = max(cc,[],2);
-            
+
             % channels with correlation above threshold
             Channels = false(Info.Recording.dataDim(1),1);
             Channels(maxCC > Info.Parameters.Channels_CorrThresh) = true; 
