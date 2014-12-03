@@ -127,7 +127,7 @@ switch type
         end
 
         % check for any streams present
-        if isa('streams', 'var')
+        if exist('streams', 'var')
             output = cellfun(@(x) atan2d(x(1,end)- x(1,1),x(2,end)-x(2,1)), streams);
         else
             output = [];
