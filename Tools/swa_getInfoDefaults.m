@@ -17,7 +17,7 @@ switch type
         Info.Parameters.Ref_NegAmpMin   = 80;               % Only used if Ref_AmpStd not set
         Info.Parameters.Ref_WaveLength  = [0.25 1.25];      % Length criteria between zero crossings
         Info.Parameters.Ref_SlopeMin    = 0.90;             % Percentage cut-off for slopes
-        Info.Parameters.Ref_Peak2Peak   = 140;              % Only for channel thresholding
+        Info.Parameters.Ref_Peak2Peak   = [];              % Only for channel thresholding
         
         % channel detection
         Info.Parameters.Channels_Method     = 'correlation'; % correlation/threshold
@@ -41,6 +41,7 @@ switch type
             case 'mdc'
                 Info.Parameters.Ref_Method      = 'MDC';
                 Info.Parameters.Ref_ZCorMNP     = 'ZC';
+                Info.Parameters.Ref_Peak2Peak   = 140;             % Only for channel thresholding
                 Info.Parameters.Ref_AmpStd      = [];              % Standard deviations from mean negativity
                 Info.Parameters.Channels_Method = 'threshold';     % correlation/threshold
         end
