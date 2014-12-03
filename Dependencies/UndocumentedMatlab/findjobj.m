@@ -88,6 +88,7 @@ function [handles,levels,parentIdx,listing] = findjobj(container,varargin) %#ok<
 %    Please send to Yair Altman (altmany at gmail dot com)
 %
 % Change log:
+%    2014-10-13: Fixes for R2014b
 %    2014-01-04: Minor fix for R2014a; check for newer FEX version up to twice a day only
 %    2013-12-29: Only check for newer FEX version in non-deployed mode; handled case of invisible figure container
 %    2013-10-08: Fixed minor edge case (retrieving multiple scroll-panes)
@@ -138,7 +139,7 @@ function [handles,levels,parentIdx,listing] = findjobj(container,varargin) %#ok<
 % referenced and attributed as such. The original author maintains the right to be solely associated with this work.
 
 % Programmed and Copyright by Yair M. Altman: altmany(at)gmail.com
-% $Revision: 1.42 $  $Date: 2014/01/04 20:41:54 $
+% $Revision: 1.42 $  $Date: 2014/10/13 17:50:03 $
 
     % Ensure Java AWT is enabled
     error(javachk('awt'));
@@ -182,7 +183,7 @@ function [handles,levels,parentIdx,listing] = findjobj(container,varargin) %#ok<
                 if isa(origContainer,'uimenu')
                     % getpixelposition doesn't work for menus... - damn!
                     varargin = {'class','MenuPeer', 'property',{'Label',strrep(get(container,'Label'),'&','')}, varargin{:}};
-                elseif ~isa(origContainer, 'figure') && ~isempty(hFig)
+                elseif ~isa(origContainer, 'figure') && ~isempty(hFig) && ~isa(origContainer, 'matlab.ui.Figure')
                     % See limitations section above: should find a better way to directly refer to the element's java container
                     try
                         % Note: 'PixelBounds' is undocumented and unsupported, but much faster than getpixelposition!
@@ -1207,6 +1208,8 @@ function [handles,levels,parentIdx,listing] = findjobj(container,varargin) %#ok<
         warning('off','MATLAB:uitreenode:MigratingFunction');  % R2008b compatibility
         warning('off','MATLAB:uitreenode:DeprecatedFunction'); % R2008a compatibility
         tree_h = com.mathworks.hg.peer.UITreePeer;
+        try tree_h = javaObjectEDT(tree_h); catch, end
+        tree_hh = handle(tree_h,'CallbackProperties');
         hasChildren = sum(allParents==1) > 1;
         icon = [iconpath 'upfolder.gif'];
         [rootName, rootTitle] = getNodeName(container);
@@ -1520,7 +1523,6 @@ function [handles,levels,parentIdx,listing] = findjobj(container,varargin) %#ok<
         end
 
         % Set the callback functions
-        tree_hh = handle(tree_h,'CallbackProperties');
         set(tree_hh, 'NodeExpandedCallback', {@nodeExpanded, tree_h});
         set(tree_hh, 'NodeSelectedCallback', {@nodeSelected, tree_h});
 

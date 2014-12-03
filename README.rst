@@ -21,13 +21,23 @@ Installation
 
 After you've downloaded the toolbox, add the path to matlab using ``setpath`` and take a look at some of the processing template files to get started.
 
-
 Dependencies
 ^^^^^^^^^^^^
 
 All the main dependencies for the toolbox are provided in the *dependencies* folder. The primary external dependency for using the GUI is the tools provided by `undocumented matlab toolbox <http://undocumentedmatlab.com>`_ which adds essential features to the typical GUI in matlab.
 
 In order to use some of the additional features of the toolbox, as well as taking advantage of the specific formatting required to use the sleep scoring section we recommend installing the latest version of `EEGLAB <http://sccn.ucsd.edu/eeglab/downloadtoolbox.html>`_
+
+Getting Started
+^^^^^^^^^^^^^^^
+
+Run the swa_SleepScoring function to score the stages of your raw EEG file.
+
+You can use the swa_preprocessingTemplate script to see some suggestions on how to preprocess your raw EEG data to get it ready for wave detection.
+
+See one of the template files in the wave type directory to get an idea of the necessary steps for wave detection and analysis.
+
+Use the swa_Explorer to visualise the results of the wave detection.
 
 Troubleshooting
 ^^^^^^^^^^^^^^^

@@ -1,6 +1,29 @@
-function [Info, SW] = swa_FindSWTravelling(Info, SW, indSW)
-% Calculate the streamlines for each slow wave
+function [Info, SW] = swa_FindSWTravelling(Info, SW, indSW, flag_wait)
+% function which calculate the travelling parameters for each slow wave given the
+% delay maps previously calculated in swa_FindSWChannels
 
+% check inputs
+if nargin < 4
+    flag_wait = 1;
+end
+
+if nargin < 3
+    indSW = [];
+    flag_wait = 0;
+end
+
+% check for empty structure
+if length(SW) < 1
+    fprintf(1, 'Warning: Wave structure is empty, you must find waves in the reference first \n');
+    return
+elseif length(SW) < 2
+    if isempty(SW.Ref_Region)
+        fprintf(1, 'Warning: Wave structure is empty, you must find waves in the reference first \n');
+        return
+    end
+end
+
+% check for sufficient parameter inputs
 if ~isfield(Info.Parameters, 'Travelling_GS');
     Info.Parameters.Travelling_GS = 20; % size of interpolation grid
     fprintf(1,'Information: Interpolation grid set at 20x20 by default. \n');
@@ -18,13 +41,28 @@ yloc = [Info.Electrodes.y]; yloc=yloc(:);
 GS = Info.Parameters.Travelling_GS; 
 XYrange = linspace(1, GS, GS);
 XYmesh = XYrange(ones(GS,1),:);
-F = TriScatteredInterp(xloc,yloc,SW(1).Travelling_Delays(:), 'natural');      % No speed difference in methods...
 
+    % Check Matlab version for interpolant...
+    if exist('scatteredInterpolant', 'file')
+        % If its available use the newest function
+        F = scatteredInterpolant(xloc, yloc, SW(1).Travelling_Delays(:),...
+            'natural', 'none');
+        interp_version = 1;
+    else
+        % Use the old function
+        F = TriScatteredInterp(xloc, yloc, SW(1).Travelling_Delays(:),...
+            'natural');
+        interp_version = 0;
+    end
+    
 %% Loop for each SW
-if nargin == 3
-    loopRange = indSW;    
-else
+if isempty(indSW)
     loopRange = 1:length(SW);
+else
+    loopRange = indSW;
+end
+
+if flag_wait
     h = waitbar(0,'Please wait...', 'Name', 'Finding Streams...');
 end
 
@@ -39,7 +77,12 @@ for nSW = loopRange
     
     %% Interpolate delay map [zeros or nans above...]
     Delays = Delays(:);            % Ensure data is in column format
-    F.V = Delays;                  % Put new data into the interpolant
+    % check interpolation function
+    if interp_version
+        F.Values = Delays;
+    else
+        F.V = Delays;
+    end
     SW(nSW).Travelling_DelayMap = F(XYmesh, XYmesh'); % Delay map (with zeros)
     [u,v] = gradient(SW(nSW).Travelling_DelayMap);
 
@@ -49,7 +92,8 @@ for nSW = loopRange
       
     %% Find Streamline(s)
 
-    % Use adstream2 (should optimise by coding entirely in c)
+    % Use adstream2 
+    % TODO: optimise by coding entire loop in C
     Streams         = cell(1,length(sx));
     Distances       = cell(1,length(sx));
     for i = 1:length(sx)
@@ -83,21 +127,22 @@ for nSW = loopRange
     if maxDistId ~= maxDispId
         SW(nSW).Travelling_Streams{end+1} = Streams{maxDistId};
     end  
-        
+
     % Most different displacement angle compared to longest stream (at least 45 degrees)
     streamAngle = cellfun(@(x) atan2d(x(1,end)- x(1,1),x(2,end)-x(2,1)), Streams);
     [maxAngle,maxAngleId] = max(streamAngle - streamAngle(maxDispId));
     if maxAngle > 45 || maxAngleId ~= maxDispId || maxAngleId ~= maxDistId
         SW(nSW).Travelling_Streams{end+1} = Streams{maxAngleId};
     end
-    
-    % Update waitbar (if there is one)
-    if exist('h', 'var')
+
+    % Update waitbar
+    if flag_wait
         waitbar(nSW/length(SW),h,sprintf('Slow Wave %d of %d',nSW, length(SW)))
     end
     
 end
 
-if exist('h', 'var')
-    delete(h)       % DELETE the waitbar; don't try to CLOSE it.
+% DELETE the waitbar; don't try to CLOSE it.
+if flag_wait
+    delete(h);
 end

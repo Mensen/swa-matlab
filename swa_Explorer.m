@@ -90,19 +90,19 @@ handles.pb_Delete = uicontrol(...
 set(handles.pb_Delete, 'Callback', {@pb_Delete_Callback});
 
 %% Channel Set ComboBoxes
-[handles.java.ChannelBox1,handles.ChannelBox1] = javacomponent(javax.swing.JComboBox);
-set(handles.ChannelBox1,...
+[handles.java.ChannelBox(1),handles.ChannelBox(1)] = javacomponent(javax.swing.JComboBox);
+set(handles.ChannelBox(1),...
     'Parent',   handles.fig,...      
     'Units',    'normalized',...
     'Position', [0.02 0.90 0.03 0.02]);
-set(handles.java.ChannelBox1, 'ActionPerformedCallback', {@SpinnerUpdate, handles.fig});
+set(handles.java.ChannelBox(1), 'ActionPerformedCallback', {@SpinnerUpdate, handles.fig});
 
-[handles.java.ChannelBox2,handles.ChannelBox2] = javacomponent(javax.swing.JComboBox);
-set(handles.ChannelBox2,...
+[handles.java.ChannelBox(2),handles.ChannelBox(2)] = javacomponent(javax.swing.JComboBox);
+set(handles.ChannelBox(2),...
     'Parent',   handles.fig,...      
     'Units',    'normalized',...
     'Position', [0.02 0.825 0.03 0.02]);  
-set(handles.java.ChannelBox2, 'ActionPerformedCallback', {@SpinnerUpdate, handles.fig});
+set(handles.java.ChannelBox(2), 'ActionPerformedCallback', {@SpinnerUpdate, handles.fig});
 
 %% Plot Titles and Export Button
 handles.Title_SWPlot = uicontrol(...
@@ -150,6 +150,7 @@ handles.Ex_Delay = uicontrol(...
 set(handles.Ex_Delay, 'Callback', @pb_XDelay_Callback)
 
 %% Checkboxes for Delay
+% TODO: make single drop-down menu with checkboxes
 handles.Surface_Delay = uicontrol(...
     'Parent',   handles.fig,...   
     'Style',    'checkbox',...
@@ -223,7 +224,7 @@ handles.alpha_Cb = uicontrol(...
     'FontSize', 11);
 
 %% Create Axes
-handles.ax_Butterfly(1) = axes(...
+handles.axes_eeg_channel(1) = axes(...
     'Parent', handles.fig,...
     'Position', [0.05 0.875 0.9 0.075],...
     'NextPlot', 'add',...
@@ -233,7 +234,7 @@ handles.ax_Butterfly(1) = axes(...
     'Xtick', [],...
     'Ytick', []);
 
-handles.ax_Butterfly(2) = axes(...
+handles.axes_eeg_channel(2) = axes(...
     'Parent', handles.fig,...
     'Position', [0.05 0.8 0.9 0.075],...
     'NextPlot', 'add',...
@@ -242,7 +243,7 @@ handles.ax_Butterfly(2) = axes(...
     'box', 'off',...
     'Ytick', []);
 
-handles.ax_SWPlot = axes(...
+handles.axes_individual_wave = axes(...
     'Parent', handles.fig,...
     'Position', [0.05 0.4 0.4 0.3],...
     'FontName', 'Century Gothic',...
@@ -262,8 +263,6 @@ handles.ax_Delay = axes(...
     'Ytick', []);
 
 %% Two Wave Summary Plots
-% TODO: generic drop-down boxed for visualisation options
-
 % create the two axes
 % ~~~~~~~~~~~~~~~~~~~
 handles.ax_option(1) = axes(...
@@ -286,7 +285,6 @@ handles.ax_option(2) = axes(...
 
 % create the drop down menus
 % ~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 % make the drop-down menus as java objects
 [handles.java.options_list(1), handles.options_list(1)] = javacomponent(javax.swing.JComboBox);
 set(handles.options_list(1),...
@@ -348,12 +346,12 @@ set(handles.Ex_options(2), 'callback', {@pb_export_options, 2});
 handles.menu.ButterflyContext = uicontextmenu;
 handles.menu.UIContext_YReverse = uimenu(handles.menu.ButterflyContext,...
     'Label',    'Negative Down',...
-    'Callback', {@Butterfly_Context, 'normal'});
+    'Callback', {@fcn_context_axes_channel, 'normal'});
 handles.menu.UIContext_YReverse = uimenu(handles.menu.ButterflyContext,...
     'Label',    'Negative Up',...
-    'Callback', {@Butterfly_Context, 'reverse'});
-set(handles.ax_Butterfly, 'uicontextmenu', handles.menu.ButterflyContext);
-set(handles.ax_SWPlot, 'uicontextmenu', handles.menu.ButterflyContext);
+    'Callback', {@fcn_context_axes_channel, 'reverse'});
+set(handles.axes_eeg_channel, 'uicontextmenu', handles.menu.ButterflyContext);
+set(handles.axes_individual_wave, 'uicontextmenu', handles.menu.ButterflyContext);
 
 %% Make Figure Visible and Maximise
 jFrame = get(handle(handles.fig),'JavaFrame');
@@ -384,7 +382,7 @@ loaded_file = load ([swaPath,swaFile]);
 % Check for data present or external file
 if ischar(loaded_file.Data.Raw)
     set(handles.StatusBar, 'String', 'Busy: Loading Data');
-    fid = fopen(loaded_file.Data.Raw);
+    fid = fopen(fullfile(swaPath, loaded_file.Data.Raw));
     loaded_file.Data.Raw = fread(fid, loaded_file.Info.Recording.dataDim, 'single');
     fclose(fid);
 end
@@ -411,17 +409,22 @@ handles.Info    = loaded_file.Info;
 set(handles.fig, 'Name', ['Travelling Waves: ', swaFile]);
 
 % Set the ComboBoxes
-model1 = javax.swing.DefaultComboBoxModel({handles.Info.Electrodes.labels});
-model2 = javax.swing.DefaultComboBoxModel({handles.Info.Electrodes.labels});
+% ``````````````````
+channel_list = [{handles.Info.Electrodes.labels}, {'All', 'Ref'}];
 
-handles.java.ChannelBox1.setModel(model1);
-handles.java.ChannelBox1.setEditable(true);
-handles.java.ChannelBox2.setModel(model2);
-handles.java.ChannelBox2.setEditable(true);
+% create java models using swing
+java_model1 = javax.swing.DefaultComboBoxModel(channel_list);
+java_model2 = javax.swing.DefaultComboBoxModel(channel_list);
 
-% handles.java.ChannelBox1.getSelectedIndex() % Gets the value (setSele...)
+handles.java.ChannelBox(1).setModel(java_model1);
+handles.java.ChannelBox(1).setEditable(true);
+handles.java.ChannelBox(2).setModel(java_model2);
+handles.java.ChannelBox(2).setEditable(true);
 
-%% Set Slider and Spinner Values
+    % handles.java.ChannelBox(1).getSelectedIndex() % Gets the value (setSele...)
+
+% Set Slider and Spinner Values
+% `````````````````````````````
 handles.java.Slider.setValue(1);
 handles.java.Slider.setMinimum(1);
 handles.java.Slider.setMaximum(length(handles.SW));
@@ -491,7 +494,7 @@ handles.java.Slider.setValue(handles.java.Spinner.getValue())
 
 % update the plots
 handles = update_SWPlot(handles);
-handles = update_ButterflyPlot(handles);
+handles = update_axes_channels(handles);
 handles = update_SWDelay(handles, 0);
 
 guidata(hObject, handles);
@@ -502,7 +505,7 @@ handles = guidata(Figure); % Needs to be like this because slider is a java obje
 handles.java.Spinner.setValue(handles.java.Slider.getValue())
 
 % Update the plots (except origins and density since they are global)
-handles = update_ButterflyPlot(handles);
+handles = update_axes_channels(handles);
 handles = update_SWPlot(handles);
 handles = update_SWDelay(handles, 0);
 
@@ -530,15 +533,13 @@ end
 
 
 %% Plot Controls
-function handles = update_ButterflyPlot(handles)
+function handles = update_axes_channels(handles)
 
 % get the data structure
 Data = getappdata(handles.fig, 'Data');
 
-% initial plot then update the yData in a loop (faster than replot)
+% get current wave
 nSW = handles.java.Spinner.getValue();
-Ch1 = handles.java.ChannelBox1.getSelectedIndex()+1; %plus one because of 0indexing in Java
-Ch2 = handles.java.ChannelBox2.getSelectedIndex()+1;
 
 % Calculate the range
 if strcmp(handles.SW_Type, 'SS')
@@ -557,38 +558,74 @@ else
     sPeaks = [handles.SW.Ref_PeakInd]./handles.Info.Recording.sRate;
 end
 
-% initial Plot (50 times takes 1.67s)
-if ~isfield(handles, 'lines_Butterfly') %
- 
-    handles.lines_Butterfly(1) = plot(handles.ax_Butterfly(1), xaxis, Data.Raw(Ch1,range)', 'k');
-    handles.lines_Butterfly(2) = plot(handles.ax_Butterfly(2), xaxis, Data.Raw(Ch2,range)', 'k');
+% check for special selected channels
+for n = 1:2
+    selected_label = handles.java.ChannelBox(n).getSelectedItem;
     
-    set(handles.ax_Butterfly,...
-        'YLim', [-50,50],...
-        'XLim', [xaxis(1), xaxis(end)]);
-    
-    if strcmp(handles.SW_Type, 'SS')
-        handles.zoomline(1) = line([handles.SW(nSW).Ref_Start/handles.Info.sRate-0.5,   handles.SW(nSW).Ref_Start/handles.Info.sRate-0.5],[-200, 200], 'color', [0.4 0.4 0.4], 'linewidth', 2, 'Parent', handles.ax_Butterfly(1));
-        handles.zoomline(2) = line([handles.SW(nSW).Ref_End/handles.Info.sRate+.5,      handles.SW(nSW).Ref_End/handles.Info.sRate+0.5],[-200, 200], 'color', [0.4 0.4 0.4], 'linewidth', 2, 'Parent', handles.ax_Butterfly(1));
+    if strcmp(selected_label, 'All')
+        data_to_plot{n} = Data.Raw(:, range);
+    elseif strcmp(selected_label, 'Ref')
+        data_to_plot{n} = Data.SWRef(:, range);
     else
-        handles.zoomline(1) = line([handles.SW(nSW).Ref_PeakInd/handles.Info.Recording.sRate-0.5, handles.SW(nSW).Ref_PeakInd/handles.Info.Recording.sRate-0.5],[-200, 200], 'color', [0.4 0.4 0.4], 'linewidth', 2, 'Parent', handles.ax_Butterfly(1));
-        handles.zoomline(2) = line([handles.SW(nSW).Ref_PeakInd/handles.Info.Recording.sRate+.5, handles.SW(nSW).Ref_PeakInd/handles.Info.Recording.sRate+0.5],[-200, 200], 'color', [0.4 0.4 0.4], 'linewidth', 2, 'Parent', handles.ax_Butterfly(1));
+        Ch = handles.java.ChannelBox(n).getSelectedIndex()+1;
+        data_to_plot{n} = Data.Raw(Ch, range);
     end
-    
-    % Just plot all the arrows already
-    handles.arrows_Butterfly = text(sPeaks, ones(1, length(sPeaks))*30, '\downarrow', 'FontSize', 20, 'HorizontalAlignment', 'center', 'Clipping', 'on', 'Parent', handles.ax_Butterfly(1));
+end
 
-% Re-plotting (50 times takes 0.3s)
+% define plot_method
+if ~isfield(handles, 'lines_eeg_channel')
+    plot_method = 'initial';
 else
-    set(handles.lines_Butterfly, 'xData', xaxis);
-    set(handles.lines_Butterfly(1), 'yData', Data.Raw(Ch1,range)');
-    set(handles.lines_Butterfly(2), 'yData', Data.Raw(Ch2,range)');
+    if length(handles.lines_eeg_channel{1}) == size(data_to_plot{1}, 1) ...
+       && length(handles.lines_eeg_channel{2}) == size(data_to_plot{2}, 1)
+        plot_method = 'replot';
+    else
+        delete(handles.lines_eeg_channel{1});
+        delete(handles.lines_eeg_channel{2});
+        rmfield(handles, 'lines_eeg_channel');
+        plot_method = 'initial';
+    end  
+end
 
-    set(handles.ax_Butterfly,...
-        'XLim', [xaxis(1), xaxis(end)]);
-    
-    set(handles.zoomline(1), 'xData', [handles.SW(nSW).Ref_DownInd/handles.Info.Recording.sRate-0.5,    handles.SW(nSW).Ref_DownInd/handles.Info.Recording.sRate-0.5]);
-    set(handles.zoomline(2), 'xData', [handles.SW(nSW).Ref_UpInd/handles.Info.Recording.sRate+0.5,      handles.SW(nSW).Ref_UpInd/handles.Info.Recording.sRate+0.5]);
+switch plot_method
+    case 'initial'
+        % initial Plot (50 times takes 1.67s)
+        
+        handles.lines_eeg_channel{1} = plot(handles.axes_eeg_channel(1), xaxis, data_to_plot{1}', 'k');
+        handles.lines_eeg_channel{2} = plot(handles.axes_eeg_channel(2), xaxis, data_to_plot{2}', 'k');
+        
+        set(handles.axes_eeg_channel,...
+            'YLim', [-70,70],...
+            'XLim', [xaxis(1), xaxis(end)]);
+        
+        if strcmp(handles.SW_Type, 'SS')
+            handles.zoomline(1) = line([handles.SW(nSW).Ref_Start/handles.Info.sRate-0.5,   handles.SW(nSW).Ref_Start/handles.Info.sRate-0.5],[-200, 200], 'color', [0.4 0.4 0.4], 'linewidth', 2, 'Parent', handles.axes_eeg_channel(1));
+            handles.zoomline(2) = line([handles.SW(nSW).Ref_End/handles.Info.sRate+.5,      handles.SW(nSW).Ref_End/handles.Info.sRate+0.5],[-200, 200], 'color', [0.4 0.4 0.4], 'linewidth', 2, 'Parent', handles.axes_eeg_channel(1));
+        else
+            handles.zoomline(1) = line([handles.SW(nSW).Ref_PeakInd/handles.Info.Recording.sRate-0.5, handles.SW(nSW).Ref_PeakInd/handles.Info.Recording.sRate-0.5],[-200, 200], 'color', [0.4 0.4 0.4], 'linewidth', 2, 'Parent', handles.axes_eeg_channel(1));
+            handles.zoomline(2) = line([handles.SW(nSW).Ref_PeakInd/handles.Info.Recording.sRate+.5, handles.SW(nSW).Ref_PeakInd/handles.Info.Recording.sRate+0.5],[-200, 200], 'color', [0.4 0.4 0.4], 'linewidth', 2, 'Parent', handles.axes_eeg_channel(1));
+        end
+        
+        % Just plot all the arrows already
+        handles.arrows_Butterfly = text(sPeaks, ones(1, length(sPeaks))*30, '\downarrow', 'FontSize', 20, 'HorizontalAlignment', 'center', 'Clipping', 'on', 'Parent', handles.axes_eeg_channel(1));
+        
+        % Re-plotting (50 times takes 0.3s)
+    case 'replot'
+        % loop each axes
+        for a = 1:2
+            set(handles.lines_eeg_channel{a}, 'xData', xaxis);
+            
+            % loop for each channel (only more than 1 for All or Ref)
+            for n = 1:size(data_to_plot{a}, 1)
+                set(handles.lines_eeg_channel{a}(n), 'yData', data_to_plot{a}(n,:)');
+            end
+        end
+        
+        set(handles.axes_eeg_channel,...
+            'XLim', [xaxis(1), xaxis(end)]);
+        
+        set(handles.zoomline(1), 'xData', [handles.SW(nSW).Ref_DownInd/handles.Info.Recording.sRate-0.5,    handles.SW(nSW).Ref_DownInd/handles.Info.Recording.sRate-0.5]);
+        set(handles.zoomline(2), 'xData', [handles.SW(nSW).Ref_UpInd/handles.Info.Recording.sRate+0.5,      handles.SW(nSW).Ref_UpInd/handles.Info.Recording.sRate+0.5]);
 end
 
 function handles = update_SWPlot(handles)
@@ -612,22 +649,22 @@ range(range<1) = [];
 % check if the plot already exist (if not then initialise, else change
 % ydata)
 if ~isfield(handles, 'SWPlot') % in case plot doesn't already exist
-    cla(handles.ax_SWPlot);
+    cla(handles.axes_individual_wave);
     
     % plot all the channels but hide them
-    handles.SWPlot.All      = plot(handles.ax_SWPlot, Data.Raw(:, range)', 'Color', [0.6 0.6 0.6], 'linewidth', 0.5, 'Visible', 'off');
+    handles.SWPlot.All      = plot(handles.axes_individual_wave, Data.Raw(:, range)', 'Color', [0.6 0.6 0.6], 'linewidth', 0.5, 'Visible', 'off');
     % plot the reference wave
-    handles.SWPlot.Ref      = plot(handles.ax_SWPlot, Data.([handles.SW_Type, 'Ref'])(handles.SW(nSW).Ref_Region(1), range)','Color', 'r', 'linewidth', 3);
+    handles.SWPlot.Ref      = plot(handles.axes_individual_wave, Data.([handles.SW_Type, 'Ref'])(handles.SW(nSW).Ref_Region(1), range)','Color', 'r', 'linewidth', 3);
     % plot wavelets
     if isfield(Data, 'CWT')
         for np = 1:length(Data.CWT)
-            handles.SWPlot.CWT(np)   = plot(handles.ax_SWPlot, Data.CWT{np}(handles.SW(nSW).Ref_Region(1),range)','Color', 'b', 'linewidth', 2);
+            handles.SWPlot.CWT(np)   = plot(handles.axes_individual_wave, Data.CWT{np}(handles.SW(nSW).Ref_Region(1),range)','Color', 'b', 'linewidth', 2);
         end
     end
     
     % set only the active channels to visible
     set(handles.SWPlot.All(handles.SW(nSW).Channels_Active), 'Color', [0.6 0.6 0.6], 'LineWidth', 1, 'Visible', 'on');
-    set(handles.ax_SWPlot, 'XLim', [1, length(range)])
+    set(handles.axes_individual_wave, 'XLim', [1, length(range)])
     
 else
     for i = 1:size(Data.Raw,1) % faster than total replot...
@@ -644,7 +681,7 @@ else
     
     % Find the absolute maximum value and round to higher 10, then add 10 for space
     dataMax = ceil(abs(max(max(Data.Raw(handles.SW(nSW).Channels_Active, range))))/10)*10+10;
-    set(handles.ax_SWPlot, 'YLim', [-dataMax, dataMax])
+    set(handles.axes_individual_wave, 'YLim', [-dataMax, dataMax])
     
     % Plot the cwt data...
     if isfield(Data, 'CWT')
@@ -748,11 +785,8 @@ function fcn_select_options(~, ~, object, no_axes)
 % get the handles from the figure
 handles = guidata(object);
 
-% get the data structure
-Data = getappdata(handles.fig, 'Data');
-
 % if handles is empty, return
-if isempty(Data)
+if ~isfield(handles, 'SW')
     return
 end
 
@@ -803,6 +837,17 @@ SpinnerUpdate([],[], hObject);
 fcn_select_options([],[], handles.fig, 1);
 fcn_select_options([],[], handles.fig, 2);
 
+function pb_export_options(object, ~, axes_number)
+
+% get the gui handles
+handles = guidata(object);
+
+% get the selected option
+type = handles.java.options_list(axes_number).getSelectedItem;
+
+% draw the selected summary statistic on the axes
+swa_wave_summary(handles.SW, handles.Info,...
+    type, 1);
 
 
 
@@ -844,7 +889,7 @@ SW_Handles.Axes = axes(...
     'FontSize', 8,...
     'box',      'off',...
     'XLim',     [xaxis(1), xaxis(end)],...
-    'YDir',     get(handles.ax_SWPlot, 'YDir'));
+    'YDir',     get(handles.axes_individual_wave, 'YDir'));
 
 %% Add buttons
 iconZoom = fullfile(matlabroot,'/toolbox/matlab/icons/tool_zoom_in.png');
@@ -1007,10 +1052,10 @@ end
 handles = update_SWDelay(handles, 0);
 guidata(handles.fig, handles);
 
-function Butterfly_Context(hObject, ~, Direction)
+function fcn_context_axes_channel(hObject, ~, Direction)
 handles = guidata(hObject);
-set(handles.ax_Butterfly,   'YDir', Direction)
-set(handles.ax_SWPlot,      'YDir', Direction)
+set(handles.axes_eeg_channel,   'YDir', Direction)
+set(handles.axes_individual_wave,      'YDir', Direction)
 
 
 %% Big plot check-box callback

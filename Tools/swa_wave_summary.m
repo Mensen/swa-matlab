@@ -5,6 +5,8 @@ function [output, h] = swa_wave_summary(SW, Info, type, makePlot, axes_handle)
 if nargin < 4
     makePlot = 0;
     axes_handle = [];
+elseif nargin < 5
+    axes_handle = [];
 end
 
 % if function is called with a single 'return options' argument then return
@@ -19,6 +21,9 @@ if isa(SW, 'char')
             'anglemap'      ;...
             'topo_density'  ;...
             'topo_origins'  };
+        return;
+    else
+        fprintf(1, 'Warning: Use ''return options'' as input to see current plotting options');
         return;
     end
 end
@@ -106,12 +111,12 @@ switch type
                 set(h.ax,...
                     'title', text('string', 'Wavelengths'),...
                     'XLim', [0, 1500]);
-                
+
                 set(get(h.ax, 'xlabel'), 'string', 'Wavelengths (ms)');
                 set(get(h.ax, 'ylabel'), 'string', 'Number of Waves');
             end
         end
-        
+
     case 'anglemap'
         count = 0;
         for n = 1:length(SW)
@@ -120,37 +125,45 @@ switch type
                 streams{count} = SW(n).Travelling_Streams{1};
             end
         end
-        output = cellfun(@(x) atan2d(x(1,end)- x(1,1),x(2,end)-x(2,1)), streams);
-        
+
+        % check for any streams present
+        if exist('streams', 'var')
+            output = cellfun(@(x) atan2d(x(1,end)- x(1,1),x(2,end)-x(2,1)), streams);
+        else
+            output = [];
+        end
+
         if makePlot
             h.plt = rose(h.ax, output*(pi/180));
             xc    = get(h.plt, 'Xdata');
             yc    = get(h.plt, 'Ydata');
-            
+
             if isempty(axes_handle)
                 % set the title and labels
                 set(h.ax,...
                     'title', text('string', 'Angle Map (Longest Stream)'));
             end
-            
+
             % create a patch object to shade the rose diagram
             h.ptch = patch(xc, yc, 'b', 'parent', h.ax);
             set(h.ptch, 'edgeColor', 'w', 'linewidth', 2);
         end
-        
+
     case 'topo_density'
         output  = zeros(Info.Recording.dataDim(1),1);
         for n = 1:length(SW)
             output(SW(n).Channels_Active)       = output(SW(n).Channels_Active) +1;
         end
         
-        h.plt = swa_Topoplot(...
-            [], Info.Electrodes,...
-            'Data',             output                ,...
-            'GS',               Info.Parameters.Travelling_GS,...
-            'Axes',             h.ax                  ,...
-            'NumContours',      10                     ,...
-            'PlotSurface',      0                     );
+        if makePlot
+            h.plt = swa_Topoplot(...
+                [], Info.Electrodes,...
+                'Data',             output                ,...
+                'GS',               Info.Parameters.Travelling_GS,...
+                'Axes',             h.ax                  ,...
+                'NumContours',      10                     ,...
+                'PlotSurface',      0                     );
+        end
         
     case 'topo_origins'
         output  = zeros(Info.Recording.dataDim(1),1);
@@ -158,13 +171,15 @@ switch type
             output(SW(n).Travelling_Delays<1)  = output(SW(n).Travelling_Delays<1) + 1;
         end
         
-        h.plt = swa_Topoplot(...
-            [], Info.Electrodes,...
-            'Data',             output                ,...
-            'GS',               Info.Parameters.Travelling_GS,...
-            'Axes',             h.ax                  ,...
-            'NumContours',      10                     ,...
-            'PlotSurface',      0                     );
+        if makePlot
+            h.plt = swa_Topoplot(...
+                [], Info.Electrodes,...
+                'Data',             output                ,...
+                'GS',               Info.Parameters.Travelling_GS,...
+                'Axes',             h.ax                  ,...
+                'NumContours',      10                     ,...
+                'PlotSurface',      0                     );
+        end
         
         %TODO: correlation between MPP->MNP || MNP->MPP
         %TODO: average delay map

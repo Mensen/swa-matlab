@@ -58,7 +58,7 @@ for nST = loopRange
     [u,v] = gradient(ST(nST).Travelling_DelayMap);
 
     % Check for minimum travel time...
-    if max(Delays) < Info.Parameters.Travelling_MinDelay*Info.sRate/1000
+    if max(Delays) < Info.Parameters.Travelling_MinDelay*Info.Recording.sRate/1000
         continue
     end
     

@@ -1,4 +1,4 @@
-function [eloc, id] = swa_subsampleChannels(eloc, n)
+function [eloc, id] = swa_subsampleChannels(eloc, n, flag_plot)
 % Calculating sparser electrode arrays from existing set
 % E.g. subsample 256 electrode array down to 128 channels
 
@@ -9,6 +9,10 @@ function [eloc, id] = swa_subsampleChannels(eloc, n)
 % Input the electode location file and the desired channels
 % Outputs the new location file with the channel ids corresponding 
 % to the channels kept from the original
+
+if nargin < 3
+    flag_plot = 1;
+end
 
 % add 2d locations for plotting
 if ~isfield(eloc, 'x')
@@ -55,9 +59,11 @@ id = false(1, length(original));
 id(index) = true;
 
 % plot the original and the new locations
-figure('color', 'w')
-plot([original.y],[original.x], '.', 'color', [0.8 0.8 0.8], 'markersize', 15)
-hold all;
-plot([eloc.y],[eloc.x], 'b.', 'markersize', 20)
+if flag_plot
+    figure('color', 'w')
+    plot([original.y],[original.x], '.', 'color', [0.8 0.8 0.8], 'markersize', 15)
+    hold all;
+    plot([eloc.y],[eloc.x], 'b.', 'markersize', 20)
 
-axis off
+    axis off
+end

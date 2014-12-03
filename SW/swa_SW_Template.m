@@ -19,9 +19,7 @@ Info = swa_getInfoDefaults(Info, 'SW', 'envelope');
 % Replace the data with a file pointer if drive space is a concern
 Data.Raw = Info.Recording.dataFile;
 
-% What to do with the filtered dataset?
-% `````````````````````````````````````
-% Save it to a simple binary file (like fdt)
+% Save the filtered to a simple binary file (like .fdt)
 filteredName = [Info.Recording.dataFile(1:end-4), '_filtered.fdt'];
 if ~exist(filteredName, 'file')
     swa_save_data(Data.Filtered, filteredName);
@@ -31,6 +29,8 @@ Data.Filtered = filteredName;
 % Done! Use the swa_Explorer to visualise the results.
 [saveFile, savePath] = uiputfile('*.mat');
 save([savePath, saveFile], 'Data', 'Info', 'SW', '-mat');
+
+
 
 %% -- Template for Regions Reference -- %%
 % set mdc specific defaults
