@@ -55,6 +55,15 @@ for n = 1:length(fileList)
     [Data, Info, SW]    = swa_FindSWChannels (Data, Info, SW, 0);
     [Info, SW]          = swa_FindSWTravelling (Info, SW, [], 0);
 
+    % check whether any waves were found/left 
+    if length(SW) < 1
+        continue;
+    elseif length(SW) < 2
+        if isempty(SW.Ref_Region)
+            continue;
+        end
+    end
+
     if save_file
         % save the results
         % ````````````````
@@ -73,7 +82,7 @@ for n = 1:length(fileList)
         save(fullfile(filePath, saveFile), 'Data', 'Info', 'SW', '-mat');
     end
 
-    if save_output 
+    if save_output & ~isempty(SW) 
         % wave density (waves per minute)
         output(n).wave_density = length(SW)/(Info.Recording.dataDim(2)/Info.Recording.sRate/60);
 
