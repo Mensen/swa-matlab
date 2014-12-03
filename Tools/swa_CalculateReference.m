@@ -120,7 +120,9 @@ switch Info.Parameters.Ref_Method
 %             figure('color', 'w'); scatter(y,x); hold on; scatter(y(insideCh),x(insideCh), 'r', 'MarkerFaceColor','r'); axis off;
             nData(i,:) = mean(data(insideCh,:));            
         end
-    
+
+    otherwise
+        error('Unrecognised reference method type (check spelling/case)');
 end
 %% Filter the new data to 'baseline correct' it so there are DZCs
 
