@@ -12,6 +12,17 @@ if nargin < 3
     flag_wait = 0;
 end
 
+% check for empty structure
+if length(SW) < 1
+    fprintf(1, 'Warning: Wave structure is empty, you must find waves in the reference first \n');
+    return
+elseif length(SW) < 2
+    if isempty(SW.Ref_Region)
+        fprintf(1, 'Warning: Wave structure is empty, you must find waves in the reference first \n');
+        return
+    end
+end
+
 % check for sufficient parameter inputs
 if ~isfield(Info.Parameters, 'Travelling_GS');
     Info.Parameters.Travelling_GS = 20; % size of interpolation grid
@@ -30,8 +41,20 @@ yloc = [Info.Electrodes.y]; yloc=yloc(:);
 GS = Info.Parameters.Travelling_GS; 
 XYrange = linspace(1, GS, GS);
 XYmesh = XYrange(ones(GS,1),:);
-F = TriScatteredInterp(xloc,yloc,SW(1).Travelling_Delays(:), 'natural');      % No speed difference in methods...
 
+    % Check Matlab version for interpolant...
+    if exist('scatteredInterpolant', 'file')
+        % If its available use the newest function
+        F = scatteredInterpolant(xloc, yloc, SW(1).Travelling_Delays(:),...
+            'natural', 'none');
+        interp_version = 1;
+    else
+        % Use the old function
+        F = TriScatteredInterp(xloc, yloc, SW(1).Travelling_Delays(:),...
+            'natural');
+        interp_version = 0;
+    end
+    
 %% Loop for each SW
 if isempty(indSW)
     loopRange = 1:length(SW);
@@ -54,7 +77,12 @@ for nSW = loopRange
     
     %% Interpolate delay map [zeros or nans above...]
     Delays = Delays(:);            % Ensure data is in column format
-    F.V = Delays;                  % Put new data into the interpolant
+    % check interpolation function
+    if interp_version
+        F.Values = Delays;
+    else
+        F.V = Delays;
+    end
     SW(nSW).Travelling_DelayMap = F(XYmesh, XYmesh'); % Delay map (with zeros)
     [u,v] = gradient(SW(nSW).Travelling_DelayMap);
 
