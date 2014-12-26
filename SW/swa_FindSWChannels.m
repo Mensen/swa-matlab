@@ -1,4 +1,4 @@
-function [Data, Info, SW] = swa_FindSWChannels(Data, Info, SW, flag_wait)
+function [Data, Info, SW] = swa_FindSWChannels(Data, Info, SW, flag_progress)
 % function to find the slow waves present at each channel given the parameters
 % already calculated for the reference wave
 
@@ -8,7 +8,7 @@ if nargin < 3
 end
 
 if nargin < 4
-    flag_wait = 1;
+    flag_progress = 1;
 end
 
 % check that some waves were found
@@ -23,20 +23,23 @@ elseif length(SW) < 2
     end
 end
 
-% check for previous channel neighbours calculation
-if ~isfield(Info, 'ChN');
-    fprintf(1,'Calculating: Channel Neighbours...');
-    Info.ChN = swa_ChN(Info.Electrodes);
-    fprintf(1,' done. \n');
-else
-    fprintf(1,'Information: Using channels neighbourhood in ''Info''. \n');
+% TODO: make cluster test parameter and available for threshold detection
+if strcmp(Info.Parameters.Channels_Detection, 'correlation');
+    % check for previous channel neighbours calculation
+    if ~isfield(Info, 'ChN');
+        fprintf(1,'Calculating: Channel Neighbours...');
+        Info.ChN = swa_ChN(Info.Electrodes);
+        fprintf(1,' done. \n');
+    else
+        fprintf(1,'Information: Using channels neighbourhood in ''Info''. \n');
+    end
 end
 
 % check for sufficient parameter inputs
 if strcmp(Info.Parameters.Ref_Method, 'Envelope')
-    if ~isfield(Info.Parameters, 'Channels_CorrThresh')
+    if ~isfield(Info.Parameters, 'Channels_Threshold')
         fprintf(1, 'Warning: No further SW parameters found in Info; using defaults \n');
-        Info.Parameters.Channels_CorrThresh = 0.9;
+        Info.Parameters.Channels_Threshold = 0.9;
         Info.Parameters.Channels_WinSize    = 0.2;
     end
 end
@@ -63,7 +66,7 @@ win = round(Info.Parameters.Channels_WinSize * Info.Recording.sRate);
 
 % Find corresponding channels from the reference wave
 % ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if flag_wait
+if flag_progress
     WaitHandle = waitbar(0,'Please wait...', 'Name', 'Finding Slow Waves...');
 end
 
@@ -71,7 +74,7 @@ end
 ToDelete=[];
 
 % Switch between the channel detection methods
-switch Info.Parameters.Channels_Method
+switch Info.Parameters.Channels_Detection
     
     % Correlation Method
     % ^^^^^^^^^^^^^^^^^^
@@ -79,7 +82,7 @@ switch Info.Parameters.Channels_Method
 
         for nSW = 1:length(SW)
 
-            if flag_wait
+            if flag_progress
                 waitbar(nSW/length(SW),WaitHandle,sprintf('Slow Wave %d of %d',nSW, length(SW)))
             end
 
@@ -106,7 +109,7 @@ switch Info.Parameters.Channels_Method
 
             % channels with correlation above threshold
             Channels = false(Info.Recording.dataDim(1),1);
-            Channels(maxCC > Info.Parameters.Channels_CorrThresh) = true; 
+            Channels(maxCC > Info.Parameters.Channels_Threshold) = true; 
             
             % if no channels correlate well with the reference then delete the SW
             % and continue... [should try to correlate with maximum channel]
@@ -119,7 +122,7 @@ switch Info.Parameters.Channels_Method
             % ````````````````````````````````````````````
             SW(nSW).Channels_NegAmp = nan(length(Info.Electrodes),1);
             SW(nSW).Channels_NegAmp(Channels,:) = min(shortData(Channels,:),[],2);
-            Channels(SW(nSW).Channels_NegAmp > Info.Parameters.Ref_NegAmpMin/10) = false;
+            Channels(SW(nSW).Channels_NegAmp > mean(Info.Parameters.Ref_AmplitudeAbsolute)/10) = false;
             
             % Cluster Test
             % ````````````
@@ -145,7 +148,7 @@ switch Info.Parameters.Channels_Method
             % find the prototypical channel
             [~, negative_peak_index] = min(SW(nSW).Channels_NegAmp);
             
-            if maxCC(negative_peak_index) < (Info.Parameters.Channels_CorrThresh + 1) / 2
+            if maxCC(negative_peak_index) < (Info.Parameters.Channels_Threshold + 1) / 2
                 maxDelay = maxID(negative_peak_index) - win;
                 maxData = Data.Filtered(negative_peak_index,...
                     SW(nSW).Ref_PeakInd - win + maxDelay : SW(nSW).Ref_PeakInd + win + maxDelay);
@@ -156,7 +159,7 @@ switch Info.Parameters.Channels_Method
                 [maxCC, maxID]      = max(cc,[],2);
                 
                 % channels with correlation above threshold
-                Channels(maxCC > Info.Parameters.Channels_CorrThresh) = true;
+                Channels(maxCC > Info.Parameters.Channels_Threshold) = true;
                 
             end
             
@@ -192,7 +195,7 @@ switch Info.Parameters.Channels_Method
         
         for nSW = 1:length(SW)
             % start the waitbar
-            if flag_wait
+            if flag_progress
                 waitbar(nSW/length(SW),WaitHandle,sprintf('Slow Wave %d of %d',nSW, length(SW)))
             end
 
@@ -210,7 +213,7 @@ switch Info.Parameters.Channels_Method
             % Minimum amplitude threshold for channels
             [SW(nSW).Channels_NegAmp, minChId] = min(shortData,[],2);
             SW(nSW).Channels_Active = SW(nSW).Channels_NegAmp < ...
-                -Info.Parameters.Ref_NegAmpMin * Info.Parameters.Channels_AdjThresh;
+                -mean(Info.Parameters.Ref_AmplitudeAbsolute) * Info.Parameters.Channels_Threshold;
            
             % Peak to Peak Check
             % for peak to peak check we need a longer window after the peak
@@ -224,7 +227,7 @@ switch Info.Parameters.Channels_Method
                 posPeakAmp(nCh) = max(shortData(nCh, minChId(nCh):end));
             end
             SW(nSW).Channels_Active(posPeakAmp - SW(nSW).Channels_NegAmp < ...
-                Info.Parameters.Ref_Peak2Peak * Info.Parameters.Channels_AdjThresh) = false;
+                Info.Parameters.Ref_Peak2Peak * Info.Parameters.Channels_Threshold) = false;
 
             % TODO: slope check
             
@@ -255,7 +258,7 @@ switch Info.Parameters.Channels_Method
 end
 
 % close the wait bar
-if flag_wait
+if flag_progress
     delete(WaitHandle)       % DELETE the waitbar; don't try to CLOSE it.
 end
 

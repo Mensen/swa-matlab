@@ -4,13 +4,13 @@ if ~isfield(Info, 'Electrodes');
 	error('Error: No electrode information found in Info')
 end
 
-if ~isfield(Info.Recording, 'Recording.sRate');
-    Info.Recording.Recording.sRate = 250;
+if ~isfield(Info.Recording, 'sRate');
+    error('no sampling rate information found in Info.Recording');
 end
 
-if ~isfield(Info.Parameters, 'Ref_Method');
-    Info.Parameters.Method = 'Envelope';
-    fprintf(1, 'Warning: No method specified, default to Negative Envelope Method');
+if ~isfield(Info, 'Parameters');
+    Info = swa_getInfoDefaults(Info, 'SW', 'envelope');
+    fprintf(1, 'Warning: No parameters specified; using defaults');
 end
 
 switch Info.Parameters.Ref_Method
