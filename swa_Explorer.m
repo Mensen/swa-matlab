@@ -637,18 +637,21 @@ Data = getappdata(handles.fig, 'Data');
 nSW = handles.java.Spinner.getValue();
 
 % Calculate the range
-if strcmp(handles.SW_Type, 'SS')
-    winLength = floor((2*handles.Info.sRate - handles.SW(nSW).Ref_Length)/2);
-    range = handles.SW(nSW).Ref_Start - winLength  :  handles.SW(nSW).Ref_End + winLength;
-else
-    winLength = floor(2*handles.Info.Recording.sRate);
-    range = handles.SW(nSW).Ref_PeakInd - winLength  :  handles.SW(nSW).Ref_PeakInd + winLength;
+switch handles.SW_Type
+    case 'SS'
+        winLength = floor((2 * handles.Info.sRate - handles.SW(nSW).Ref_Length)/2);
+        range = handles.SW(nSW).Ref_Start - winLength  :  handles.SW(nSW).Ref_End + winLength;
+    case {'SW', 'ST'}
+        winLength = floor(2 * handles.Info.Recording.sRate);
+        range = handles.SW(nSW).Ref_PeakInd - winLength  :  handles.SW(nSW).Ref_PeakInd + winLength;
 end
-range(range<1) = [];
+% check that the range is within data limits (set to sample 1 if not)
+range(range < 1 | range > size(Data.Raw, 2)) = 1;
 
-% check if the plot already exist (if not then initialise, else change
-% ydata)
-if ~isfield(handles, 'SWPlot') % in case plot doesn't already exist
+% initial plot
+% ^^^^^^^^^^^^
+% check if the plot already exists
+if ~isfield(handles, 'SWPlot') 
     cla(handles.axes_individual_wave);
     
     % plot all the channels but hide them
@@ -664,10 +667,13 @@ if ~isfield(handles, 'SWPlot') % in case plot doesn't already exist
     
     % set only the active channels to visible
     set(handles.SWPlot.All(handles.SW(nSW).Channels_Active), 'Color', [0.6 0.6 0.6], 'LineWidth', 1, 'Visible', 'on');
+    % adjust the x-axes to match range length
     set(handles.axes_individual_wave, 'XLim', [1, length(range)])
-    
+
+% update plot
+% ^^^^^^^^^^^^    
 else
-    for i = 1:size(Data.Raw,1) % faster than total replot...
+    for i = 1:size(Data.Raw,1)
         set(handles.SWPlot.All(i),...
             'yData', Data.Raw(i,range),...
             'Color', [0.6 0.6 0.6], 'linewidth', 0.5, 'Visible', 'off');
