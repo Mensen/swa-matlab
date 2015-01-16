@@ -28,7 +28,7 @@ if strcmp(Info.Parameters.Channels_Detection, 'correlation');
     % check for previous channel neighbours calculation
     if ~isfield(Info, 'ChN');
         fprintf(1,'Calculating: Channel Neighbours...');
-        Info.ChN = swa_ChN(Info.Electrodes);
+        Info.Recording.ChannelNeighbours = swa_channelNeighbours(Info.Electrodes);
         fprintf(1,' done. \n');
     else
         fprintf(1,'Information: Using channels neighbourhood in ''Info''. \n');
@@ -127,7 +127,7 @@ switch Info.Parameters.Channels_Detection
             % Cluster Test
             % ````````````
             % Only take largest single cluster to avoid outliers
-            Clusters = swa_ClusterTest(double(Channels), Info.ChN, 0.01);
+            Clusters = swa_ClusterTest(double(Channels), Info.Recording.ChannelNeighbours, 0.01);
             
             nClusters = unique(Clusters);
             if length(nClusters) > 2
