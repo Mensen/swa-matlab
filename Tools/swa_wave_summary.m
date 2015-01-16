@@ -16,14 +16,16 @@ if isa(SW, 'char')
         output = {...
             'globality'     ;...
             'distances'     ;...
+            'amplitudes'    ;...
             'ampVtime'      ;...
+            'ampVglobality' ;...
             'wavelengths'   ;...
             'anglemap'      ;...
             'topo_density'  ;...
             'topo_origins'  };
         return;
     else
-        fprintf(1, 'Warning: Use ''return options'' as input to see current plotting options');
+        fprintf(1, 'Error: Use ''return options'' as input to see current plotting options');
         return;
     end
 end
@@ -77,10 +79,24 @@ switch type
                 set(get(h.ax, 'ylabel'), 'string', 'Number of Waves');
             end
         end
+    
+    case 'amplitudes'
+        output = min([SW.Channels_NegAmp]);
+        if makePlot
+            hist(h.ax, output);
+            if isempty(axes_handle)
+                % set the title and labels
+                set(h.ax,...
+                    'title', text('string', 'Peak Channel Amplitude'));
+                
+                set(get(h.ax, 'xlabel'), 'string', 'Wave Amplitude');
+                set(get(h.ax, 'ylabel'), 'string', 'Number of Waves');
+            end
+        end
         
     case 'ampVtime'
-        output(1,:)=[SW.Ref_PeakAmp];
-        output(2,:)=[SW.Ref_PeakInd];
+        output(1,:)= [SW.Ref_PeakAmp];
+        output(2,:)= [SW.Ref_PeakInd];
         if makePlot
             h.plt = scatter(output(2,:), output(1,:), 'parent', h.ax);
             set(h.plt,...
@@ -101,6 +117,30 @@ switch type
                 set(get(h.ax, 'ylabel'), 'string', 'Reference Amplitude');
             end
         end
+        
+    case 'ampVglobality'
+        output(1,:)= [SW.Ref_PeakAmp];
+        output(2,:)= sum([SW.Channels_Active])/length(SW(1).Channels_Active)*100;
+        if makePlot
+            h.plt = scatter(output(2,:), output(1,:), 'parent', h.ax);
+            set(h.plt,...
+                'marker',           'v'     ,...
+                'markerFaceColor',  'k'     ,...
+                'markerEdgeColor',  'r')
+            
+            % set the x-axis limits to the maximum of the data
+            set(h.ax,...
+                'xlim', [0, max(output(2,:))]);
+            
+            if isempty(axes_handle)
+                % set the title and labels
+                set(h.ax,...
+                    'title', text('string', 'Amplitude over Time'));
+                
+                set(get(h.ax, 'xlabel'), 'string', 'Globality(%)');
+                set(get(h.ax, 'ylabel'), 'string', 'Reference Amplitude');
+            end
+        end    
         
     case 'wavelengths'
         output = ([SW.Ref_UpInd]-[SW.Ref_DownInd])/Info.Recording.sRate*1000;
