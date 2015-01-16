@@ -171,13 +171,13 @@ for ref_wave = 1:number_ref_waves
                     [c, SWid] = max(double(AllPeaks > MPP(n)) + double(AllPeaks < MPP(n+1)));
                     if c == 2
                         % Check which region has the bigger P2P wave...
-                        if Data.SWRef(MNP(n)) < SW(SWid).Ref_PeakAmp
+                        if Data.SWRef(ref_wave, MNP(n)) < SW(SWid).Ref_PeakAmp
                             % If the new region does then overwrite previous data with larger reference
                             SW(SWid).Ref_Region    = [ref_wave, SW(SWid).Ref_Region];
                             SW(SWid).Ref_DownInd   = MPP(n);
                             SW(SWid).Ref_PeakInd   = MNP(n);
                             SW(SWid).Ref_UpInd     = MPP(n+1);
-                            SW(SWid).Ref_PeakAmp   = Data.SWRef(MNP(n));
+                            SW(SWid).Ref_PeakAmp   = Data.SWRef(ref_wave, MNP(n));
                             SW(SWid).Ref_P2PAmp    = p2p(n);
                             SW(SWid).Ref_NegSlope  = min(slopeData(1,MPP(n):MPP(n+1)));
                             SW(SWid).Ref_PosSlope  = max(slopeData(1,MPP(n):MPP(n+1)));
@@ -198,7 +198,7 @@ for ref_wave = 1:number_ref_waves
                 SW(SWCount).Ref_DownInd   = MPP(n);                
                 SW(SWCount).Ref_PeakInd   = MNP(n);
                 SW(SWCount).Ref_UpInd     = MPP(n+1);
-                SW(SWCount).Ref_PeakAmp   = Data.SWRef(MNP(n));
+                SW(SWCount).Ref_PeakAmp   = Data.SWRef(ref_wave, MNP(n));
                 SW(SWCount).Ref_P2PAmp    = p2p(n);
                 SW(SWCount).Ref_NegSlope  = min(slopeData(1,MPP(n):MPP(n+1)));
                 SW(SWCount).Ref_PosSlope  = max(slopeData(1,MPP(n):MPP(n+1)));
@@ -252,7 +252,7 @@ for ref_wave = 1:number_ref_waves
                 
                 % Test for negative amplitude
                 % ```````````````````````````````
-                [NegPeakAmp, NegPeakId] = min(Data.SWRef(1,DZC(n):UZC(n)));
+                [NegPeakAmp, NegPeakId] = min(Data.SWRef(ref_wave, DZC(n):UZC(n)));
                 if NegPeakAmp > -Info.Parameters.Ref_AmplitudeAbsolute(ref_wave)
                     continue;
                 end
@@ -266,9 +266,9 @@ for ref_wave = 1:number_ref_waves
                     sample_range = UZC(n):size(Data.SWRef, 2);
                 end
                 % calculate the positive peak after the zero crossing
-                PosPeakAmp = max(Data.SWRef(1, sample_range));
+                PosPeakAmp = max(Data.SWRef(ref_wave, sample_range));
                 if strcmp(Info.Parameters.Ref_Method, 'MDC')
-                    if PosPeakAmp-NegPeakAmp < Info.Parameters.Ref_Peak2Peak
+                    if PosPeakAmp - NegPeakAmp < Info.Parameters.Ref_Peak2Peak
                         continue;
                     end
                 end
