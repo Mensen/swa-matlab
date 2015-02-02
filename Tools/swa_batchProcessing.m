@@ -47,7 +47,10 @@ for n = 1:length(fileList)
     % get the default parameters
     Info = swa_getInfoDefaults(Info, 'SW', 'envelope');
 
-    % change the defaults
+%     % change the defaults
+%     [Data, Info] = swa_changeReference(Data, Info)
+%     Info.Parameters.Ref_Method = 'MDC';
+    
 
     % find the waves
     [Data.SWRef, Info]  = swa_CalculateReference (Data.Raw, Info);
@@ -95,8 +98,8 @@ for n = 1:length(fileList)
         temp_data = min([SW.Channels_NegAmp]);
         output(n).amplitude(1) = median(temp_data);
         output(n).amplitude(2) = std(temp_data);
-        output(n).amplitude(3) = Info.Parameters.Ref_NegAmpMin;
-
+        output(n).amplitude(3) = max(Info.Parameters.Ref_AmplitudeAbsolute);
+        
         % mean wave globality
         temp_data = swa_wave_summary(SW, Info, 'globality');
         output(n).globality(1) = mean(temp_data);

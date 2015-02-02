@@ -29,7 +29,7 @@ if isa(SW, 'char')
         return;
     end
 end
-       
+
 
 % create the figure if makePlot option is set
 if makePlot

@@ -123,8 +123,7 @@ for refWave = 1:size(Data.SSRef,1)
     endSS(SSLengths < minLength) = [];
     SSLengths(SSLengths < minLength) = [];
     
-    %% Check neighbouring frequencies to ensure its spindle specific
-    % To do
+    % TODO: Check neighbouring frequencies to ensure its spindle specific
 
     %% Calculate slope of reference data
     slopeRef  = [0 diff(Data.SSRef(refWave,:))];

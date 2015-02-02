@@ -45,7 +45,7 @@ else
     summary_measure{3} = swa_wave_summary(handles.dataset{1}.SW(~unique_indices{1}),...
         handles.dataset{1}.Info, property_name, 0);
     summary_measure{4} = swa_wave_summary(handles.dataset{2}.SW(~unique_indices{2}),...
-        handles.dataset{1}.Info, property_name, 0);
+        handles.dataset{2}.Info, property_name, 0);
     
     output = cellfun(@(x) median(x(1,:)), summary_measure);
 end

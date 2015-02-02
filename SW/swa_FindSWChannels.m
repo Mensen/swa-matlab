@@ -26,7 +26,7 @@ end
 % TODO: make cluster test parameter and available for threshold detection
 if strcmp(Info.Parameters.Channels_Detection, 'correlation');
     % check for previous channel neighbours calculation
-    if ~isfield(Info, 'ChN');
+    if ~isfield(Info.Recording, 'ChannelNeighbours');
         fprintf(1,'Calculating: Channel Neighbours...');
         Info.Recording.ChannelNeighbours = swa_channelNeighbours(Info.Electrodes);
         fprintf(1,' done. \n');
