@@ -383,7 +383,22 @@ loaded_file = load ([swaPath,swaFile]);
 if ischar(loaded_file.Data.Raw)
     set(handles.StatusBar, 'String', 'Busy: Loading Data');
     fid = fopen(fullfile(swaPath, loaded_file.Data.Raw));
-    loaded_file.Data.Raw = fread(fid, loaded_file.Info.Recording.dataDim, 'single');
+    
+    % check for changed reference before loading data...
+    if isfield (loaded_file.Info.Recording, 'new_reference')
+        data_dimensions(1) = loaded_file.Info.Recording.dataDim(1) + numel(loaded_file.Info.Recording.new_reference);
+        data_dimensions(2) = loaded_file.Info.Recording.dataDim(2);
+        
+        loaded_file.Data.Raw = fread(fid, data_dimensions, 'single');
+        
+        % re-reference the data...
+        [loaded_file.Data, ~] = swa_changeReference(...
+            loaded_file.Data, loaded_file.Info, loaded_file.Info.Recording.new_reference);
+        
+    else
+        loaded_file.Data.Raw = fread(fid, loaded_file.Info.Recording.dataDim, 'single');
+    end
+    
     fclose(fid);
 end
 
@@ -432,11 +447,12 @@ handles.java.Slider.setMinorTickSpacing(5);
 handles.java.Slider.setMajorTickSpacing(20);
 handles.java.Slider.setPaintTicks(true);
 
-%% Draw Initial Plots
+
 % Update handles structure
 guidata(handles.fig, handles);
 setappdata(handles.fig, 'Data', loaded_file.Data);
 
+% Draw Initial Plots
 % Two summary plots
 fcn_select_options([],[], handles.fig, 1);
 fcn_select_options([],[], handles.fig, 2);
