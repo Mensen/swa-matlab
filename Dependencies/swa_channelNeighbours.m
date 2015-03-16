@@ -1,4 +1,4 @@
-function [ChN] = swa_ChN(eLoc)
+function [ChN] = swa_channelNeighbours(eLoc, displayNet)
 % Searches for neighbouring channels using triangulation and reports back each channels neighbours
 
 % This file is part of the program ept_TFCE.
@@ -17,7 +17,9 @@ function [ChN] = swa_ChN(eLoc)
 % Fixed error in script for small electrode files where channel list was
 % not cleared properly in each iteration of finding neighbours...
 
-displayNet = 0; %set to 1 if you want net to be displayed in a figure.
+if nargin < 2
+    displayNet = 0; %set to 1 if you want net to be displayed in a figure.
+end
 
 nCh = length(eLoc);
 
