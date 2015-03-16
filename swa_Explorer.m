@@ -304,18 +304,6 @@ set(handles.options_list(2),...
 set(handles.java.options_list(2),...
     'ActionPerformedCallback', {@fcn_select_options, handles.fig, 2});
 
-% get the currently available options
-options_list = swa_wave_summary('return options');
-
-% create and set the java models for the options list
-model1 = javax.swing.DefaultComboBoxModel(options_list);
-model2 = javax.swing.DefaultComboBoxModel(options_list);
-handles.java.options_list(1).setModel(model1);
-handles.java.options_list(2).setModel(model2);
-
-% set the second option box to the second value (0-index value 1)
-handles.java.options_list(2).setSelectedIndex(1)
-
 % export buttons
 % ~~~~~~~~~~~~~~
 handles.Ex_options(1) = uicontrol(...
@@ -452,8 +440,27 @@ handles.java.Slider.setPaintTicks(true);
 guidata(handles.fig, handles);
 setappdata(handles.fig, 'Data', loaded_file.Data);
 
-% Draw Initial Plots
-% Two summary plots
+% Set the output boxes
+% ~~~~~~~~~~~~~~~~~~~~
+% get the currently available options
+options_list = swa_wave_summary('return options');
+
+% check for wavetype since no travelling parameters are created for SS
+if strcmp(handles.SW_Type, 'SS')
+    bad_options = ismember(options_list, {'distances', 'anglemap'});
+    options_list(bad_options) = [];
+end
+
+% create and set the java models for the options list
+model1 = javax.swing.DefaultComboBoxModel(options_list);
+model2 = javax.swing.DefaultComboBoxModel(options_list);
+handles.java.options_list(1).setModel(model1);
+handles.java.options_list(2).setModel(model2);
+
+% set the second option box to the second value (0-index value 1)
+handles.java.options_list(2).setSelectedIndex(1)
+
+% plot the first two output parameters in the list
 fcn_select_options([],[], handles.fig, 1);
 fcn_select_options([],[], handles.fig, 2);
 
@@ -640,8 +647,13 @@ switch plot_method
         set(handles.axes_eeg_channel,...
             'XLim', [xaxis(1), xaxis(end)]);
         
-        set(handles.zoomline(1), 'xData', [handles.SW(nSW).Ref_DownInd/handles.Info.Recording.sRate-0.5,    handles.SW(nSW).Ref_DownInd/handles.Info.Recording.sRate-0.5]);
-        set(handles.zoomline(2), 'xData', [handles.SW(nSW).Ref_UpInd/handles.Info.Recording.sRate+0.5,      handles.SW(nSW).Ref_UpInd/handles.Info.Recording.sRate+0.5]);
+         if strcmp(handles.SW_Type, 'SS')
+            set(handles.zoomline(1), 'xData', [handles.SW(nSW).Ref_Start/handles.Info.Recording.sRate-0.5,    handles.SW(nSW).Ref_Start/handles.Info.Recording.sRate-0.5]);
+            set(handles.zoomline(2), 'xData', [handles.SW(nSW).Ref_End/handles.Info.Recording.sRate+0.5,      handles.SW(nSW).Ref_End/handles.Info.Recording.sRate+0.5]);
+         else
+            set(handles.zoomline(1), 'xData', [handles.SW(nSW).Ref_DownInd/handles.Info.Recording.sRate-0.5,    handles.SW(nSW).Ref_DownInd/handles.Info.Recording.sRate-0.5]);
+            set(handles.zoomline(2), 'xData', [handles.SW(nSW).Ref_UpInd/handles.Info.Recording.sRate+0.5,      handles.SW(nSW).Ref_UpInd/handles.Info.Recording.sRate+0.5]);
+         end
 end
 
 function handles = update_SWPlot(handles)
