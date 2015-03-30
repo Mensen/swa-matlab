@@ -5,7 +5,7 @@
 % ^^^^^^^^^^^^^^^^^^^^^^^^^
 [Data, Info] = swa_convertFromEEGLAB();
 % or if you have previously analysed some data
-[Data, Info, SW] = swa_load_previous();
+[Data, Info, ST] = swa_load_previous();
 
 % Get the default parameters
 % ^^^^^^^^^^^^^^^^^^^^^^^^^^

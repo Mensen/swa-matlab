@@ -1,4 +1,8 @@
-function [filtData, Info] = swa_CalculateReference(data, Info)
+function [filtData, Info] = swa_CalculateReference(data, Info, flag_plot)
+
+if nargin < 3
+    flag_plot = false;
+end
 
 if ~isfield(Info, 'Electrodes');
 	error('Error: No electrode information found in Info')
@@ -13,9 +17,12 @@ if ~isfield(Info, 'Parameters');
     fprintf(1, 'Warning: No parameters specified; using defaults');
 end
 
+% switch reference parameter to lowercase for compatibility
+Info.Parameters.Ref_Method = lower(Info.Parameters.Ref_Method);
+
 switch Info.Parameters.Ref_Method
     
-    case 'Envelope'
+    case 'envelope'
         
     % Use the e_loc to avoid outer channels in noisy datasets
     if ~isfield(Info.Parameters, 'Ref_UseInside') || Info.Parameters.Ref_UseInside == true
@@ -53,7 +60,7 @@ switch Info.Parameters.Ref_Method
         nData = mean(rData(1:nCh,:));
     end
 
-    case 'MDC'
+    case 'mdc'
         % Get the electrodes in the four regions
         Th = pi/180*[Info.Electrodes.theta];        % Calculate theta values from x,y,z e_loc
         Rd = [Info.Electrodes.radius];              % Calculate radian values from x,y,z e_loc
@@ -69,15 +76,29 @@ switch Info.Parameters.Ref_Method
         RegionCenters = [-r, -r, r,  r;...
                           r, -r, -r, r];
         
-        nData = zeros(4,size(data,2));              
+        nData = zeros(4,size(data,2));  
+        if flag_plot
+            figure('color', [0.2, 0.2, 0.2]);
+            axes('nextplot', 'add', 'Color', 'none');
+            axis off;
+            % mark the electrodes
+            scatter(y, x,...
+                'markerEdgeColor', [0.5, 0.5, 0.5],...
+                'markerFaceColor', [0.5, 0.5, 0.5]);
+        end
         for i = 1:4 % Each of the four regions
             distances = ((x+RegionCenters(1,i)).^2 + (y+RegionCenters(2,i)).^2).^0.5;
-            insideCh = distances<0.175; %0.2 captures distinct regions
-            % figure('color', 'w'); scatter(y,x); hold on; scatter(y(insideCh),x(insideCh), 'r', 'MarkerFaceColor','r'); axis off;
-            nData(i,:) = mean(data(insideCh,:));            
+            insideCh = distances < 0.175; % 0.2 captures distinct regions
+            nData(i,:) = mean(data(insideCh, :));
+            % plot the regions
+            if flag_plot;
+                scatter(y(insideCh),x(insideCh), 90, ...
+                    'markerEdgeColor', [0.8, 0.8, 0.8],...
+                    'markerFaceColor', [0.8, 0.8, 0.8]);
+            end
         end
     
-    case 'Central'
+    case 'central'
         
         % Get the electrodes in the four regions
         Th = pi/180*[Info.Electrodes.theta];        % Calculate theta values from x,y,z e_loc
@@ -91,13 +112,13 @@ switch Info.Parameters.Ref_Method
         x = x*squeezefac; y = y*squeezefac;
         
         distances = (x.^2 + y.^2).^0.5;
-        insideCh = distances<0.15;
+        insideCh = distances < 0.15;
         fprintf(1, 'Information: Central using %i channels for reference \n', sum(insideCh));
         % figure('color', 'w'); scatter(y,x); hold on; scatter(y(insideCh),x(insideCh), 'r', 'MarkerFaceColor','r'); axis off;
         nData = mean(data(insideCh,:));
         
         
-    case 'Midline'
+    case 'midline'
 
         % Get the electrodes in the three regions
         Th = pi/180*[Info.Electrodes.theta];        % Calculate theta values from x,y,z e_loc
@@ -124,8 +145,10 @@ switch Info.Parameters.Ref_Method
     otherwise
         error('Unrecognised reference method type (check spelling/case)');
 end
-%% Filter the new data to 'baseline correct' it so there are DZCs
 
+
+% Filter the data 
+% ~~~~~~~~~~~~~~~
 if Info.Parameters.Filter_Apply
     
     % check for necessary defaults
@@ -147,5 +170,24 @@ else
     filtData = nData;
 end
     
-%     figure('color', 'w'); plot(nData(1,1:5000)); hold on; plot(filtData(1,1:5000),'r', 'linewidth', 3);
+% plot 10 seconds of data from references
+if flag_plot
+    random_sample = randi(Info.Recording.dataDim(2), 1);
+    sample_range = random_sample : random_sample + 4 * Info.Recording.sRate - 1;
+    time_range = [1:size(sample_range, 2)] / Info.Recording.sRate;
+    figure('color', 'w');
+    axes('nextplot', 'add');
+    for n = 1:size(filtData, 1)
+        if strcmp(Info.Parameters.Ref_Method, 'envelope')
+%             plot(time_range, data(:, sample_range),...
+%                 'color', [0.7, 0.7, 0.7]);
+            plot(time_range, filtData(n, sample_range),...
+                'color', [0.2, 0.2, 0.2],...
+                'linewidth', 3);
+        else
+            plot(time_range, filtData(n, sample_range) - (n - 1) * 40,...
+                'linewidth', 2);
+        end
+    end
+end
     

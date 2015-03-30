@@ -58,6 +58,7 @@ if isfield(Data, 'Filtered')
     end
 % if the field does not exist, filter the raw data
 else
+    fprintf(1,'Calculation: Filtering Data. \n');
     Data.Filtered = swa_filter_data(Data.Raw, Info);
 end
 
@@ -107,6 +108,11 @@ switch Info.Parameters.Channels_Detection
             % find the maximum correlation and location
             [maxCC, maxID]      = max(cc,[],2);
 
+            % cross correlation plot
+%             [~, sort_ind] = sort(maxID, 1, 'ascend');
+%             figure('color', 'w');
+%             imagesc(cc(sort_ind, :));
+            
             % channels with correlation above threshold
             Channels = false(Info.Recording.dataDim(1),1);
             Channels(maxCC > Info.Parameters.Channels_Threshold) = true; 
