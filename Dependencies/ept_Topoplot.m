@@ -69,6 +69,8 @@ if nargin > 2
             HeadWidth           = Value;
         case 'numcontours'
             NumContours         = Value;    
+        case 'contourwidth'
+            ContourWidth        = Value;
         case 'newfigure'
             NewFigure           = Value;
         case 'axes'

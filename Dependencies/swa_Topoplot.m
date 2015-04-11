@@ -12,7 +12,7 @@ PlotStreams         = 1;
 
 Streams             = [];
 streamWidth         = 50;           % thickness of the streamlines (higher the thinner)
-
+streamColor         = 'w';
 
 HeadWidth           = 2.5;
 HeadColor           = [0,0,0];
@@ -64,6 +64,8 @@ if nargin > 2
             Data = Value;
         case 'streamwidth'
             streamWidth = Value;
+        case 'streamcolor'
+            streamColor = Value;
         otherwise
             display (['Unknown parameter setting: ' Param])
     end
@@ -246,7 +248,7 @@ if PlotStreams == 1;
             'linewidth',    1,...
             'edgecolor',    'k',...
             'facealpha',    0.3,...
-            'facecolor',    [0.5, 0.5, 0.8]);
+            'facecolor',    streamColor);
     end
 end
 

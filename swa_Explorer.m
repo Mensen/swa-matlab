@@ -825,7 +825,7 @@ if ~isfield(handles, 'SW')
 end
 
 % clear whatever is on the current axes
-cla(handles.ax_option(no_axes));
+cla(handles.ax_option(no_axes), 'reset');
 
 % get the selected option
 type = handles.java.options_list(no_axes).getSelectedItem;
