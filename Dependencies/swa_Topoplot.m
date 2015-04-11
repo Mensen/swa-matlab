@@ -11,6 +11,8 @@ PlotChannels        = 1;            % Determines whether the channels are drawn
 PlotStreams         = 1;
 
 Streams             = [];
+streamWidth         = 50;           % thickness of the streamlines (higher the thinner)
+
 
 HeadWidth           = 2.5;
 HeadColor           = [0,0,0];
@@ -59,7 +61,9 @@ if nargin > 2
         case 'gs'
             GS                  = Value;
         case 'data'
-            Data   = Value;
+            Data = Value;
+        case 'streamwidth'
+            streamWidth = Value;
         otherwise
             display (['Unknown parameter setting: ' Param])
     end
@@ -226,24 +230,23 @@ end
 
 %% Plot Streamlines
 if PlotStreams == 1;
-    
+       
     for i = 1:length(Streams)
         if ~isempty(Streams{i})
-            pad = linspace(0,GS/50,length(Streams{i}));
+            pad = linspace(0, GS/streamWidth, length(Streams{i}));
             yp  = [Streams{i}(1,:)-pad, fliplr(Streams{i}(1,:)+pad)];
             xp  = [Streams{i}(2,:)+pad, fliplr(Streams{i}(2,:)-pad)];
             H.PStream(i) = patch(xp,yp,'w', 'Parent', H.CurrentAxes);
         end
     end
     if isfield (H, 'PStream')
-        % this throws a java exception in dual monitor settings
         % TODO: fix the java exception when setting the alpha value
 %         set(H.PStream(H.PStream > 0),...
-%             'facealpha',    0.3);
-        set(H.PStream(H.PStream > 0),...
-            'linewidth',    2,...
-            'edgecolor',    'w',...
-            'facecolor',    'b');
+        set(H.PStream,...
+            'linewidth',    1,...
+            'edgecolor',    'k',...
+            'facealpha',    0.3,...
+            'facecolor',    [0.5, 0.5, 0.8]);
     end
 end
 
