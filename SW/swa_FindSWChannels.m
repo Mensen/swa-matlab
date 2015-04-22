@@ -24,7 +24,7 @@ elseif length(SW) < 2
 end
 
 % TODO: make cluster test parameter and available for threshold detection
-if strcmp(Info.Parameters.Channels_Detection, 'correlation');
+if Info.Parameters.Channels_ClusterTest
     % check for previous channel neighbours calculation
     if ~isfield(Info.Recording, 'ChannelNeighbours');
         fprintf(1,'Calculating: Channel Neighbours...');
@@ -127,25 +127,30 @@ switch Info.Parameters.Channels_Detection
             % Minimum amplitude threshold (10% of maximum)
             % ````````````````````````````````````````````
             SW(nSW).Channels_NegAmp = nan(length(Info.Electrodes),1);
+            % TODO: make shortData only reflect the best correlating
+            % portion as currently it could find another negative peak to
+            % test minimum amp that doesn't correspond to peak of interest
             SW(nSW).Channels_NegAmp(Channels,:) = min(shortData(Channels,:),[],2);
             Channels(SW(nSW).Channels_NegAmp > mean(Info.Parameters.Ref_AmplitudeAbsolute)/10) = false;
             
             % Cluster Test
             % ````````````
-            % Only take largest single cluster to avoid outliers
-            Clusters = swa_ClusterTest(double(Channels), Info.Recording.ChannelNeighbours, 0.01);
-            
-            nClusters = unique(Clusters);
-            if length(nClusters) > 2
-                maxCluster = 0;
-                for i = 2:length(nClusters)
-                    sCluster = sum(Clusters == nClusters(i));
-                    if sCluster > maxCluster
-                        maxCluster = sCluster;
-                        keepCluster = i;
+            if Info.Parameters.Channels_ClusterTest
+                % Only take largest single cluster to avoid outliers
+                Clusters = swa_ClusterTest(double(Channels), Info.Recording.ChannelNeighbours, 0.01);
+                
+                nClusters = unique(Clusters);
+                if length(nClusters) > 2
+                    maxCluster = 0;
+                    for i = 2:length(nClusters)
+                        sCluster = sum(Clusters == nClusters(i));
+                        if sCluster > maxCluster
+                            maxCluster = sCluster;
+                            keepCluster = i;
+                        end
                     end
+                    Channels = Clusters == nClusters(keepCluster);
                 end
-                Channels = Clusters == nClusters(keepCluster);
             end
             
             % Cross correlate with the peak (prototypical channel)

@@ -26,6 +26,7 @@ switch type
         % ^^^^^^^^^^^^^^^^^        
         Info.Parameters.Channels_Detection = 'correlation'; % correlation/threshold
         Info.Parameters.Channels_Threshold = 0.9;             % amount to adjust threshold if using threshold method
+        Info.Parameters.Channels_ClusterTest = true;
         Info.Parameters.Channels_WinSize = 0.10;
 
         % travelling parameters
