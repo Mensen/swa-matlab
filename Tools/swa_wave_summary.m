@@ -66,14 +66,25 @@ switch type
         end
         
     case 'distances'
+        % histogram of displacement distribution
+        
         count = 0;
+        streams = cell(1);
         for n = 1:length(SW)
             if iscell(SW(n).Travelling_Streams)
                 count = count+1;
                 streams{count} = SW(n).Travelling_Streams{1};
             end
         end
-        output = cellfun(@(x) (sum((x(:,1)-x(:,end)).^2))^0.5, streams); % total displacement
+        
+        % check if any streams were found
+        if isempty(streams{1})
+            fprintf('Warning: no streams were found for calculation\n');
+            return
+        end
+        
+        % get the total displacement of each stream
+        output = cellfun(@(x) (sum((x(:,1)-x(:,end)).^2))^0.5, streams);
         
         if makePlot
             hist(h.ax, output);
