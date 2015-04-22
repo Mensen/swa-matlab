@@ -253,7 +253,8 @@ for ref_wave = 1:number_ref_waves
                 % Test for negative amplitude
                 % ```````````````````````````````
                 [NegPeakAmp, NegPeakId] = min(Data.SWRef(ref_wave, DZC(n):UZC(n)));
-                if NegPeakAmp > -Info.Parameters.Ref_AmplitudeAbsolute(ref_wave)
+                if NegPeakAmp > -Info.Parameters.Ref_AmplitudeAbsolute(ref_wave) || ...
+                    NegPeakAmp < -220
                     continue;
                 end
                 NegPeakId = NegPeakId + DZC(n);
