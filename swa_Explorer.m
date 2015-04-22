@@ -496,9 +496,15 @@ switch handles.SW_Type
 end
 
 % save the data
-save([savePath, saveName], 'Data', 'Info', handles.SW_Type, '-mat');
+switch handles.SW_Type
+    case 'SW'
+        swa_saveOutput(Data, Info, SW, [], 1, 0)
+    otherwise
+        % TODO: use swa_saveOutput for SS and ST as well
+        save([savePath, saveName], 'Data', 'Info', handles.SW_Type, '-mat');
+end
 
-set(handles.fig, 'Name', ['Travelling Waves: ', saveName]);
+set(handles.fig, 'Name', ['Traveling Waves: ', saveName]);
 
 
 %% Update Controls

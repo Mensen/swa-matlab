@@ -1,6 +1,9 @@
 function swa_saveOutput(Data, Info, SW, save_name, flag_raw, flag_filtered)
 % function to save the wave detection output
 
+% TODO: make generalisable to the different wave types since it is
+% currently only compatible with SW by name.
+
 if flag_raw
     % Replace the data with a file pointer if drive space is a concern
     Data.Raw = Info.Recording.dataFile;
@@ -13,7 +16,7 @@ if flag_filtered
         swa_save_data(Data.Filtered, filteredName);
     end
     Data.Filtered = filteredName;
-else
+elseif isfield(Data, 'Filtered')
     Data = rmfield(Data, 'Filtered');
 end
 
