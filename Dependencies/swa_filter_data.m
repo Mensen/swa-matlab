@@ -1,5 +1,10 @@
 function filtData = swa_filter_data(data, Info)
 
+% check for all parameters
+if ~isfield(Info.Parameters, 'Filter_order')
+    Info.Parameters.Filter_order = 2;
+end
+
 switch Info.Parameters.Filter_Method
     case 'Chebyshev'
         Wp=[Info.Parameters.Filter_hPass Info.Parameters.Filter_lPass]/(Info.Recording.sRate/2); % Filtering parameters
