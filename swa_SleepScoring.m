@@ -290,8 +290,8 @@ if isfield(EEG, 'swa_scoring')
         fprintf(1, 'previous scoring file a different size as the data, start new scoring session \n');
         % pre-allocate the variables
         % each sample is assigned a stage (255 is default unscored)
-        EEG.swa_scoring.stages      = uint8(ones(1,EEG.pnts)*255);
-        EEG.swa_scoring.arousals    = logical(zeros(1,EEG.pnts)*255);
+        EEG.swa_scoring.stages      = uint8(ones(1,EEG.pnts) * 255);
+        EEG.swa_scoring.arousals    = logical(zeros(1,EEG.pnts) * 255);
         % only every epoch is assigned a name
         EEG.swa_scoring.stageNames  = cell(1, number_of_epochs);
         EEG.swa_scoring.stageNames(:) = {'Unscored'};
@@ -302,7 +302,13 @@ if isfield(EEG, 'swa_scoring')
     end
     
 else
-    EEG.swa_scoring.display_channels = 8;
+    % check for the number of channels in the dataset to plot
+    if EEG.nbchan > 8
+        EEG.swa_scoring.display_channels = 8;
+    else
+        EEG.swa_scoring.display_channels = EEG.nbchan;
+    end
+    
     % get the default setting for the epoch length from the figure
     EEG.swa_scoring.epochLength = 30;
     % calculate samples per epoch
@@ -320,11 +326,16 @@ else
 
     EEG.swa_scoring.startTime = 0;
     
+    % check for minimum number of channels
+    num_channels = min(EEG.nbchan, 8);
+    
     % assign montage defaults
-    EEG.swa_scoring.montage.labels = cell(8,1);
+    EEG.swa_scoring.montage.labels = cell(num_channels, 1);
     EEG.swa_scoring.montage.labels(:) = {'undefined'};
-    EEG.swa_scoring.montage.channels = [1:8; ones(1,8)*size(eegData,1)]';
-    EEG.swa_scoring.montage.filterSettings = [ones(1,8)*0.5; ones(1,8)*30]';
+    EEG.swa_scoring.montage.channels = ....
+        [1:num_channels; ones(1, num_channels) * size(eegData,1)]';
+    EEG.swa_scoring.montage.filterSettings = ...
+        [ones(1, num_channels) * 0.5; ones(1, num_channels)*30]';
 end
 % ``````````````
 
@@ -554,7 +565,7 @@ set(handles.scale_lines(2), 'ydata',...
 
 % loop for each individual channels settings
 % plot the new data
-for n = 1:8
+for n = 1 : EEG.swa_scoring.display_channels
     data(n,:) = single(filtfilt(EEG.filter.b(n,:), EEG.filter.a(n,:),...
         double(data(n,:)'))'); %transpose data twice
     set(handles.channel_plots(n), 'yData', data(n,:) + toAdd(n, :));
@@ -562,7 +573,7 @@ end
 
 % plot the events
 data(:, ~EEG.swa_scoring.arousals(range)) = nan;
-for n = 1:8
+for n = 1 : EEG.swa_scoring.display_channels
     set(handles.plot_arousal(n), 'yData', data(n, :) + toAdd(n, :))
 end
 
