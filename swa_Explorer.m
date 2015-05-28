@@ -498,10 +498,12 @@ end
 % save the data
 switch handles.SW_Type
     case 'SW'
-        swa_saveOutput(Data, Info, SW, [], 1, 0)
+        
+        swa_saveOutput(Data, Info, SW, fullfile(savePath, saveName), 1, 0);
+        
     otherwise
         % TODO: use swa_saveOutput for SS and ST as well
-        save([savePath, saveName], 'Data', 'Info', handles.SW_Type, '-mat');
+        save(fullfile(savePath, saveName), 'Data', 'Info', handles.SW_Type, '-mat');
 end
 
 set(handles.fig, 'Name', ['Traveling Waves: ', saveName]);
