@@ -23,9 +23,8 @@ end
 % check for specified name
 if isempty(save_name)
     [saveFile, savePath] = uiputfile('*.mat');
-else
-    savePath = pwd;
+    save_name = fullfile(savePath, saveFile);
 end
 
 % save in a simple mat file
-save([savePath, saveFile], 'Data', 'Info', 'SW', '-mat');
+save(save_name, 'Data', 'Info', 'SW', '-mat');
