@@ -9,6 +9,8 @@ function [output, unique_indices] = swa_compareOutputs(file1, file2, flag_plot, 
 % with plot
 % output = swa_compareOutputs(file1, file2, 1);
 
+% TODO: indicate the number of waves in each category
+
 % load the files
 handles.dataset{1} = load(file1);
 handles.dataset{2} = load(file2);
@@ -17,20 +19,21 @@ handles.dataset{2} = load(file2);
 % ~~~~~~~~~~~~~
 
 if flag_plot
-    
-    % report different settings
-    % ~~~~~~~~~~~~~~~~~~~~~~~~~
-    handles.different_fields = fcn_find_parameter_differences(handles);
-    
+
     % find common waves
     % ~~~~~~~~~~~~~~~~~
     unique_indices = fcn_find_common_waves(handles);
     handles.unique_indices = unique_indices;
     
+    % report different settings
+    % ~~~~~~~~~~~~~~~~~~~~~~~~~
+    handles.different_fields = fcn_find_parameter_differences(handles);
+   
     handles = gui_interface(handles);
     fcn_select_options([], [], handles.fig)
     
     output = 1;
+        
 else
     
     % find common waves
@@ -48,6 +51,7 @@ else
         handles.dataset{2}.Info, property_name, 0);
     
     output = cellfun(@(x) median(x(1,:)), summary_measure);
+    
 end
 
 function handles = gui_interface(handles)
@@ -99,7 +103,8 @@ handles.axes_unique(1) = axes(...
     'parent',       handles.fig ,...
     'position',     [0.05 0.4 0.4 0.3] ,...
     'nextPlot',     'add' ,...
-    'color',        'w' );
+    'color',        'w' ,...
+    'box',          'off');
 handles.axes_unique(2) = axes(...
     'parent',       handles.fig ,...
     'position',     [0.55 0.4 0.4 0.3] ,...
@@ -169,11 +174,8 @@ function fcn_select_options(~, ~, object)
 handles = guidata(object);
 
 % clear whatever is on the current axes
-cla(handles.axes_unique(1)); cla(handles.axes_unique(2));
-cla(handles.axes_shared(1)); cla(handles.axes_shared(2));
-
-% reset the x/y limit modes
-
+cla(handles.axes_unique(1), 'reset'); cla(handles.axes_unique(2), 'reset');
+cla(handles.axes_shared(1), 'reset'); cla(handles.axes_shared(2), 'reset');
 
 % get the selected option
 property_name = handles.java.options_list(1).getSelectedItem;
@@ -213,9 +215,46 @@ function different_fields = fcn_find_parameter_differences(handles)
 
 % get all the field names
 info_fields = fieldnames(handles.dataset{1}.Info.Parameters);
+info_fields2 = fieldnames(handles.dataset{2}.Info.Parameters);
+
+% check for different fields in 1 > 2
+if length(info_fields) ~= length(info_fields2)
+    % find which ones don't match, report and delete from comparison
+    ind = ~ismember(info_fields, info_fields2);
+    if sum(ind) > 0
+        ind_number = find(ind);
+        for n = 1 : sum(ind)
+            fprintf(1, '%s not found in one of the parameters \n',...
+                info_fields{ind_number(n)});
+        end
+        info_fields(ind) = [];
+    end
+end
+    
+% check for different fields in 2 > 1
+if length(info_fields2) ~= length(info_fields)
+    % find which ones don't match, report and delete from comparison
+    ind = ~ismember(info_fields2, info_fields);
+    if sum(ind) > 0
+        ind_number = find(ind);
+        for n = 1 : sum(ind)
+            fprintf(1, '%s not found in one of the parameters \n',...
+                info_fields2{ind_number(n)});
+        end
+        info_fields2(ind) = [];
+    end
+end
+
+% include the number of subset waves here
+different_fields{1, 1} = 'unique';
+different_fields{1, 2} = sum(handles.unique_indices{1});
+different_fields{1, 3} = sum(handles.unique_indices{2});
+different_fields{2, 1} = 'shared';
+different_fields{2, 2} = sum(~handles.unique_indices{1});
+different_fields{2, 3} = sum(~handles.unique_indices{2});
 
 % loop through each parameter for differences
-diff_count = 0;
+diff_count = 2;
 for n = 1:length(info_fields)
    if ~isequal(handles.dataset{1}.Info.Parameters.(info_fields{n}),...
                handles.dataset{2}.Info.Parameters.(info_fields{n}))
