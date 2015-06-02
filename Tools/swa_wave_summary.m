@@ -203,9 +203,10 @@ switch type
                     'title', text('string', 'Angle Map (Longest Stream)'));
             end
 
+            % TODO: Fix patches on rose diagram after 2014b
             % create a patch object to shade the rose diagram
-            h.ptch = patch(xc, yc, 'b', 'parent', h.ax);
-            set(h.ptch, 'edgeColor', 'w', 'linewidth', 2);
+%             h.ptch = patch(xc, yc, 'b', 'parent', h.ax);
+%             set(h.ptch, 'edgeColor', 'w', 'linewidth', 2);
         end
 
     case 'topo_density'
