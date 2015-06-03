@@ -154,7 +154,7 @@ for ref_wave = 1:number_ref_waves
             % peak to peak amplitude
             p2p = Data.SWRef(ref_wave, MPP(2:end)) - Data.SWRef(ref_wave, MNP);
             % peaks should not be calculated for envelope references
-            if ~strcmp(Info.Parameters.Ref_Method, 'Envelope')
+            if ~strcmp(lower(Info.Parameters.Ref_Method), 'envelope')
                 badWaves ( p2p < Info.Parameters.Ref_Peak2Peak)...
                     = true;
             end
