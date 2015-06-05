@@ -1027,68 +1027,104 @@ Data = getappdata(handles.fig, 'Data');
 nSW = handles.java.Spinner.getValue();
 
 % Recalculate the Travelling_Delays parameter before running...
-win = round(handles.Info.Parameters.Channels_WinSize*handles.Info.Recording.sRate);
+win = round(handles.Info.Parameters.Channels_WinSize ...
+    * handles.Info.Recording.sRate);
 
 switch handles.SW_Type
     case 'SW'
-        range = handles.SW(nSW).Ref_PeakInd-win:handles.SW(nSW).Ref_PeakInd+win;       
+        range = handles.SW(nSW).Ref_PeakInd - win * 2 ...
+            : handles.SW(nSW).Ref_PeakInd + win * 2;
+        ref_range = handles.SW(nSW).Ref_PeakInd - win ...
+            : handles.SW(nSW).Ref_PeakInd + win;
     case 'SS'
-        range = handles.SW(nSW).Ref_Start-win:handles.SW(nSW).Ref_End+win;
+        range = handles.SW(nSW).Ref_Start - win ...
+            : handles.SW(nSW).Ref_End + win;
     case 'ST'
-        range = handles.SW(nSW).CWT_NegativePeak-win:handles.SW(nSW).CWT_NegativePeak+win;
+        range = handles.SW(nSW).CWT_NegativePeak - win ...
+            : handles.SW(nSW).CWT_NegativePeak + win;
 end
 
-currData    = Data.Raw(handles.SW(nSW).Channels_Active, range);
+% extract data
+current_data    = Data.Raw(handles.SW(nSW).Channels_Active, range);
 
-FreqRange   = handles.Info.Parameters.CWT_hPass:handles.Info.Parameters.CWT_lPass;
-scale       = (centfrq('morl')./FreqRange)*handles.Info.sRate;
-
-cwtData= zeros(size(currData));
-for i = 1:size(currData,1)
-    cwtData(i,:) = mean(cwt(currData(i,:),scale,'morl'));
+% recalculate the wavelets for SS and ST
+if ~strcmp(handles.SW_Type, 'SW')
+    
+    % get the scale range corresponding to the frequencies of interest
+    FreqRange   = handles.Info.Parameters.CWT_hPass:handles.Info.Parameters.CWT_lPass;
+    scale       = (centfrq('morl')./ FreqRange) * handles.Info.sRate;
+    
+    cwtData= zeros(size(current_data));
+    for i = 1:size(current_data,1)
+        cwtData(i,:) = mean(cwt(current_data(i , : ), scale, 'morl' ));
+    end
+    
 end
 
 % Recalculate the delays and peak2peak amplitudes differently for each type
-if strcmp(handles.SW_Type, 'SS')
-    % calculate the power of each cwt
-    powerWindow = ones((handles.Info.sRate/10),1)/(handles.Info.sRate/10); % create 100ms window to convolve with
-    powerData = cwtData.^2;
-    powerData = filter(powerWindow,1,powerData')';
-    
-    % find the time of the peak of the powerData (shortPower)
-    [~, maxID] = max(powerData,[],2);     
-    
-    % Find delays based on time of maximum power
-    handles.SW(nSW).Travelling_Delays = nan(length(handles.Info.Electrodes),1);
-    handles.SW(nSW).Travelling_Delays(handles.SW(nSW).Channels_Active) = maxID - min(maxID);
-      
-    % calculate new peak2peaks
-    slopeData  = diff(currData, 1, 2);
+switch handles.SW_Type
+    case 'SW'
         
-    peak2Peak = nan(sum(handles.SW(nSW).Channels_Active),1);  
-    % Find all the peaks, both positive and negative
-    for ch = 1:size(slopeData, 1)
+        % get the reference data for comparison        
+        reference_data     = mean(Data.SWRef(handles.SW(nSW).Ref_Region, ref_range), 1);
+        
+        % perform cross-correlation again
+        cc = swa_xcorr(reference_data, current_data, win);
+        
+        % find the maximum correlation and location
+        [~, max_ind]      = max(cc, [], 2);
+        
+        % only take delays for active channels
+        handles.SW(nSW).Travelling_Delays = nan(length(handles.Info.Electrodes), 1);
+        handles.SW(nSW).Travelling_Delays(handles.SW(nSW).Channels_Active)...
+            = max_ind - min(max_ind);
+        
+        % eliminate the old delay map
+        handles.SW(nSW).Travelling_DelayMap = [];
+        
+        % travelling calculation for only the current wave        
+        [handles.Info, handles.SW] = swa_FindSTTravelling(handles.Info, handles.SW, nSW);
+        
+    case 'SS'
+        % calculate the power of each cwt
+        powerWindow = ones((handles.Info.sRate/10),1)/(handles.Info.sRate/10); % create 100ms window to convolve with
+        powerData = cwtData.^2;
+        powerData = filter(powerWindow,1,powerData')';
+        
+        % find the time of the peak of the powerData (shortPower)
+        [~, max_ind] = max(powerData,[],2);
+        
+        % Find delays based on time of maximum power
+        handles.SW(nSW).Travelling_Delays = nan(length(handles.Info.Electrodes),1);
+        handles.SW(nSW).Travelling_Delays(handles.SW(nSW).Channels_Active) = max_ind - min(max_ind);
+        
+        % calculate new peak2peaks
+        slopeData  = diff(current_data, 1, 2);
+        
+        peak2Peak = nan(sum(handles.SW(nSW).Channels_Active),1);
         % Find all the peaks, both positive and negative
-        peakAmp = currData(ch, find(abs(diff(sign(slopeData(ch,:)), 1, 2)== 2)));
-        % if a channel has less than 3 peaks, delete it
-        if length(peakAmp) < 2
-            peak2Peak(ch,:) = nan;
-            continue;
+        for ch = 1:size(slopeData, 1)
+            % Find all the peaks, both positive and negative
+            peakAmp = current_data(ch, find(abs(diff(sign(slopeData(ch,:)), 1, 2)== 2)));
+            % if a channel has less than 3 peaks, delete it
+            if length(peakAmp) < 2
+                peak2Peak(ch,:) = nan;
+                continue;
+            end
+            peak2Peak(ch,:)   = max(abs(diff(peakAmp)));
         end
-        peak2Peak(ch,:)   = max(abs(diff(peakAmp)));
-    end
-    
-    handles.SW(nSW).Channels_Peak2PeakAmp = nan(length(handles.Info.Electrodes),1);
-    handles.SW(nSW).Channels_Peak2PeakAmp(handles.SW(nSW).Channels_Active) = peak2Peak;
-    
-else
-    % to do: peak2peak amplitude adjustment for ST
-    [~, Ch_Id] = min(cwtData, [],2);
-    
-    handles.SW(nSW).Travelling_Delays = nan(size(Data.Raw,1),1);
-    handles.SW(nSW).Travelling_Delays(handles.SW(nSW).Channels_Active) = Ch_Id-min(Ch_Id);
-    
-    [handles.Info, handles.SW] = swa_FindSTTravelling(handles.Info, handles.SW, nSW);
+        
+        handles.SW(nSW).Channels_Peak2PeakAmp = nan(length(handles.Info.Electrodes),1);
+        handles.SW(nSW).Channels_Peak2PeakAmp(handles.SW(nSW).Channels_Active) = peak2Peak;
+        
+    case 'ST'
+        % TODO: peak2peak amplitude adjustment for ST
+        [~, Ch_Id] = min(cwtData, [], 2);
+        
+        handles.SW(nSW).Travelling_Delays = nan(size(Data.Raw,1),1);
+        handles.SW(nSW).Travelling_Delays(handles.SW(nSW).Channels_Active) = Ch_Id - min(Ch_Id);
+        
+        [handles.Info, handles.SW] = swa_FindSTTravelling(handles.Info, handles.SW, nSW);
 end
 
 handles = update_SWDelay(handles, 0);
