@@ -110,8 +110,12 @@ switch Info.Parameters.Channels_Detection
 
             % cross correlation plot
 %             [~, sort_ind] = sort(maxID, 1, 'ascend');
-%             figure('color', 'w');
-%             imagesc(cc(sort_ind, :));
+%             image_data = cc(sort_ind, :);
+%             time_delay = ([-20:20] / Info.Recording.sRate) * 1000;
+%             figure('color', 'w'); axes('nextPlot', 'add', 'yDir', 'reverse');
+%             contourf(time_delay, 1:size(image_data, 1),...
+%                 image_data, 15, ...
+%                 'linestyle', 'none');
             
             % channels with correlation above threshold
             Channels = false(Info.Recording.dataDim(1),1);
