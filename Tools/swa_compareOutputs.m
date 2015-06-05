@@ -193,15 +193,20 @@ property_name = handles.java.options_list(1).getSelectedItem;
 
 % draw the selected summary statistic on the axes
 % get summary measures for each type
-summary_measure{1} = swa_wave_summary(handles.dataset{1}.SW(handles.unique_indices{1}),...
-    handles.dataset{1}.Info, property_name, 1, handles.axes(1));
-summary_measure{2} = swa_wave_summary(handles.dataset{2}.SW(handles.unique_indices{2}),...
-    handles.dataset{2}.Info, property_name, 1, handles.axes(2));
-
-summary_measure{3} = swa_wave_summary(handles.dataset{1}.SW(~handles.unique_indices{1}),...
-    handles.dataset{1}.Info, property_name, 1, handles.axes(3));
-summary_measure{4} = swa_wave_summary(handles.dataset{2}.SW(~handles.unique_indices{2}),...
-    handles.dataset{2}.Info, property_name, 1, handles.axes(4));
+if sum(handles.unique_indices{1}) > 0
+    swa_wave_summary(handles.dataset{1}.SW(handles.unique_indices{1}),...
+        handles.dataset{1}.Info, property_name, 1, handles.axes(1));
+end
+if sum(handles.unique_indices{2}) > 0
+    swa_wave_summary(handles.dataset{2}.SW(handles.unique_indices{2}),...
+        handles.dataset{2}.Info, property_name, 1, handles.axes(2));
+end
+if sum(~handles.unique_indices{1}) > 0
+    swa_wave_summary(handles.dataset{1}.SW(~handles.unique_indices{1}),...
+        handles.dataset{1}.Info, property_name, 1, handles.axes(3));
+    swa_wave_summary(handles.dataset{2}.SW(~handles.unique_indices{2}),...
+        handles.dataset{2}.Info, property_name, 1, handles.axes(4));
+end
 
 function unique_indices = fcn_find_common_waves(handles)
 
@@ -257,15 +262,18 @@ if length(info_fields2) ~= length(info_fields)
 end
 
 % include the number of subset waves here
-different_fields{1, 1} = 'unique';
-different_fields{1, 2} = sum(handles.unique_indices{1});
-different_fields{1, 3} = sum(handles.unique_indices{2});
-different_fields{2, 1} = 'shared';
-different_fields{2, 2} = sum(~handles.unique_indices{1});
-different_fields{2, 3} = sum(~handles.unique_indices{2});
+different_fields{1, 1} = 'total';
+different_fields{1, 2} = length(handles.unique_indices{1});
+different_fields{1, 3} = length(handles.unique_indices{2});
+different_fields{2, 1} = 'unique';
+different_fields{2, 2} = sum(handles.unique_indices{1});
+different_fields{2, 3} = sum(handles.unique_indices{2});
+different_fields{3, 1} = 'shared';
+different_fields{3, 2} = sum(~handles.unique_indices{1});
+different_fields{3, 3} = sum(~handles.unique_indices{2});
 
 % loop through each parameter for differences
-diff_count = 2;
+diff_count = 3;
 for n = 1:length(info_fields)
    if ~isequal(handles.dataset{1}.Info.Parameters.(info_fields{n}),...
                handles.dataset{2}.Info.Parameters.(info_fields{n}))
