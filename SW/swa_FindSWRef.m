@@ -64,22 +64,8 @@ for ref_wave = 1:number_ref_waves
         OSWCount = length(SW);
     end
 
-    % calculate the slope of the data
-    slopeData   = [0 diff(Data.SWRef(ref_wave, :))];
-    % find all the negative peaks
-    % when slope goes from negative to a positive
-    MNP  = find(diff(sign(slopeData)) == 2);
-    % Find all the positive peaks
-    MPP  = find(diff(sign(slopeData)) == -2);
-    
-    % Check for earlier MPP than MNP
-    if MNP(1) < MPP(1)
-        MNP(1) = [];
-    end
-    % Check that last MNP has a later MPP
-    if MNP(end) > MPP(end)
-        MNP(end)=[];
-    end
+    % get the local minima and maxima (and eliminate small notches)
+    [MNP, MPP] = swa_get_peaks(slopeData, Info, 1);
     
     % calculate amplitude threshold criteria
     % ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -113,20 +99,6 @@ for ref_wave = 1:number_ref_waves
         % Peak detection method
         % ~~~~~~~~~~~~~~~~~~~~~
         case 'MNP'
-            % iteratively erase small notches
-            nb = 1;
-            while nb > 0;
-                posBumps = MPP(2:end)-MNP < Info.Parameters.Ref_WaveLength(1)*Info.Recording.sRate/10;
-                MPP([false, posBumps]) = [];
-                MNP(posBumps)     = [];
-
-                negBumps = MNP-MPP(1:end-1) < Info.Parameters.Ref_WaveLength(1)*Info.Recording.sRate/10;
-                MPP(negBumps) = [];
-                MNP(negBumps) = [];
-
-                nb = max(sum(posBumps), sum(negBumps));
-            end
-
             % Define badWaves
             badWaves = false(1, length(MNP));
 
