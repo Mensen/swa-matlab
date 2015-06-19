@@ -9,7 +9,13 @@ Data_segment.Raw = Data.Raw(:, sample_point - window :sample_point + window);
 Data_segment.SWRef = Data.SWRef(1, sample_point - window :sample_point + window);
 
 % quick check to make sure wave wasn't already found
-
+time_tolerance = 0.750;
+if min(abs([SW.Ref_PeakInd] - sample_point)) ...
+        < time_tolerance * Info.Recording.sRate
+    fprintf(1, 'Warning: Wave already found close to the selected point \n');
+    new_ind = [];
+    return;
+end
 
 % calculate the slope of the data
 data_slope  = [0 diff(Data_segment.SWRef)];
@@ -35,7 +41,7 @@ switch lower(Info.Parameters.Ref_InspectionPoint)
         SW(SWid).Ref_Region    = [1];
         SW(SWid).Ref_DownInd   = MPP_before;
         SW(SWid).Ref_PeakInd   = MNP;
-        SW(SWid).Ref_UpInd     = MPP_before;
+        SW(SWid).Ref_UpInd     = MPP_after;
         SW(SWid).Ref_PeakAmp   = neg_amp;
         SW(SWid).Ref_P2PAmp    = Data_segment.SWRef(MPP_after) - neg_amp;
         SW(SWid).Ref_NegSlope  = min(data_slope(1, MPP_before : MNP));
@@ -79,7 +85,7 @@ switch lower(Info.Parameters.Ref_InspectionPoint)
 end
 
 % find the corresponding channels
-[~, ~, SW(SWid)]    = swa_FindSWChannels (Data_segment, Info, SW(SWid));
+[~, ~, SW(SWid)]    = swa_FindSWChannels (Data_segment, Info, SW(SWid), 0);
 
 % adjust the reference points using the sampling_point and window
 SW(SWid).Ref_DownInd = SW(SWid).Ref_DownInd + sample_point - window;
