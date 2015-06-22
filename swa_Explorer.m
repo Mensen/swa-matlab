@@ -243,6 +243,9 @@ handles.axes_eeg_channel(2) = axes(...
     'box', 'off',...
     'Ytick', []);
 
+% button down function for both channel axes
+set(handles.axes_eeg_channel, 'buttonDownFcn', {@btf_add_wave});
+
 handles.axes_individual_wave = axes(...
     'Parent', handles.fig,...
     'Position', [0.05 0.4 0.4 0.3],...
@@ -340,6 +343,7 @@ handles.menu.UIContext_YReverse = uimenu(handles.menu.ButterflyContext,...
     'Callback', {@fcn_context_axes_channel, 'reverse'});
 set(handles.axes_eeg_channel, 'uicontextmenu', handles.menu.ButterflyContext);
 set(handles.axes_individual_wave, 'uicontextmenu', handles.menu.ButterflyContext);
+
 
 %% Make Figure Visible and Maximise
 jFrame = get(handle(handles.fig),'JavaFrame');
@@ -656,11 +660,19 @@ switch plot_method
             'XLim', [xaxis(1), xaxis(end)]);
         
          if strcmp(handles.SW_Type, 'SS')
-            set(handles.zoomline(1), 'xData', [handles.SW(nSW).Ref_Start/handles.Info.Recording.sRate-0.5,    handles.SW(nSW).Ref_Start/handles.Info.Recording.sRate-0.5]);
-            set(handles.zoomline(2), 'xData', [handles.SW(nSW).Ref_End/handles.Info.Recording.sRate+0.5,      handles.SW(nSW).Ref_End/handles.Info.Recording.sRate+0.5]);
+            set(handles.zoomline(1), 'xData',...
+                [handles.SW(nSW).Ref_Start/handles.Info.Recording.sRate - 0.5,...
+                handles.SW(nSW).Ref_Start/handles.Info.Recording.sRate - 0.5]);
+            set(handles.zoomline(2), 'xData',...
+                [handles.SW(nSW).Ref_End/handles.Info.Recording.sRate + 0.5,...
+                handles.SW(nSW).Ref_End/handles.Info.Recording.sRate + 0.5]);
          else
-            set(handles.zoomline(1), 'xData', [handles.SW(nSW).Ref_DownInd/handles.Info.Recording.sRate-0.5,    handles.SW(nSW).Ref_DownInd/handles.Info.Recording.sRate-0.5]);
-            set(handles.zoomline(2), 'xData', [handles.SW(nSW).Ref_UpInd/handles.Info.Recording.sRate+0.5,      handles.SW(nSW).Ref_UpInd/handles.Info.Recording.sRate+0.5]);
+            set(handles.zoomline(1), 'xData',...
+                [handles.SW(nSW).Ref_DownInd / handles.Info.Recording.sRate - 0.5,...
+                handles.SW(nSW).Ref_DownInd / handles.Info.Recording.sRate - 0.5]);
+            set(handles.zoomline(2), 'xData',...
+                [handles.SW(nSW).Ref_UpInd / handles.Info.Recording.sRate + 0.5,...
+                handles.SW(nSW).Ref_UpInd / handles.Info.Recording.sRate + 0.5]);
          end
 end
 
@@ -1134,6 +1146,45 @@ function fcn_context_axes_channel(hObject, ~, Direction)
 handles = guidata(hObject);
 set(handles.axes_eeg_channel,   'YDir', Direction)
 set(handles.axes_individual_wave,      'YDir', Direction)
+
+function btf_add_wave(hObject, event_data)
+% check which button was pushed
+if event_data.Button ~= 1
+    return;
+end
+
+% get the handles structure
+handles = guidata(hObject);
+
+% get the data structure
+Data = getappdata(handles.fig, 'Data');
+
+% calculate the sampling point from the time
+sample_point = round(event_data.IntersectionPoint(1) * handles.Info.Recording.sRate);
+
+% add the new wave and calculate its properties
+[handles.SW, new_ind] = swa_manual_addition(Data, handles.Info, handles.SW, sample_point);
+
+if isempty(new_ind)
+    return;
+end
+
+% reset the maximum of the slider
+handles.java.Slider.setMaximum(length(handles.SW));
+
+% delete the arrow on the butterfly plot then the handle
+delete(handles.arrows_Butterfly);
+handles.arrows_Butterfly = [];
+
+% Just plot all the arrows already
+sPeaks = [handles.SW.Ref_PeakInd]./ handles.Info.Recording.sRate;
+handles.arrows_Butterfly = text(sPeaks, ones(1, length(sPeaks))*30, '\downarrow', 'FontSize', 20, 'HorizontalAlignment', 'center', 'Clipping', 'on', 'Parent', handles.axes_eeg_channel(1));    
+
+% update the handles structure
+guidata(handles.fig, handles);
+
+% set the slider to the newly added wave
+handles.java.Spinner.setValue(new_ind);
 
 
 %% Big plot check-box callback
