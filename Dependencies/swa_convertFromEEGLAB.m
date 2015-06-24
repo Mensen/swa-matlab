@@ -29,3 +29,12 @@ fid = fopen(fullfile(filePath, Info.Recording.dataFile));
 Data.Raw = fread(fid, Info.Recording.dataDim, 'single');
 fclose(fid);
 fprintf(1, 'done \n');
+
+% check for sleep scoring and save with the data
+if isfield(EEG, 'swa_scoring')
+    if isfield(EEG.swa_scoring, 'stages')
+        Data.sleep_stages = EEG.swa_scoring.stages;
+        % convert the arousal samples to artefact
+        Data.sleep_stages(EEG.swa_scoring.arousals) = 6;
+    end
+end

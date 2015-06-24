@@ -56,6 +56,7 @@ if strcmp(Info.Parameters.Ref_AmplitudeCriteria, 'absolute')
     end
 end
 
+
 % loop for each reference
 for ref_wave = 1:number_ref_waves
 
@@ -64,6 +65,9 @@ for ref_wave = 1:number_ref_waves
         OSWCount = length(SW);
     end
 
+    % calculate the slope of the data
+    slopeData   = [0 diff(Data.SWRef(ref_wave, :))];
+    
     % get the local minima and maxima (and eliminate small notches)
     [MNP, MPP] = swa_get_peaks(slopeData, Info, 1);
     
@@ -310,3 +314,22 @@ end
 % sort the waves in temporal order
 [~, sorted_index] = sort([SW.Ref_DownInd]);
 SW = SW(sorted_index);
+
+% delete the waves found in none-specified sleep stages
+if ~isempty(Info.Parameters.Ref_UseStages) && isfield(Data, 'sleep_stages')
+   
+   % get the list of samples from exluded stages
+   excluded_samples = find(~ismember(Data.sleep_stages,  Info.Parameters.Ref_UseStages));
+   % get the list of SWs that are found in excluded stages
+   bad_waves = ismember([SW.Ref_PeakInd], excluded_samples);
+   % remove those waves
+   SW(bad_waves) = [];
+   
+   % give a message about the number removed
+   if sum(bad_waves) > 0;
+       fprintf(1, 'Information: %i waves were found in non-specified stages and removed\n', sum(bad_waves)); 
+   end
+   
+elseif ~isempty(Info.Parameters.Ref_UseStages) && ~isfield(Data, 'sleep_stages')
+    fprintf(1, 'Warning: stages were specified in parameters but no scoring information was found\n');
+end

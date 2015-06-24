@@ -15,6 +15,7 @@ switch type
         Info.Parameters.Ref_Method = [];
         Info.Parameters.Ref_InspectionPoint = 'MNP';    % 'MNP'/'ZC'
         Info.Parameters.Ref_UseInside = 1;                % 0/1 Use interior head channels or all
+        Info.Parameters.Ref_UseStages = []; % whether or not to use sleep scoring information
         Info.Parameters.Ref_AmplitudeCriteria = 'relative'; % relative/absolute
         Info.Parameters.Ref_AmplitudeRelative = 5;         % Standard deviations from mean negativity
         Info.Parameters.Ref_AmplitudeAbsolute = 60;
