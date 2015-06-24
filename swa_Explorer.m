@@ -1184,7 +1184,7 @@ handles.arrows_Butterfly = text(sPeaks, ones(1, length(sPeaks))*30, '\downarrow'
 guidata(handles.fig, handles);
 
 % set the slider to the newly added wave
-handles.java.Spinner.setValue(new_ind);
+% handles.java.Spinner.setValue(new_ind);
 
 
 %% Big plot check-box callback
