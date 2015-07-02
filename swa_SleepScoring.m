@@ -67,6 +67,8 @@ set(handles.menu.EpochLength,...
     'Callback', {@fcn_options, 'EpochLength'});
 set(handles.menu.StartTime,...
     'Callback', {@fcn_options, 'StartTime'});
+set(handles.menu.Statistics,...
+    'Callback', {@fcn_statistics});
 
 % montage
 set(handles.menu.Montage,...
@@ -372,6 +374,11 @@ EEG = getappdata(handles.fig, 'EEG');
 
 % Ask where to put file...
 [saveFile, savePath] = uiputfile('*.set');
+
+% check for cancel press
+if isempty(saveFile)
+    return;
+end
 
 % since the data has not changed we can just save the EEG part, not the data
 save(fullfile(savePath, saveFile), 'EEG', '-mat');
@@ -871,6 +878,16 @@ switch type
         
 end
 
+function fcn_statistics(object, ~)
+% get the handles
+handles = guidata(object);
+% Get the EEG from the figure's appdata
+EEG = getappdata(handles.fig, 'EEG');
+
+% open the new statistics figure and export the table data to workspace
+[table_data] = swa_sleep_statistics(EEG, 1);
+
+assignin('base', 'sleep_table', table_data);
 
 % Code for selecting and marking events
 % ````````````````````````````````````
