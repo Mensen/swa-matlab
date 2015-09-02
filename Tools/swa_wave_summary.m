@@ -248,7 +248,7 @@ switch type
         empty_ind = arrayfun(@(x) isempty(x.Travelling_Streams), SW);
         
         % find indices of SW over 50th percentile globality
-        long_ind = [SW.Channels_Globality] > prctile([SW.Channels_Globality], 50);
+        long_ind = ~[SW.Channels_Globality] < prctile([SW.Channels_Globality], 50);
         
         % get the longest streams
         all_streams = arrayfun(@(x) x.Travelling_Streams{1},...
