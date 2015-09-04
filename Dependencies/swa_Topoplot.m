@@ -262,6 +262,7 @@ if PlotStreams == 1;
 end
 
 % Adjustments
-axes(H.CurrentAxes)
-axis square
-axis off
+ set(gcf,'CurrentAxes',H.CurrentAxes)
+ %axes(H.CurrentAxes)
+ axis square
+ axis off
