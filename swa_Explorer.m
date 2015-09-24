@@ -1,9 +1,9 @@
-%% GUI for Exploring Travelling Waves
+% GUI for Exploring Travelling Waves
 function swa_Explorer(varargin)
 DefineInterface
 
 function DefineInterface
-%% Create Figure
+% Create Figure
 
 % Dual monitors creates an issue in Linux environments whereby the two
 % screens are seen as one long screen, so always use first one
@@ -27,7 +27,9 @@ handles.fig = figure(...
 set(handles.fig,...
     'KeyPressFcn', {@cb_KeyPressed});
 
-%% Menus
+
+% Menus
+% ^^^^^
 handles.menu.File = uimenu(handles.fig, 'Label', 'File');
 handles.menu.LoadData = uimenu(handles.menu.File,...
     'Label', 'Load Data',...
@@ -39,7 +41,9 @@ handles.menu.SaveData = uimenu(handles.menu.File,...
     'Accelerator', 'S');
 set(handles.menu.SaveData, 'Callback', {@menu_SaveData});
 
-%% Status Bar
+
+% Status Bar
+% ^^^^^^^^^^
 handles.StatusBar = uicontrol(...
     'Parent',   handles.fig,...   
     'Style',    'text',...    
@@ -53,13 +57,13 @@ handles.java.StatusBar = findjobj(handles.StatusBar);
 
 % first java call may cause 'no appropriate method' error 
 % as handle is not visible
-drawnow; pause(0.1);
+drawnow; pause(0.2);
 
 % set the alignment of the status bar
 handles.java.StatusBar.setVerticalAlignment(javax.swing.SwingConstants.CENTER);
 handles.java.StatusBar.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
 
-%% Slider Spinner and Delete Button
+% Slider Spinner and Delete Button
 [handles.java.Slider,handles.Slider] = javacomponent(javax.swing.JSlider);
 set(handles.Slider,...
     'Parent',   handles.fig,...      
@@ -89,7 +93,9 @@ handles.pb_Delete = uicontrol(...
     'FontSize', 11);
 set(handles.pb_Delete, 'Callback', {@pb_Delete_Callback});
 
-%% Channel Set ComboBoxes
+
+% Channel Set ComboBoxes
+% ^^^^^^^^^^^^^^^^^^^^^^
 [handles.java.ChannelBox(1),handles.ChannelBox(1)] = javacomponent(javax.swing.JComboBox);
 set(handles.ChannelBox(1),...
     'Parent',   handles.fig,...      
@@ -104,7 +110,9 @@ set(handles.ChannelBox(2),...
     'Position', [0.02 0.825 0.03 0.02]);  
 set(handles.java.ChannelBox(2), 'ActionPerformedCallback', {@SpinnerUpdate, handles.fig});
 
-%% Plot Titles and Export Button
+
+% Plot Titles and Export Button
+% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 handles.Title_SWPlot = uicontrol(...
     'Parent',   handles.fig,...   
     'Style',    'text',...    
@@ -124,7 +132,8 @@ handles.Ex_SWPlot = uicontrol(...
 set(handles.Ex_SWPlot, 'Callback', @edit_SWPlot)
 
 handles.Title_Delay = uicontrol(...
-    'Parent',   handles.fig,...   
+    'Parent',   handles.fig,...    ,...
+    'value', 1 ,...
     'Style',    'text',...    
     'Units',    'normalized',...
     'Position', [0.5 .73 0.45 0.02],...
@@ -149,7 +158,8 @@ handles.Ex_Delay = uicontrol(...
     'FontSize', 11);
 set(handles.Ex_Delay, 'Callback', @pb_XDelay_Callback)
 
-%% Checkboxes for Delay
+% Checkboxes for Delay
+% ^^^^^^^^^^^^^^^^^^^^
 % TODO: make single drop-down menu with checkboxes
 handles.Surface_Delay = uicontrol(...
     'Parent',   handles.fig,...   
@@ -200,30 +210,31 @@ handles.Streams_Delay = uicontrol(...
 set(handles.Streams_Delay, 'Callback',  @UpdateDelay2);
 
 % Checkboxes for wave plot
-handles.theta_Cb = uicontrol(...
+handles.cb_waveplot(1) = uicontrol(...
     'Parent',   handles.fig,...   
     'Style',    'checkbox',...
     'BackgroundColor', 'w',...
     'String',   '<html>&#952</html>',...
     'Value',    1,...
     'Units',    'normalized',...
-    'Position', [0.05 .4 0.02 0.02],...
+    'Position', [0.052 0.66 0.1 0.02],...
     'FontName', 'Century Gothic',...
     'FontSize', 11);
-% set(handles.Surface_Delay, 'Callback', @UpdateDelay2);
 
-handles.alpha_Cb = uicontrol(...
+handles.cb_waveplot(2) = uicontrol(...
     'Parent',   handles.fig,...   
     'Style',    'checkbox',...
     'BackgroundColor', 'w',...
     'String',   '<html>&#945</html>',...
     'Value',    1,...
     'Units',    'normalized',...
-    'Position', [0.07 .4 0.02 0.02],...
+    'Position', [0.052 0.63 0.1 0.02],...
     'FontName', 'Century Gothic',...
     'FontSize', 11);
 
-%% Create Axes
+
+% Create Axes
+% ^^^^^^^^^^^
 handles.axes_eeg_channel(1) = axes(...
     'Parent', handles.fig,...
     'Position', [0.05 0.875 0.9 0.075],...
@@ -265,7 +276,8 @@ handles.ax_Delay = axes(...
     'Xtick', [],...
     'Ytick', []);
 
-%% Two Wave Summary Plots
+% Two Wave Summary Plots
+% ^^^^^^^^^^^^^^^^^^^^^^
 % create the two axes
 % ~~~~~~~~~~~~~~~~~~~
 handles.ax_option(1) = axes(...
@@ -333,7 +345,8 @@ handles.Ex_options(2) = uicontrol(...
     'FontSize',     11                  );
 set(handles.Ex_options(2), 'callback', {@pb_export_options, 2});
 
-%% Context Menus
+% Context Menus
+% ^^^^^^^^^^^^^
 handles.menu.ButterflyContext = uicontextmenu;
 handles.menu.UIContext_YReverse = uimenu(handles.menu.ButterflyContext,...
     'Label',    'Negative Down',...
@@ -345,12 +358,13 @@ set(handles.axes_eeg_channel, 'uicontextmenu', handles.menu.ButterflyContext);
 set(handles.axes_individual_wave, 'uicontextmenu', handles.menu.ButterflyContext);
 
 
-%% Make Figure Visible and Maximise
+% Make Figure Visible and Maximise
+% ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 jFrame = get(handle(handles.fig),'JavaFrame');
 jFrame.setMaximized(true);   % to maximize the figure
 
+% update the handles structure
 guidata(handles.fig, handles);
-
 
 function menu_LoadData(object, ~)
 handles = guidata(object);
@@ -394,7 +408,7 @@ if ischar(loaded_file.Data.Raw)
     fclose(fid);
 end
 
-% Set each handle type separately
+% Adjust settings dependent on wave types
 if isfield(loaded_file, 'SW')
     handles.SW = loaded_file.SW;
     handles.SW_Type = 'SW';
@@ -404,6 +418,13 @@ elseif isfield(loaded_file, 'ST')
 elseif isfield(loaded_file, 'SS')
     handles.SW = loaded_file.SS;
     handles.SW_Type = 'SS';
+    % no delay maps for spindles
+    handles.java.PlotBox.setSelectedIndex(1);
+    % checkboxes for power and reference
+    set(handles.cb_waveplot(1),...
+        'String',   'canonical');
+    set(handles.cb_waveplot(2),...
+        'String',   'power');
 else
     set(handles.StatusBar, 'String', 'Information: No SW/ST/SS structure in file');
     return;
@@ -513,9 +534,14 @@ end
 set(handles.fig, 'Name', ['Traveling Waves: ', saveName]);
 
 
-%% Update Controls
-function SpinnerUpdate(~,~,hObject)
+% Update Controls
+function SpinnerUpdate(~, ~, hObject)
 handles = guidata(hObject); % Needs to be like this because slider is a java object
+
+% check if function called with loaded data
+if ~isfield(handles, 'SW')
+    return;
+end
 
 if handles.java.Spinner.getValue() == 0
     handles.java.Spinner.setValue(1);
@@ -536,6 +562,11 @@ guidata(hObject, handles);
 
 function SliderUpdate(~,~,Figure)
 handles = guidata(Figure); % Needs to be like this because slider is a java object
+
+% check if function called with loaded data
+if ~isfield(handles, 'SW')
+    return;
+end
 
 handles.java.Spinner.setValue(handles.java.Slider.getValue())
 
@@ -567,7 +598,7 @@ switch eventdata.Key
 end
 
 
-%% Plot Controls
+% Plot Controls
 function handles = update_axes_channels(handles)
 
 % get the data structure
@@ -578,7 +609,7 @@ nSW = handles.java.Spinner.getValue();
 
 % Calculate the range
 if strcmp(handles.SW_Type, 'SS')
-    winLength = floor((30*handles.Info.sRate - handles.SW(nSW).Ref_Length)/2);
+    winLength = floor((30*handles.Info.Recording.sRate - handles.SW(nSW).Ref_Length) / 2);
     range = handles.SW(nSW).Ref_Start - winLength  :  handles.SW(nSW).Ref_End + winLength;
 else
     winLength = floor(10*handles.Info.Recording.sRate);
@@ -588,9 +619,10 @@ range(range<1) = [];
 xaxis = range./handles.Info.Recording.sRate;
 
 if strcmp(handles.SW_Type, 'SS')
-    sPeaks = [handles.SW.Ref_Start]+[handles.SW.Ref_Length]./2./handles.Info.sRate;
+    sPeaks = [handles.SW.Ref_Start] + [handles.SW.Ref_Length]./ ...
+        2./ handles.Info.Recording.sRate;
 else
-    sPeaks = [handles.SW.Ref_PeakInd]./handles.Info.Recording.sRate;
+    sPeaks = [handles.SW.Ref_PeakInd]./ handles.Info.Recording.sRate;
 end
 
 % check for special selected channels
@@ -617,35 +649,52 @@ else
     else
         delete(handles.lines_eeg_channel{1});
         delete(handles.lines_eeg_channel{2});
-        rmfield(handles, 'lines_eeg_channel');
+        handles = rmfield(handles, 'lines_eeg_channel');
         plot_method = 'initial';
     end  
 end
 
+% calculate wave starts for different wave types
+if strcmp(handles.SW_Type, 'SS')
+    start_point = handles.SW(nSW).Ref_Start / handles.Info.Recording.sRate;
+    end_point = handles.SW(nSW).Ref_End / handles.Info.Recording.sRate;
+else
+    start_point = handles.SW(nSW).Ref_PeakInd / handles.Info.Recording.sRate;
+    end_point = handles.SW(nSW).Ref_PeakInd / handles.Info.Recording.sRate;
+end
+
 switch plot_method
     case 'initial'
-        % initial Plot (50 times takes 1.67s)
-        
+        % -- initial Plot (50 times takes 1.67s) -- %
+        % plot the top raw eeg
         handles.lines_eeg_channel{1} = plot(handles.axes_eeg_channel(1), xaxis, data_to_plot{1}', 'k');
         handles.lines_eeg_channel{2} = plot(handles.axes_eeg_channel(2), xaxis, data_to_plot{2}', 'k');
         
+        % set the top axes limits
         set(handles.axes_eeg_channel,...
             'YLim', [-70,70],...
             'XLim', [xaxis(1), xaxis(end)]);
+               
+        % plot the two zoom lines
+        handles.zoomline(1) = line([start_point - 0.5, start_point - 0.5], [-200, 200]);
+        handles.zoomline(2) = line([end_point + 0.5, end_point + 0.5], [-200, 200]);
         
-        if strcmp(handles.SW_Type, 'SS')
-            handles.zoomline(1) = line([handles.SW(nSW).Ref_Start/handles.Info.sRate-0.5,   handles.SW(nSW).Ref_Start/handles.Info.sRate-0.5],[-200, 200], 'color', [0.4 0.4 0.4], 'linewidth', 2, 'Parent', handles.axes_eeg_channel(1));
-            handles.zoomline(2) = line([handles.SW(nSW).Ref_End/handles.Info.sRate+.5,      handles.SW(nSW).Ref_End/handles.Info.sRate+0.5],[-200, 200], 'color', [0.4 0.4 0.4], 'linewidth', 2, 'Parent', handles.axes_eeg_channel(1));
-        else
-            handles.zoomline(1) = line([handles.SW(nSW).Ref_PeakInd/handles.Info.Recording.sRate-0.5, handles.SW(nSW).Ref_PeakInd/handles.Info.Recording.sRate-0.5],[-200, 200], 'color', [0.4 0.4 0.4], 'linewidth', 2, 'Parent', handles.axes_eeg_channel(1));
-            handles.zoomline(2) = line([handles.SW(nSW).Ref_PeakInd/handles.Info.Recording.sRate+.5, handles.SW(nSW).Ref_PeakInd/handles.Info.Recording.sRate+0.5],[-200, 200], 'color', [0.4 0.4 0.4], 'linewidth', 2, 'Parent', handles.axes_eeg_channel(1));
-        end
+        % set common zoomline parameters
+        set(handles.zoomline,...
+            'color', [0.4 0.4 0.4] ,...
+            'linewidth', 2 ,...
+            'Parent', handles.axes_eeg_channel(1));
         
         % Just plot all the arrows already
-        handles.arrows_Butterfly = text(sPeaks, ones(1, length(sPeaks))*30, '\downarrow', 'FontSize', 20, 'HorizontalAlignment', 'center', 'Clipping', 'on', 'Parent', handles.axes_eeg_channel(1));
+        handles.arrows_Butterfly = text(sPeaks, ones(1, length(sPeaks)) * 30 ,...
+            '\downarrow',...
+            'FontSize', 20 ,...
+            'HorizontalAlignment', 'center' ,...
+            'Clipping', 'on',...
+            'Parent', handles.axes_eeg_channel(1));
         
-        % Re-plotting (50 times takes 0.3s)
     case 'replot'
+        % -- re-plotting (50 times takes 0.3s) -- %
         % loop each axes
         for a = 1:2
             set(handles.lines_eeg_channel{a}, 'xData', xaxis);
@@ -656,24 +705,15 @@ switch plot_method
             end
         end
         
+        % change the x limits for the channels
         set(handles.axes_eeg_channel,...
             'XLim', [xaxis(1), xaxis(end)]);
         
-         if strcmp(handles.SW_Type, 'SS')
-            set(handles.zoomline(1), 'xData',...
-                [handles.SW(nSW).Ref_Start/handles.Info.Recording.sRate - 0.5,...
-                handles.SW(nSW).Ref_Start/handles.Info.Recording.sRate - 0.5]);
-            set(handles.zoomline(2), 'xData',...
-                [handles.SW(nSW).Ref_End/handles.Info.Recording.sRate + 0.5,...
-                handles.SW(nSW).Ref_End/handles.Info.Recording.sRate + 0.5]);
-         else
-            set(handles.zoomline(1), 'xData',...
-                [handles.SW(nSW).Ref_DownInd / handles.Info.Recording.sRate - 0.5,...
-                handles.SW(nSW).Ref_DownInd / handles.Info.Recording.sRate - 0.5]);
-            set(handles.zoomline(2), 'xData',...
-                [handles.SW(nSW).Ref_UpInd / handles.Info.Recording.sRate + 0.5,...
-                handles.SW(nSW).Ref_UpInd / handles.Info.Recording.sRate + 0.5]);
-         end
+        % shift the zoom lines
+        set(handles.zoomline(1), 'xData',...
+            [start_point - 0.5, start_point - 0.5]);
+        set(handles.zoomline(2), 'xData',...
+            [end_point + 0.5, end_point + 0.5]);
 end
 
 function handles = update_SWPlot(handles)
@@ -687,7 +727,7 @@ nSW = handles.java.Spinner.getValue();
 % Calculate the range
 switch handles.SW_Type
     case 'SS'
-        winLength = floor((2 * handles.Info.sRate - handles.SW(nSW).Ref_Length)/2);
+        winLength = floor((2 * handles.Info.Recording.sRate - handles.SW(nSW).Ref_Length) / 2);
         range = handles.SW(nSW).Ref_Start - winLength  :  handles.SW(nSW).Ref_End + winLength;
     case {'SW', 'ST'}
         winLength = floor(2 * handles.Info.Recording.sRate);
@@ -703,9 +743,9 @@ if ~isfield(handles, 'SWPlot')
     cla(handles.axes_individual_wave);
     
     % plot all the channels but hide them
-    handles.SWPlot.All      = plot(handles.axes_individual_wave, Data.Raw(:, range)', 'Color', [0.6 0.6 0.6], 'linewidth', 0.5, 'Visible', 'off');
+    handles.SWPlot.All = plot(handles.axes_individual_wave, Data.Raw(:, range)', 'Color', [0.6 0.6 0.6], 'linewidth', 0.5, 'Visible', 'off');
     % plot the reference wave
-    handles.SWPlot.Ref      = plot(handles.axes_individual_wave, Data.([handles.SW_Type, 'Ref'])(handles.SW(nSW).Ref_Region(1), range)','Color', 'r', 'linewidth', 3);
+    handles.SWPlot.Ref = plot(handles.axes_individual_wave, Data.([handles.SW_Type, 'Ref'])(handles.SW(nSW).Ref_Region(1), range)','Color', 'r', 'linewidth', 3);
     % plot wavelets
     if isfield(Data, 'CWT')
         for np = 1:length(Data.CWT)
@@ -751,12 +791,12 @@ else
     end
 
 %     % Check theta and alpha checkboxes
-%     if get(handles.theta_Cb, 'value')
+%     if get(handles.cb_waveplot(1), 'value')
 %         set(handles.SWPlot.CWT(1), 'yData', Data.CWT{1}(handles.SW(nSW).Ref_Region(1),range));
 %     else
 %         set(handles.SWPlot.CWT(1), 'yData', []);       
 %     end
-%     if get(handles.alpha_Cb, 'value')
+%     if get(handles.cb_waveplot(2), 'value')
 %         set(handles.SWPlot.CWT(2), 'yData', Data.CWT{2}(handles.SW(nSW).Ref_Region(1),range));
 %     else
 %         set(handles.SWPlot.CWT(2), 'yData', []);             
@@ -775,8 +815,13 @@ if nFigure ~= 1;
     cla(handles.ax_Delay); 
 end
 
+% check for grid size parameter to create maps
+if ~isfield(handles.Info.Parameters, 'Travelling_GS')
+    handles.Info.Parameters.Travelling_GS = 40;
+end
+
 % plot the Delay Map...
-if handles.java.PlotBox.getSelectedIndex()+1 == 1
+if handles.java.PlotBox.getSelectedIndex() + 1 == 1
 
     % take the delay map from the SW structure if possible
     if ~isempty(handles.SW(nSW).Travelling_DelayMap)
@@ -816,11 +861,19 @@ if handles.java.PlotBox.getSelectedIndex()+1 == 1
     end
 
 % Or plot the involvement map (peak 2 peak amplitudes for active channels
-elseif handles.java.PlotBox.getSelectedIndex()+1 == 2;   
+elseif handles.java.PlotBox.getSelectedIndex() + 1 == 2;   
+    
+    % plot different data for various wavetypes
+    switch handles.SW_Type
+        case 'SS'
+            data_to_plot = handles.SW(nSW).Channels_Peak2PeakAmp;
+        otherwise
+            data_to_plot = handles.SW(nSW).Channels_NegAmp;
+    end
     
     swa_Topoplot...
         ([],                handles.Info.Electrodes             ,...
-        'Data',             handles.SW(nSW).Channels_NegAmp     ,...
+        'Data',             data_to_plot                        ,...
         'GS',               handles.Info.Parameters.Travelling_GS,...
         'NewFigure',        nFigure                             ,...
         'Axes',             handles.ax_Delay                    ,...
@@ -855,7 +908,7 @@ swa_wave_summary(handles.SW, handles.Info,...
     type, 1, handles.ax_option(no_axes));
 
 
-%% Push Buttons
+% Push Buttons
 
 function pb_XDelay_Callback(hObject, ~)
 handles = guidata(hObject);
@@ -905,7 +958,7 @@ swa_wave_summary(handles.SW, handles.Info,...
 
 
 
-%% Manually Edit Waves
+% Manually Edit Waves
 function edit_SWPlot(hObject, ~)
 handles = guidata(hObject);
 
@@ -917,7 +970,7 @@ nSW = handles.java.Spinner.getValue();
 
 % Calculate the range
 if strcmp(handles.SW_Type, 'SS')
-    winLength = floor((2*handles.Info.sRate - handles.SW(nSW).Ref_Length)/2);
+    winLength = floor((2 * handles.Info.Recording.sRate - handles.SW(nSW).Ref_Length) / 2);
     range = handles.SW(nSW).Ref_Start - winLength  :  handles.SW(nSW).Ref_End + winLength;
 else
     winLength = floor(2*handles.Info.Recording.sRate);
@@ -926,7 +979,8 @@ end
 range(range<1) = [];
 xaxis = range./handles.Info.Recording.sRate;
 
-%% Prepare Figure
+% Prepare Figure
+% ^^^^^^^^^^^^^^
 SW_Handles.Figure = figure(...
     'Name',         'Edit Detected Wave',...
     'NumberTitle',  'off',...
@@ -945,13 +999,14 @@ SW_Handles.Axes = axes(...
     'XLim',     [xaxis(1), xaxis(end)],...
     'YDir',     get(handles.axes_individual_wave, 'YDir'));
 
-%% Add buttons
+% Add buttons
+% ^^^^^^^^^^^
 iconZoom = fullfile(matlabroot,'/toolbox/matlab/icons/tool_zoom_in.png');
 iconArrow = fullfile(matlabroot,'/toolbox/matlab/icons/tool_pointer.png'); 
 iconTravel = fullfile(matlabroot,'/toolbox/matlab/icons/tool_text_arrow.png'); 
 
 % Just add javacomponent buttons...
-[j_pbArrow,SW_Handles.pb_Arrow] = javacomponent(javax.swing.JButton);
+[j_pbArrow, SW_Handles.pb_Arrow] = javacomponent(javax.swing.JButton);
 set(SW_Handles.pb_Arrow,...
     'Parent',   SW_Handles.Figure,...      
     'Units',    'normalized',...
@@ -961,38 +1016,38 @@ j_pbArrow.setIcon(javax.swing.ImageIcon(iconArrow))
 set(j_pbArrow, 'ToolTipText', 'Select Channel'); 
 set(j_pbArrow, 'MouseReleasedCallback', 'zoom off');
 
-[j_pbZoom,SW_Handles.pb_Zoom] = javacomponent(javax.swing.JButton);
+[j_pbZoom, SW_Handles.pb_Zoom] = javacomponent(javax.swing.JButton);
 set(SW_Handles.pb_Zoom,...
     'Parent',   SW_Handles.Figure,...      
     'Units',    'normalized',...
     'Position', [0.85 0.05 0.05 0.07]);
-% >> j_pbZoom.set [then tab complete to find available methods]
+
 j_pbZoom.setIcon(javax.swing.ImageIcon(iconZoom))
 set(j_pbZoom, 'ToolTipText', 'Zoom Mode'); 
 set(j_pbZoom, 'MouseReleasedCallback', 'zoom on');
 
-[j_pbTravel,SW_Handles.pb_Travel] = javacomponent(javax.swing.JButton);
+[j_pbTravel, SW_Handles.pb_Travel] = javacomponent(javax.swing.JButton);
 set(SW_Handles.pb_Travel,...
     'Parent',   SW_Handles.Figure,...      
     'Units',    'normalized',...
     'Position', [0.92 0.05 0.05 0.07]);
-% >> j_pbZoom.set [then tab complete to find available methods]
+
 j_pbTravel.setIcon(javax.swing.ImageIcon(iconTravel))
 set(j_pbTravel, 'ToolTipText', 'Recalculate Travelling'); 
 set(j_pbTravel, 'MouseReleasedCallback', {@fcn_UpdateTravelling, handles.fig});
 
-%% Plot the data with the reference negative peak centered %
+% Plot the data with the reference negative peak centered %
+
 SW_Handles.Plot_Ch = plot(SW_Handles.Axes,...
-     xaxis, Data.Raw(:,range)',...
+     xaxis, Data.Raw(:, range)',...
     'Color', [0.8 0.8 0.8],...
     'LineWidth', 0.5,...
     'LineStyle', ':');
 set(SW_Handles.Plot_Ch, 'ButtonDownFcn', {@Channel_Selected, handles.fig, SW_Handles});
 set(SW_Handles.Plot_Ch(handles.SW(nSW).Channels_Active), 'Color', [0.6 0.6 0.6], 'LineWidth', 1, 'LineStyle', '-');
-% set(SW_Handles.Plot_Ch(handles.SW(nSW).Travelling_Delays<1), 'Color', 'b', 'LineWidth', 2, 'LineStyle', '-');
 
 handles.SWPlot.Ref = plot(SW_Handles.Axes,...
-    xaxis, Data.([handles.SW_Type, 'Ref'])(handles.SW(nSW).Ref_Region(1),range)',...
+    xaxis, Data.([handles.SW_Type, 'Ref'])(handles.SW(nSW).Ref_Region(1), range)',...
     'Color', 'r',...
     'LineWidth', 3);
 
@@ -1022,7 +1077,7 @@ end
 
 guidata(handles.fig, handles);
 
-function fcn_UpdateTravelling(~, ~ , FigureHandle)
+function fcn_UpdateTravelling(~, ~ , figure_handle)
 % executes on button push in the SW_Plot after manually editing channel
 % list
 
@@ -1030,7 +1085,7 @@ function fcn_UpdateTravelling(~, ~ , FigureHandle)
 % TODO: make it work for SW (problem since currently looking for wavelet data)
 
 % get the GUI handles from the original figure
-handles = guidata(FigureHandle);
+handles = guidata(figure_handle);
 
 % get the data structure
 Data = getappdata(handles.fig, 'Data');
@@ -1063,12 +1118,12 @@ current_data    = Data.Raw(handles.SW(nSW).Channels_Active, range);
 if ~strcmp(handles.SW_Type, 'SW')
     
     % get the scale range corresponding to the frequencies of interest
-    FreqRange   = handles.Info.Parameters.CWT_hPass:handles.Info.Parameters.CWT_lPass;
-    scale       = (centfrq('morl')./ FreqRange) * handles.Info.sRate;
+    FreqRange   = handles.Info.Parameters.Filter_hPass(1) : handles.Info.Parameters.Filter_lPass(end);
+    scale       = (centfrq('morl')./ FreqRange) * handles.Info.Recording.sRate;
     
-    cwtData= zeros(size(current_data));
-    for i = 1:size(current_data,1)
-        cwtData(i,:) = mean(cwt(current_data(i , : ), scale, 'morl' ));
+    cwtData = zeros(size(current_data));
+    for n = 1:size(current_data,1)
+        cwtData(n,:) = mean(cwt(current_data(n , : ), scale, 'morl' ));
     end
     
 end
@@ -1099,35 +1154,45 @@ switch handles.SW_Type
         
     case 'SS'
         % calculate the power of each cwt
-        powerWindow = ones((handles.Info.sRate/10),1)/(handles.Info.sRate/10); % create 100ms window to convolve with
+        % filter window
+        powerWindow = ones((handles.Info.Parameters.Filter_Window * handles.Info.Recording.sRate), 1) /...
+            (handles.Info.Parameters.Filter_Window * handles.Info.Recording.sRate);
         powerData = cwtData.^2;
-        powerData = filter(powerWindow,1,powerData')';
+        powerData = filter(powerWindow, 1, powerData')';
         
         % find the time of the peak of the powerData (shortPower)
-        [~, max_ind] = max(powerData,[],2);
+        [~, max_ind] = max(powerData, [], 2);
         
         % Find delays based on time of maximum power
-        handles.SW(nSW).Travelling_Delays = nan(length(handles.Info.Electrodes),1);
+        handles.SW(nSW).Travelling_Delays = nan(length(handles.Info.Electrodes), 1);
         handles.SW(nSW).Travelling_Delays(handles.SW(nSW).Channels_Active) = max_ind - min(max_ind);
         
         % calculate new peak2peaks
-        slopeData  = diff(current_data, 1, 2);
-        
-        peak2Peak = nan(sum(handles.SW(nSW).Channels_Active),1);
-        % Find all the peaks, both positive and negative
-        for ch = 1:size(slopeData, 1)
-            % Find all the peaks, both positive and negative
-            peakAmp = current_data(ch, find(abs(diff(sign(slopeData(ch,:)), 1, 2)== 2)));
+        slope_data  = diff(current_data, 1, 2);
+               
+        % -- Find all the peaks, both positive and negative -- %
+        peak2peak = nan(sum(handles.SW(nSW).Channels_Active), 1);
+        channel_indices = find(handles.SW(nSW).Channels_Active);
+        for ch = 1 : size(slope_data, 1)
+            % peak indices for that channel
+            peak_indices = find(abs(diff(sign(slope_data(ch, :)), 1, 2)));
+            
+            % get the largest amplitude
+            peakAmp = Data.Raw(channel_indices(ch),...
+                handles.SW(nSW).Ref_Start + peak_indices);
+            
             % if a channel has less than 3 peaks, delete it
-            if length(peakAmp) < 2
-                peak2Peak(ch,:) = nan;
+            if length(peakAmp) < 3
+                peak2peak(ch, :) = nan;
+                handles.SW(nSW).Channels_Active(channel_indices(ch)) = false;
                 continue;
             end
-            peak2Peak(ch,:)   = max(abs(diff(peakAmp)));
+            peak2peak(ch, :) = max(abs(diff(peakAmp)));
         end
         
+        % put the peaks back into the SS structure
         handles.SW(nSW).Channels_Peak2PeakAmp = nan(length(handles.Info.Electrodes),1);
-        handles.SW(nSW).Channels_Peak2PeakAmp(handles.SW(nSW).Channels_Active) = peak2Peak;
+        handles.SW(nSW).Channels_Peak2PeakAmp(handles.SW(nSW).Channels_Active) = peak2peak;
         
     case 'ST'
         % TODO: peak2peak amplitude adjustment for ST
@@ -1155,6 +1220,12 @@ end
 
 % get the handles structure
 handles = guidata(hObject);
+
+% only available for SW
+if ~strcmp(handles.SW_Type, 'SW')
+    fprintf(1, 'Manual wave additions only available for slow waves.\n');
+    return;    
+end
 
 % get the data structure
 Data = getappdata(handles.fig, 'Data');
@@ -1187,7 +1258,7 @@ guidata(handles.fig, handles);
 % handles.java.Spinner.setValue(new_ind);
 
 
-%% Big plot check-box callback
+% Big plot check-box callback
 function UpdateDelay2(hObject, ~)
 handles = guidata(hObject);
 update_SWDelay(handles, 0);
