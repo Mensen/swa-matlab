@@ -45,7 +45,7 @@ clear all; clc;
 EEG = pop_loadset();
 
 % filter the data
-EEG = pop_eegfiltnew(EEG, 0.3, 40, [], 0, [], 0);
+EEG = pop_eegfiltnew(EEG, 0.3, 30, [], 0, [], 0);
 
 % removing bad data
 % `````````````````
@@ -54,7 +54,7 @@ EEG = pop_eegfiltnew(EEG, 0.3, 40, [], 0, [], 0);
         'srate',        EEG.srate   ,...
         'winlength',    30          ,...
         'dispchans',    15          );
-
+    
 % bad channels
     % find channels based on stds for spectral windows (better)
     [~, EEG.bad_channels, EEG.specdata] = pop_rejchanspec(EEG,...
@@ -109,30 +109,38 @@ EEG = pop_eegfiltnew(EEG, 0.3, 40, [], 0, [], 0);
 % remove the bad_regions
     EEG = pop_select(EEG, 'nopoint', EEG.bad_regions);
 
-    
+
+% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
+% or using the csc_eeg_plotter to mark bad channels and events
+% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+EEG = csc_eeg_plotter(EEG);
+EEG.bad_channels{1} = EEG.hidden_channels;
+
+% remove bad channels and trials
+EEG = pop_select(EEG, 'nochannel', EEG.bad_channels);
+
+% mark the start and end of bad segments using event 1 and event 2
+EEG.bad_segments = [cell2mat(EEG.csc_event_data(1:3, 2)), ...
+    cell2mat(EEG.csc_event_data(4:6, 2))];
+EEG = pop_select(EEG, 'nopoint', EEG.bad_segments);
+   
+
+% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 % independent components analysis 
-% ```````````````````````````````
-% run ICA (optional)
-EEG = pop_runica(EEG, 'extended', 1, 'interupt', 'off');
+% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+% run ICA
+EEG = pop_runica(EEG,...
+    'icatype', 'binica', ...
+    'extended', 1,...
+    'interupt', 'off');
 
+% or use the csc_eeg_tools and use the ica option
 % remove the components (best to do using plot component properties in the GUI)
-% plot the ica components as time series
-eegplot( EEG.icaact             ,...
-    'srate',        EEG.srate   ,...
-    'winlength',    30          ,...
-    'dispchans',    15          );
-
-% plot the properties of the components (second input = 0)
-pop_prop( EEG, 0, [1  : 16], NaN, {'freqrange' [2 40] });
-pop_prop( EEG, 0, [17 : 32], NaN, {'freqrange' [2 40] });
-pop_prop( EEG, 0, [33 : 48], NaN, {'freqrange' [2 40] });
-pop_prop( EEG, 0, [49 : 64], NaN, {'freqrange' [2 40] });
-% pop_prop( EEG, 0, [65 : 80], NaN, {'freqrange' [2 40] });
+csc_eeg_plotter(EEG);
+EEG.good_components = csc_component_plot(EEG);
 
 % pop_prop changes the local EEG variable automatically when marked as reject
-EEG.bad_components = find(EEG.reject.gcompreject);
-EEG.bad_components = [EEG.bad_components, 224:256];
-EEG = pop_subcomp( EEG , EEG.bad_components);
+EEG = pop_subcomp( EEG , find(~EEG.good_components));
 EEG = eeg_checkset(EEG);
 
 % interpolate the removed channels
