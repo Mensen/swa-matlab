@@ -100,7 +100,13 @@ switch type
         end
     
     case 'amplitudes'
-        output = min([SW.Channels_NegAmp]);
+        % for SW and ST
+        if isfield(SW, 'Channels_NegAmp')
+            output = min([SW.Channels_NegAmp]);
+        else
+            output = max([SW.Channels_Peak2PeakAmp]);
+        end
+        
         if makePlot
             hist(h.ax, output);
             if isempty(axes_handle)
@@ -114,8 +120,15 @@ switch type
         end
         
     case 'ampVtime'
-        output(1,:)= [SW.Ref_PeakAmp];
-        output(2,:)= [SW.Ref_PeakInd];
+        % for SW and ST
+        if isfield(SW, 'Ref_PeakAmp')
+            output(1, :)= [SW.Ref_PeakAmp];
+            output(2, :)= [SW.Ref_PeakInd];
+        else
+            output(1, :)= [SW.Ref_Peak2Peak];
+            output(2, :)= [SW.Ref_Start];
+        end
+        
         if makePlot
             h.plt = scatter(output(2,:), output(1,:), 'parent', h.ax);
             set(h.plt,...
@@ -138,8 +151,15 @@ switch type
         end
         
     case 'ampVglobality'
-        output(1,:)= [SW.Ref_PeakAmp];
-        output(2,:)= sum([SW.Channels_Active])/length(SW(1).Channels_Active)*100;
+        % for SW and ST
+        if isfield(SW, 'Ref_PeakAmp')
+            output(1, :)= [SW.Ref_PeakAmp];
+            output(2, :)= sum([SW.Channels_Active])/length(SW(1).Channels_Active)*100;
+        else
+            output(1, :)= [SW.Ref_Peak2Peak];
+            output(2, :)= sum([SW.Channels_Active])/length(SW(1).Channels_Active)*100;
+        end
+
         if makePlot
             h.plt = scatter(output(2,:), output(1,:), 'parent', h.ax);
             set(h.plt,...
@@ -162,7 +182,15 @@ switch type
         end    
         
     case 'wavelengths'
-        output = ([SW.Ref_UpInd]-[SW.Ref_DownInd])/Info.Recording.sRate*1000;
+        % for SW and ST
+        if isfield(SW, 'Ref_UpInd')
+            output = ([SW.Ref_UpInd] - [SW.Ref_DownInd]) ...
+                /Info.Recording.sRate * 1000;
+        else
+            output = ([SW.Ref_Start] - [SW.Ref_End]) ...
+                / Info.Recording.sRate * 1000;
+        end
+        
         if makePlot
             hist(h.ax, output);
             if isempty(axes_handle)

@@ -26,5 +26,16 @@ if isempty(save_name)
     save_name = fullfile(savePath, saveFile);
 end
 
+% get the wave type by 
+wave_type = inputname(3);
+
+% change variable name according to type
+switch wave_type
+    case 'SS'
+        SS = SW;
+    case 'ST'
+        ST = SW;
+end
+
 % save in a simple mat file
-save(save_name, 'Data', 'Info', 'SW', '-mat');
+save(save_name, 'Data', 'Info', wave_type, '-mat');
