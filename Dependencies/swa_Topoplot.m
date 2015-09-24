@@ -131,7 +131,6 @@ if isempty(get(0,'children')) || NewFigure == 1
     set(H.Figure,...
     'Color',            'w'                 );
     H.CurrentAxes = axes('Position',[0 0 1 1]);
-    colormap(flipud(hot))
 elseif Axes ~= 0
     H.CurrentAxes = Axes;
 else
@@ -262,7 +261,7 @@ if PlotStreams == 1;
 end
 
 % Adjustments
- set(gcf,'CurrentAxes',H.CurrentAxes)
- %axes(H.CurrentAxes)
- axis square
- axis off
+% square axes
+set(H.CurrentAxes, 'PlotBoxAspectRatio', [1, 1, 1]);
+% hide the axes
+set(H.CurrentAxes, 'visible', 'off');
