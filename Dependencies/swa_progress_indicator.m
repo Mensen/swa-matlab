@@ -15,19 +15,18 @@ function swa_progress_indicator(type, current, maximum)
 
 switch type
     
-    case 'initialise'
+    case {'initialise', 'initialize'}
         
-        fprintf(1, ['\n', current, ': 0.00 %%']);
+        fprintf(1, ['\n', current, ': 00.00 %%']);
         
     case 'update'
    
         percentage = current / maximum * 100;
         
-        if percentage <= 10
+        if ~(percentage > 10)
             
-            fprintf(1, '\b\b\b\b\b\b\b %.2f %%', percentage);
+            fprintf(1, '\b\b\b\b\b\b\b\b 0%.2f %%', percentage);
 
-            
         else
             
             fprintf(1, '\b\b\b\b\b\b\b\b %.2f %%', percentage);
