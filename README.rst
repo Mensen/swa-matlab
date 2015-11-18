@@ -31,13 +31,13 @@ In order to use some of the additional features of the toolbox, as well as takin
 Getting Started
 ^^^^^^^^^^^^^^^
 
-Run the swa_SleepScoring function to score the stages of your raw EEG file.
+Run the swa_SleepScoring function to score the stages of your raw EEG file. Then use the swa_preprocessingTemplate script to see some suggestions on how to preprocess your raw EEG data to get it ready for wave detection.
 
-You can use the swa_preprocessingTemplate script to see some suggestions on how to preprocess your raw EEG data to get it ready for wave detection.
+Or: use the already preprocessed example dataset in the Templates folder.
 
-See one of the template files in the wave type directory to get an idea of the necessary steps for wave detection and analysis.
+See one of the template files in the wave type directory (e.g. SW/swa_SW_Template.m) to get an idea of the necessary steps for wave detection and analysis.
 
-Use the swa_Explorer to visualise the results of the wave detection.
+Use the swa_Explorer to visualise the results of the wave detection and manually add or remove waves found in the analysis.
 
 Troubleshooting
 ^^^^^^^^^^^^^^^
