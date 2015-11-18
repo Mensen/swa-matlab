@@ -100,8 +100,13 @@ table_data{11, 4} = (REM_starts(1) - N2_starts(1)) / EEG.srate / 60;
 % other stats
 % number of stage transitions
 table_data{12, 2} = length(find(diff(EEG.swa_scoring.stages)));
+
 % number of marked arousals
-table_data{13, 2} = sum(cellfun(@(x) isequal(x, 'arousal'), {EEG.event.type}));
+if isempty(EEG.event)
+    table_data{13, 2} = [];
+else
+    table_data{13, 2} = sum(cellfun(@(x) isequal(x, 'arousal'), {EEG.event.type}));
+end
 
 % plot the table in separate figure
 if flag_plot

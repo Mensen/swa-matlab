@@ -51,24 +51,20 @@ set(gca, 'YLim', [-60, 60]);
 
 % Plot wave after detection
 % ~~~~~~~~~~~~~~~~~~~~~~~~~
-nSS = 30;
+nSS = 120;
 win = Info.Recording.sRate * 2;
 range =  SS(nSS).Ref_Start - win...
     : SS(nSS).Ref_End + win;
 ref_data = Data.SSRef(SS(nSS).Ref_Region(1), range);
 pow_data = Data.CWT{1}(SS(nSS).Ref_Region(1), range + 10);
 
-time = linspace(-win/Info.Recording.sRate, +win/Info.Recording.sRate,...
-    length(range));
+time = linspace(-win/Info.Recording.sRate,...
+    + win/Info.Recording.sRate, length(range));
 
 figure('color', 'w', 'position', [50, 50, 1000, 500]);
-
-% Plot active channels if they've been calculated
-hold all;
-% plot(time, cwt_data*2, 'color', [.5 .5 .5], 'linewidth', 1);
-% plot(time, raw_data, 'color', [.5 .5 .5], 'linewidth', 0.5);
+axes('nextPlot', 'add');
 plot(time, ref_data, 'color', 'b', 'linewidth', 1);
-plot(time, pow_data.^0.5*4, 'color', 'r', 'linewidth', 3);
+% plot(time, pow_data.^0.5 * 4, 'color', 'r', 'linewidth', 3);
 
 set(gca, 'YLim', [-60, 60]);
 
