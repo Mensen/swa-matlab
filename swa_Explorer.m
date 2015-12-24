@@ -607,23 +607,27 @@ Data = getappdata(handles.fig, 'Data');
 % get current wave
 nSW = handles.java.Spinner.getValue();
 
-% Calculate the range
-if strcmp(handles.SW_Type, 'SS')
-    winLength = floor((30*handles.Info.Recording.sRate - handles.SW(nSW).Ref_Length) / 2);
-    range = handles.SW(nSW).Ref_Start - winLength  :  handles.SW(nSW).Ref_End + winLength;
-else
-    winLength = floor(10*handles.Info.Recording.sRate);
-    range = handles.SW(nSW).Ref_PeakInd - winLength  :  handles.SW(nSW).Ref_PeakInd + winLength;
+% Calculate the range / wave peaks and start points
+switch handles.SW_Type
+    case {'SW', 'ST'}
+        winLength = floor(10*handles.Info.Recording.sRate);
+        range = handles.SW(nSW).Ref_PeakInd - winLength  :  handles.SW(nSW).Ref_PeakInd + winLength;
+        wave_peaks = [handles.SW.Ref_PeakInd]./ handles.Info.Recording.sRate;
+        start_point = handles.SW(nSW).Ref_PeakInd / handles.Info.Recording.sRate;
+        end_point = handles.SW(nSW).Ref_PeakInd / handles.Info.Recording.sRate;
+    case 'SS'
+        winLength = floor((30 * handles.Info.Recording.sRate - handles.SW(nSW).Ref_Length) / 2);
+        range = handles.SW(nSW).Ref_Start - winLength  :  handles.SW(nSW).Ref_End + winLength;
+        
+        wave_peaks = [handles.SW.Ref_Start] + [handles.SW.Ref_Length]./ ...
+            2./ handles.Info.Recording.sRate;
+        start_point = handles.SW(nSW).Ref_Start / handles.Info.Recording.sRate;
+        end_point = handles.SW(nSW).Ref_End / handles.Info.Recording.sRate;
 end
-range(range<1) = [];
-xaxis = range./handles.Info.Recording.sRate;
 
-if strcmp(handles.SW_Type, 'SS')
-    sPeaks = [handles.SW.Ref_Start] + [handles.SW.Ref_Length]./ ...
-        2./ handles.Info.Recording.sRate;
-else
-    sPeaks = [handles.SW.Ref_PeakInd]./ handles.Info.Recording.sRate;
-end
+% check that the range is within data limits (set to sample 1 if not)
+range(range < 1 | range > size(Data.Raw, 2)) = 1;
+xaxis = range./handles.Info.Recording.sRate;
 
 % check for special selected channels
 for n = 1:2
@@ -654,15 +658,6 @@ else
     end  
 end
 
-% calculate wave starts for different wave types
-if strcmp(handles.SW_Type, 'SS')
-    start_point = handles.SW(nSW).Ref_Start / handles.Info.Recording.sRate;
-    end_point = handles.SW(nSW).Ref_End / handles.Info.Recording.sRate;
-else
-    start_point = handles.SW(nSW).Ref_PeakInd / handles.Info.Recording.sRate;
-    end_point = handles.SW(nSW).Ref_PeakInd / handles.Info.Recording.sRate;
-end
-
 switch plot_method
     case 'initial'
         % -- initial Plot (50 times takes 1.67s) -- %
@@ -671,9 +666,10 @@ switch plot_method
         handles.lines_eeg_channel{2} = plot(handles.axes_eeg_channel(2), xaxis, data_to_plot{2}', 'k');
         
         % set the top axes limits
+        deviation = std(data_to_plot{1});
         set(handles.axes_eeg_channel,...
-            'YLim', [-70,70],...
-            'XLim', [xaxis(1), xaxis(end)]);
+            'yLim', [-5 * deviation, 5 * deviation],...
+            'xLim', [xaxis(1), xaxis(end)]);
                
         % plot the two zoom lines
         handles.zoomline(1) = line([start_point - 0.5, start_point - 0.5], [-200, 200]);
@@ -686,7 +682,7 @@ switch plot_method
             'Parent', handles.axes_eeg_channel(1));
         
         % Just plot all the arrows already
-        handles.arrows_Butterfly = text(sPeaks, ones(1, length(sPeaks)) * 30 ,...
+        handles.arrows_Butterfly = text(wave_peaks, ones(1, length(wave_peaks)) * 30 ,...
             '\downarrow',...
             'FontSize', 20 ,...
             'HorizontalAlignment', 'center' ,...
@@ -726,13 +722,17 @@ nSW = handles.java.Spinner.getValue();
 
 % Calculate the range
 switch handles.SW_Type
+    case 'SW'
+        winLength = floor(2 * handles.Info.Recording.sRate);
+        range = handles.SW(nSW).Ref_PeakInd - winLength  :  handles.SW(nSW).Ref_PeakInd + winLength;
     case 'SS'
         winLength = floor((2 * handles.Info.Recording.sRate - handles.SW(nSW).Ref_Length) / 2);
         range = handles.SW(nSW).Ref_Start - winLength  :  handles.SW(nSW).Ref_End + winLength;
-    case {'SW', 'ST'}
-        winLength = floor(2 * handles.Info.Recording.sRate);
+    case 'ST'
+        winLength = floor(1 * handles.Info.Recording.sRate);
         range = handles.SW(nSW).Ref_PeakInd - winLength  :  handles.SW(nSW).Ref_PeakInd + winLength;
 end
+
 % check that the range is within data limits (set to sample 1 if not)
 range(range < 1 | range > size(Data.Raw, 2)) = 1;
 
@@ -743,66 +743,83 @@ if ~isfield(handles, 'SWPlot')
     cla(handles.axes_individual_wave);
     
     % plot all the channels but hide them
-    handles.SWPlot.All = plot(handles.axes_individual_wave, Data.Raw(:, range)', 'Color', [0.6 0.6 0.6], 'linewidth', 0.5, 'Visible', 'off');
+    handles.SWPlot.All = plot(handles.axes_individual_wave, Data.Raw(:, range)',...
+        'color', [0.6 0.6 0.6],...
+        'linewidth', 1,...
+        'visible', 'off');
+    
     % plot the reference wave
-    handles.SWPlot.Ref = plot(handles.axes_individual_wave, Data.([handles.SW_Type, 'Ref'])(handles.SW(nSW).Ref_Region(1), range)','Color', 'r', 'linewidth', 3);
+    handles.SWPlot.Ref = plot(handles.axes_individual_wave, Data.([handles.SW_Type, 'Ref'])(handles.SW(nSW).Ref_Region(1), range)',...
+        'color', 'r',...
+        'linewidth', 3);
+    
     % plot wavelets
-    if isfield(Data, 'CWT')
-        for np = 1:length(Data.CWT)
-            handles.SWPlot.CWT(np)   = plot(handles.axes_individual_wave, Data.CWT{np}(handles.SW(nSW).Ref_Region(1),range)','Color', 'b', 'linewidth', 2);
-        end
+    switch handles.SW_Type
+        case 'SS'
+            data_max = ceil(abs(max(max(Data.Raw(handles.SW(nSW).Channels_Active, range))))/10)*10+10;
+            data = Data.CWT{1}(handles.SW(nSW).Ref_Region(1),range);
+            handles.SWPlot.CWT(1) = plot(handles.axes_individual_wave,...
+                (data./max(data) * dataMax) - dataMax,...
+                'color', 'b',...
+                'linewidth', 1);
+        case 'ST'
+            % check if the wave plot check boxes are active
+            if get(handles.cb_waveplot(1), 'value')
+                handles.SWPlot.CWT(1) = plot(handles.axes_individual_wave,...
+                    Data.CWT{1}(handles.SW(nSW).Ref_Region(1), range)',...
+                    'color', 'b',...
+                    'linewidth', 1);
+                handles.SWPlot.CWT(2) = plot(handles.axes_individual_wave,...
+                    Data.CWT{2}(handles.SW(nSW).Ref_Region(1), range)',...
+                    'color', 'g',...
+                    'linewidth', 1);
+            end
     end
     
     % set only the active channels to visible
-    set(handles.SWPlot.All(handles.SW(nSW).Channels_Active), 'Color', [0.6 0.6 0.6], 'LineWidth', 1, 'Visible', 'on');
+    set(handles.SWPlot.All(handles.SW(nSW).Channels_Active),...
+        'visible', 'on');
     % adjust the x-axes to match range length
-    set(handles.axes_individual_wave, 'XLim', [1, length(range)])
+    set(handles.axes_individual_wave, 'xLim', [1, length(range)])
 
 % update plot
 % ^^^^^^^^^^^^    
 else
-    for i = 1:size(Data.Raw,1)
-        set(handles.SWPlot.All(i),...
-            'yData', Data.Raw(i,range),...
-            'Color', [0.6 0.6 0.6], 'linewidth', 0.5, 'Visible', 'off');
+    for n = 1:size(Data.Raw,1)
+        set(handles.SWPlot.All(n),...
+            'yData', Data.Raw(n, range),...
+            'color', [0.6 0.6 0.6],...
+            'linewidth', 1,...
+            'visible', 'off');
     end
-    set(handles.SWPlot.All(handles.SW(nSW).Channels_Active), 'Color', [0.6 0.6 0.6], 'LineWidth', 1, 'Visible', 'on');
-    %     set(handles.SWPlot.All(handles.SW(nSW).Travelling_Delays<1), 'Color', 'b', 'LineWidth', 2, 'Visible', 'on');
     
-    set(handles.SWPlot.Ref, 'yData', Data.([handles.SW_Type, 'Ref'])(handles.SW(nSW).Ref_Region(1),range));
+    set(handles.SWPlot.All(handles.SW(nSW).Channels_Active),...
+        'visible', 'on');
     
-    set(handles.SWPlot.Ref, 'yData', Data.([handles.SW_Type, 'Ref'])(handles.SW(nSW).Ref_Region(1),range));
+    set(handles.SWPlot.Ref,...
+        'yData', Data.([handles.SW_Type, 'Ref'])(handles.SW(nSW).Ref_Region(1), range));
     
     % Find the absolute maximum value and round to higher 10, then add 10 for space
-    dataMax = ceil(abs(max(max(Data.Raw(handles.SW(nSW).Channels_Active, range))))/10)*10+10;
-    set(handles.axes_individual_wave, 'YLim', [-dataMax, dataMax])
+    data_max = ceil(abs(max(max(Data.Raw(handles.SW(nSW).Channels_Active, range))))/10)*10+10;
+    set(handles.axes_individual_wave, 'yLim', [-data_max, data_max])
     
-    % Plot the cwt data...
-    if isfield(Data, 'CWT')
-        for np = 1:length(Data.CWT)
-            % if its spindle power plot below line
-            if strcmp(handles.SW_Type, 'SS')
+    % update the cwt data...
+    switch handles.SW_Type
+        case 'SS'
                 data = Data.CWT{np}(handles.SW(nSW).Ref_Region(1),range);
-                set(handles.SWPlot.CWT(1), 'yData', (data./max(data)*dataMax) - dataMax);
-            else
-                set(handles.SWPlot.CWT(1), 'yData', Data.CWT{np}(handles.SW(nSW).Ref_Region(1),range));
+                set(handles.SWPlot.CWT(1),...
+                    'yData', (data./max(data) * data_max) - data_max);
+        case 'ST'
+            % check if the wave plot check boxes are active
+            if get(handles.cb_waveplot(1), 'value')
+                set(handles.SWPlot.CWT(1),...
+                    'yData', Data.CWT{1}(handles.SW(nSW).Ref_Region(1), range));
+                set(handles.SWPlot.CWT(2),...
+                    'yData', Data.CWT{2}(handles.SW(nSW).Ref_Region(1), range));
             end
-        end
     end
-
-%     % Check theta and alpha checkboxes
-%     if get(handles.cb_waveplot(1), 'value')
-%         set(handles.SWPlot.CWT(1), 'yData', Data.CWT{1}(handles.SW(nSW).Ref_Region(1),range));
-%     else
-%         set(handles.SWPlot.CWT(1), 'yData', []);       
-%     end
-%     if get(handles.cb_waveplot(2), 'value')
-%         set(handles.SWPlot.CWT(2), 'yData', Data.CWT{2}(handles.SW(nSW).Ref_Region(1),range));
-%     else
-%         set(handles.SWPlot.CWT(2), 'yData', []);             
-%     end
-
 end
+
 
 function handles = update_SWDelay(handles, nFigure)
 % plot the delay/involvement map

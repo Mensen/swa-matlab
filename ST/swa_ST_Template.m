@@ -28,11 +28,4 @@ ST(isnan(BurstCriteria)) = [];
 
 % Save the data
 % ^^^^^^^^^^^^^
-% Replace the data with a file pointer if drive space is a concern
-Data.Raw = Info.Recording.dataFile;
-
-% Done! Use the swa_Explorer to visualise the results.
-[saveFile, savePath] = uiputfile('*.mat');
-save([savePath, saveFile], 'Data', 'Info', 'ST', '-mat');
-
-
+swa_saveOutput(Data, Info, ST, [], 1, 0)

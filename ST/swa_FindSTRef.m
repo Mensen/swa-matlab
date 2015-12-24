@@ -9,8 +9,9 @@ ST = struct(...
     'CWT_PeakToPeak',           [],...
     'CWT_ThetaAlpha',           [],...
     'Ref_Region',               [],...
-    'Ref_NegativePeak',         [],...
-    'Ref_PositivePeak',         [],...
+    'Ref_StartInd',             [],...
+    'Ref_PeakInd',              [],...
+    'Ref_EndInd',               [],...
     'Ref_NegativeSlope',        [],...
     'Ref_PositiveSlope',        [],...
     'Ref_NotchAmp',             [],...
@@ -85,7 +86,7 @@ for ref_wave = 1:size(Data.STRef,1)
     % TODO: Test for amplitude/wavelength criteria outside loop
     
     % Loop through each MNP in the theta range data
-    for i = 1:length(MNP) - 1
+    for n = 1:length(MNP) - 1
         
         % Use this when looking for a specific wave not found and set a breakpoint...
 %         if refWave == 1 && MPP(i) > 71130
@@ -97,14 +98,14 @@ for ref_wave = 1:size(Data.STRef,1)
         % TODO: Wavelength criteria should be on reference, not CWT    
         
         % MPP -> MNP Hard Time Criteria
-        if abs(MPP(i)-MNP(i)) > (1/(Info.Parameters.CWT_hPass-0.5)/2)*Info.Recording.sRate || abs(MPP(i)-MNP(i)) < (1/(Info.Parameters.CWT_lPass+0.5)/2)*Info.Recording.sRate
+        if abs(MPP(n)-MNP(n)) > (1/(Info.Parameters.CWT_hPass-0.5)/2)*Info.Recording.sRate || abs(MPP(n)-MNP(n)) < (1/(Info.Parameters.CWT_lPass+0.5)/2)*Info.Recording.sRate
             Info.Failed.FailedAtLength = Info.Failed.FailedAtLength + 1;
             continue;
         end
 
         % MPP -> MNP Soft Time Criteria (Must pass additional MNP Amplitude Test)  
-        if abs(MPP(i)-MNP(i)) > (1/(Info.Parameters.CWT_hPass-0.1)/2)*Info.Recording.sRate || abs(MPP(i)-MNP(i)) < (1/(Info.Parameters.CWT_lPass+0.1)/2)*Info.Recording.sRate
-            if Data.CWT{1}(ref_wave, MNP(i)) > -Info.Parameters.CWT_AmpThresh(ref_wave)*2
+        if abs(MPP(n)-MNP(n)) > (1/(Info.Parameters.CWT_hPass-0.1)/2)*Info.Recording.sRate || abs(MPP(n)-MNP(n)) < (1/(Info.Parameters.CWT_lPass+0.1)/2)*Info.Recording.sRate
+            if Data.CWT{1}(ref_wave, MNP(n)) > -Info.Parameters.CWT_AmpThresh(ref_wave)*2
                 Info.Failed.FailedAtLength = Info.Failed.FailedAtLength + 1;
                 continue;
                 
@@ -112,14 +113,14 @@ for ref_wave = 1:size(Data.STRef,1)
         end        
         
         % MNP -> MPP2 Hard Time Criteria
-        if abs(MNP(i)-MPP(i+1)) > (1/(Info.Parameters.CWT_hPass-0.5)/2)*Info.Recording.sRate || abs(MNP(i)-MPP(i+1)) < (1/(Info.Parameters.CWT_lPass+0.5)/2)*Info.Recording.sRate
+        if abs(MNP(n)-MPP(n+1)) > (1/(Info.Parameters.CWT_hPass-0.5)/2)*Info.Recording.sRate || abs(MNP(n)-MPP(n+1)) < (1/(Info.Parameters.CWT_lPass+0.5)/2)*Info.Recording.sRate
             Info.Failed.FailedAtLength = Info.Failed.FailedAtLength + 1;
             continue;
         end
 
         % MNP -> MPP2 Soft Time Criteria (Must pass additional MNP Amplitude Test)       
-        if abs(MNP(i)-MPP(i+1)) > (1/(Info.Parameters.CWT_hPass-0.2)/2)*Info.Recording.sRate || abs(MNP(i)-MPP(i+1)) < (1/(Info.Parameters.CWT_lPass+0.2)/2)*Info.Recording.sRate
-            if Data.CWT{1}(ref_wave, MNP(i)) > -Info.Parameters.CWT_AmpThresh(ref_wave)*2
+        if abs(MNP(n)-MPP(n+1)) > (1/(Info.Parameters.CWT_hPass-0.2)/2)*Info.Recording.sRate || abs(MNP(n)-MPP(n+1)) < (1/(Info.Parameters.CWT_lPass+0.2)/2)*Info.Recording.sRate
+            if Data.CWT{1}(ref_wave, MNP(n)) > -Info.Parameters.CWT_AmpThresh(ref_wave)*2
                 Info.Failed.FailedAtLength = Info.Failed.FailedAtLength + 1;
                 continue;
             end
@@ -127,13 +128,13 @@ for ref_wave = 1:size(Data.STRef,1)
         
         %% -- Amplitude Criteria -- %%
         % Test MPP->MNP Amplitude
-        MPP2MNP = Data.CWT{1}(ref_wave, MPP(i)) - Data.CWT{1}(ref_wave,MNP(i));
+        MPP2MNP = Data.CWT{1}(ref_wave, MPP(n)) - Data.CWT{1}(ref_wave,MNP(n));
         
         % TODO: Burst adjustment ratio should be an external parameter
         
         % Check for burst here in order to temporarily lower the threshold...
         if STCount > 1
-            if abs(ST(STCount).CWT_End-MPP(i)) < Info.Recording.sRate*Info.Parameters.Burst_Length
+            if abs(ST(STCount).CWT_End-MPP(n)) < Info.Recording.sRate*Info.Parameters.Burst_Length
                 % if there is a previous wave...
                 if MPP2MNP < Info.Parameters.CWT_AmpThresh(ref_wave)*1.8
                     Info.Failed.FailedAtAmp  = Info.Failed.FailedAtAmp+1;
@@ -149,11 +150,11 @@ for ref_wave = 1:size(Data.STRef,1)
         end
         
         % Test MNP->MPP Amplitude
-        MNP2MPP = Data.CWT{1}(ref_wave,MPP(i+1)) - Data.CWT{1}(ref_wave, MNP(i));
+        MNP2MPP = Data.CWT{1}(ref_wave,MPP(n+1)) - Data.CWT{1}(ref_wave, MNP(n));
         
                 % Check for burst here in order to temporarily lower the threshold...
         if STCount > 1
-            if abs(ST(STCount).CWT_End-MPP(i)) < Info.Recording.sRate*Info.Parameters.Burst_Length
+            if abs(ST(STCount).CWT_End-MPP(n)) < Info.Recording.sRate*Info.Parameters.Burst_Length
                 % if there is a previous wave...
                 if  MNP2MPP < Info.Parameters.CWT_AmpThresh(ref_wave)*1.8
                     Info.Failed.FailedAtAmp  = Info.Failed.FailedAtAmp+1;
@@ -170,7 +171,7 @@ for ref_wave = 1:size(Data.STRef,1)
         
         % Test Theta/Alpha Amplitude Ratio 
         % ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        AlphaAmp = max(Data.CWT{2}(ref_wave, MPP(i):MPP(i+1)))-min(Data.CWT{2}(ref_wave,MPP(i):MPP(i+1)));
+        AlphaAmp = max(Data.CWT{2}(ref_wave, MPP(n):MPP(n+1)))-min(Data.CWT{2}(ref_wave,MPP(n):MPP(n+1)));
         ThetaAlpha = max(MPP2MNP,MNP2MPP)/AlphaAmp;
         if ThetaAlpha < Info.Parameters.CWT_ThetaAlpha
             Info.Failed.FailedAtAlpha  = Info.Failed.FailedAtAlpha+1;
@@ -179,14 +180,14 @@ for ref_wave = 1:size(Data.STRef,1)
                       
         %% Look at Original Wave
         % Find notches over minimal amplitude criterion
-        nPeaks = refMNP(refMNP > MPP(i) & refMNP < MPP(i+1));
-        pPeaks = refMPP(refMNP > MPP(i) & refMNP < MPP(i+1));
+        nPeaks = refMNP(refMNP > MPP(n) & refMNP < MPP(n+1));
+        pPeaks = refMPP(refMNP > MPP(n) & refMNP < MPP(n+1));
 
         if nPeaks(1)<pPeaks(1)
-            pPeaks = [MPP(i) pPeaks];
+            pPeaks = [MPP(n) pPeaks];
         end
         if nPeaks(end)>pPeaks(end)
-            pPeaks = [pPeaks MPP(i+1)];
+            pPeaks = [pPeaks MPP(n+1)];
         end
         
         notches = [];
@@ -199,28 +200,30 @@ for ref_wave = 1:size(Data.STRef,1)
             notches(end+1) = nPeaks(j);
         end
 
-        [~, Ref_NegPeakId] = min(Data.STRef(ref_wave,MPP(i):MPP(i+1)));
-        [~, Ref_PosPeakId] = max(Data.STRef(ref_wave,MNP(i):MNP(i+1)));
+        [~, Ref_StartId] = max(Data.STRef(ref_wave,MPP(n):MNP(n)));
+        [~, Ref_NegPeakId] = min(Data.STRef(ref_wave,MPP(n):MPP(n+1)));
+        [~, Ref_PosPeakId] = max(Data.STRef(ref_wave,MNP(n):MNP(n+1)));
                 
         %% Save Wave to Structure
         
         % Check if the SW has already been found in another reference channel
         if ref_wave > 1
-            [c, STid] = max(double(AllPeaks > MPP(i)) + double(AllPeaks < MPP(i+1)));
+            [c, STid] = max(double(AllPeaks > MPP(n)) + double(AllPeaks < MPP(n+1)));
             if c == 2              
                 % Check which region has the bigger P2P wave...
                 if abs(MNP2MPP) > ST(STid).CWT_PeakToPeak
                     % If the new region does then overwrite previous data with larger reference
                     ST(STid).Ref_Region          = [ref_wave, ST(STid).Ref_Region];
-                    ST(STid).Ref_NegativePeak    = Ref_NegPeakId+MPP(i);
-                    ST(STid).Ref_PositivePeak    = Ref_PosPeakId+MNP(i);
-                    ST(STid).Ref_NegativeSlope   = mean(slopeData(MPP(i):(Ref_NegPeakId+MPP(i))));
-                    ST(STid).Ref_PositiveSlope   = mean(slopeData((Ref_NegPeakId+MPP(i)):MPP(i+1)));
+                    ST(STid).Ref_StartInd        = Ref_StartId + MPP(n);
+                    ST(STid).Ref_PeakInd         = Ref_NegPeakId + MPP(n);
+                    ST(STid).Ref_EndInd          = Ref_PosPeakId + MNP(n);
+                    ST(STid).Ref_NegativeSlope   = mean(slopeData(MPP(n):(Ref_NegPeakId+MPP(n))));
+                    ST(STid).Ref_PositiveSlope   = mean(slopeData((Ref_NegPeakId+MPP(n)):MPP(n+1)));
                     ST(STid).Ref_NotchAmp        = Data.STRef(ref_wave, notches);
                     
-                    ST(STid).CWT_Start           = MPP(i);
-                    ST(STid).CWT_NegativePeak    = MNP(i);
-                    ST(STid).CWT_End             = MPP(i+1);
+                    ST(STid).CWT_Start           = MPP(n);
+                    ST(STid).CWT_NegativePeak    = MNP(n);
+                    ST(STid).CWT_End             = MPP(n+1);
                     ST(STid).CWT_PeakToPeak      = MNP2MPP;
                     ST(STid).CWT_ThetaAlpha      = ThetaAlpha;   
                 else
@@ -234,15 +237,16 @@ for ref_wave = 1:size(Data.STRef,1)
         STCount = STCount+1;
 
         ST(STCount).Ref_Region          = ref_wave;
-        ST(STCount).Ref_NegativePeak    = Ref_NegPeakId+MPP(i);
-        ST(STCount).Ref_PositivePeak    = Ref_PosPeakId+MNP(i);
-        ST(STCount).Ref_NegativeSlope   = mean(slopeData(MPP(i):(Ref_NegPeakId+MPP(i))));
-        ST(STCount).Ref_PositiveSlope   = mean(slopeData((Ref_NegPeakId+MPP(i)):MPP(i+1)));
+        ST(STCount).Ref_StartInd        = Ref_StartId + MPP(n);
+        ST(STCount).Ref_PeakInd         = Ref_NegPeakId + MPP(n);
+        ST(STCount).Ref_EndInd          = Ref_PosPeakId + MNP(n);
+        ST(STCount).Ref_NegativeSlope   = mean(slopeData(MPP(n):(Ref_NegPeakId+MPP(n))));
+        ST(STCount).Ref_PositiveSlope   = mean(slopeData((Ref_NegPeakId+MPP(n)):MPP(n+1)));
         ST(STCount).Ref_NotchAmp        = Data.STRef(ref_wave, notches);
         
-        ST(STCount).CWT_Start           = MPP(i);
-        ST(STCount).CWT_NegativePeak    = MNP(i);
-        ST(STCount).CWT_End             = MPP(i+1);
+        ST(STCount).CWT_Start           = MPP(n);
+        ST(STCount).CWT_NegativePeak    = MNP(n);
+        ST(STCount).CWT_End             = MPP(n+1);
         ST(STCount).CWT_PeakToPeak      = MNP2MPP;
         ST(STCount).CWT_ThetaAlpha      = ThetaAlpha;
         
@@ -293,20 +297,20 @@ flag_ST = true(length(ST), 1);
 BurstId = 0;
 
 % loop through each wave
-for i = 1:length(ST)-1 
+for n = 1:length(ST)-1 
       
     % see if the next wave is close to the current one
-    if flag_ST(i) && ST(i+1).Ref_NegativePeak-ST(i).Ref_NegativePeak < ...
+    if flag_ST(n) && ST(n+1).Ref_PeakInd-ST(n).Ref_PeakInd < ...
             Info.Recording.sRate*Info.Parameters.Burst_Length
     
         % start the count
         BurstCount = 1;
-        Growing = i;
+        Growing = n;
         
         % check the next waves until it isn't close anymore
-        for j = i:length(ST)-1
+        for j = n:length(ST)-1
                                   
-            if ST(j+1).Ref_NegativePeak-ST(j).Ref_NegativePeak < Info.Recording.sRate*Info.Parameters.Burst_Length
+            if ST(j+1).Ref_PeakInd-ST(j).Ref_PeakInd < Info.Recording.sRate*Info.Parameters.Burst_Length
                 
                 % add the wave indices to the burst indices
                 Growing(end + 1) = j + 1;
@@ -326,7 +330,7 @@ for i = 1:length(ST)-1
     % add the burst information to all the ST waves involved
     [ST(Growing).Burst_BurstId]         = deal(BurstId);
     [ST(Growing).Burst_NumberOfWaves]   = deal(BurstCount);
-    [ST(Growing).Burst_Density]         = deal((BurstCount/(ST(j+1).Ref_NegativePeak-ST(i).Ref_NegativePeak))*Info.Recording.sRate);
+    [ST(Growing).Burst_Density]         = deal((BurstCount/(ST(j+1).Ref_PeakInd-ST(n).Ref_PeakInd))*Info.Recording.sRate);
     
     end
 end
