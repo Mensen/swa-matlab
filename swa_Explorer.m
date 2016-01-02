@@ -682,7 +682,7 @@ switch plot_method
             'Parent', handles.axes_eeg_channel(1));
         
         % Just plot all the arrows already
-        handles.arrows_Butterfly = text(wave_peaks, ones(1, length(wave_peaks)) * 30 ,...
+        handles.arrows_Butterfly = text(wave_peaks, ones(1, length(wave_peaks)) * 5 * deviation ,...
             '\downarrow',...
             'FontSize', 20 ,...
             'HorizontalAlignment', 'center' ,...
@@ -926,7 +926,6 @@ swa_wave_summary(handles.SW, handles.Info,...
 
 
 % Push Buttons
-
 function pb_XDelay_Callback(hObject, ~)
 handles = guidata(hObject);
 update_SWDelay(handles, 1);
@@ -1239,7 +1238,7 @@ end
 handles = guidata(hObject);
 
 % only available for SW
-if ~strcmp(handles.SW_Type, 'SW')
+if ~strcmp(handles.SW_Type, {'SW', 'ST'})
     fprintf(1, 'Manual wave additions only available for slow waves.\n');
     return;    
 end
@@ -1251,7 +1250,8 @@ Data = getappdata(handles.fig, 'Data');
 sample_point = round(event_data.IntersectionPoint(1) * handles.Info.Recording.sRate);
 
 % add the new wave and calculate its properties
-[handles.SW, new_ind] = swa_manual_addition(Data, handles.Info, handles.SW, sample_point);
+[handles.SW, new_ind] = swa_manual_addition(...
+    Data, handles.Info, handles.SW, sample_point, handles.SW_Type);
 
 if isempty(new_ind)
     return;
@@ -1261,12 +1261,18 @@ end
 handles.java.Slider.setMaximum(length(handles.SW));
 
 % delete the arrow on the butterfly plot then the handle
+arrow_position = handles.arrows_Butterfly(1).Position(2);
 delete(handles.arrows_Butterfly);
 handles.arrows_Butterfly = [];
 
 % Just plot all the arrows already
-sPeaks = [handles.SW.Ref_PeakInd]./ handles.Info.Recording.sRate;
-handles.arrows_Butterfly = text(sPeaks, ones(1, length(sPeaks))*30, '\downarrow', 'FontSize', 20, 'HorizontalAlignment', 'center', 'Clipping', 'on', 'Parent', handles.axes_eeg_channel(1));    
+wave_peaks = [handles.SW.Ref_PeakInd]./ handles.Info.Recording.sRate;
+handles.arrows_Butterfly = text(wave_peaks, ones(1, length(wave_peaks)) * arrow_position,...
+    '\downarrow',...
+    'fontSize', 20 ,...
+    'horizontalAlignment', 'center' ,...
+    'clipping', 'on',...
+    'parent', handles.axes_eeg_channel(1));
 
 % update the handles structure
 guidata(handles.fig, handles);

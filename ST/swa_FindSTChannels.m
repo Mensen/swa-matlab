@@ -1,20 +1,29 @@
-function [Data, Info, ST] = swa_FindSTChannels(Data, Info, ST)
+function [Data, Info, ST] = swa_FindSTChannels(Data, Info, ST, flag_progress)
+% find saw-tooth waves in individual channels
 
-fprintf(1, 'Analysis: Finding Saw-Tooth Waves in Individual Channels... \n');
-%% -- Calculate CWT Waves -- %%
-
+if flag_progress
+    fprintf(1, 'Analysis: Finding Saw-Tooth Waves in Individual Channels... \n');
+end
+    
+% -- Calculate CWT Waves -- %
 FreqRange   = Info.Parameters.CWT_hPass : Info.Parameters.CWT_lPass;
 Scale_theta = (centfrq('morl')./FreqRange) * Info.Recording.sRate;
 
 Channels_Theta = zeros(size(Data.Raw));
-WaitHandle = waitbar(0,'Please wait...', 'Name', 'Calculating Wavelets');
+if flag_progress
+    WaitHandle = waitbar(0,'Please wait...', 'Name', 'Calculating Wavelets');
+end
+
 for n = 1:size(Data.Raw,1)
-    waitbar(n / size(Data.Raw,1), WaitHandle,...
-        sprintf('Channel %d of %d', n, size(Data.Raw, 1)))
+    if flag_progress
+        waitbar(n / size(Data.Raw,1), WaitHandle,...
+            sprintf('Channel %d of %d', n, size(Data.Raw, 1)))
+    end
     Channels_Theta(n, :) = mean(cwt(Data.Raw(n, :), Scale_theta, 'morl'));
 end
-delete(WaitHandle);
-
+if flag_progress
+    delete(WaitHandle);
+end
 %% -- Find corresponding channels from the reference wave -- %%
 Window = round(Info.Parameters.Channels_WinSize * Info.Recording.sRate);
 for nST = 1:length(ST)
@@ -48,5 +57,3 @@ for nST = 1:length(ST)
         - min(Ch_Id(ST(nST).Channels_Active));
         
 end
-fprintf(1, 'Done. \n');
-
