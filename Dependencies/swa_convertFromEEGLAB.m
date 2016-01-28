@@ -3,6 +3,9 @@ function [Data, Info] = swa_convertFromEEGLAB(fileName, filePath)
 % ask the user for the eeg .set file
 if nargin < 1
     [fileName, filePath] = uigetfile('*.set');
+elseif nargin < 2
+    [filePath, fileName, fileExt] = fileparts(fileName);
+    fileName = [fileName, fileExt];
 end
 
 % user output
