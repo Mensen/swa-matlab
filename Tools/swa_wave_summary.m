@@ -28,7 +28,7 @@ if isa(SW, 'char')
             'topo_streamorigins'};
         return;
     else
-        fprintf(1, 'Error: Use ''return options'' as input to see current plotting options');
+        fprintf(1, 'Error: Use ''return options'' as input to see current plotting options \n');
         return;
     end
 end
@@ -185,6 +185,9 @@ switch type
         % for SW and ST
         if isfield(SW, 'Ref_UpInd')
             output = ([SW.Ref_UpInd] - [SW.Ref_DownInd]) ...
+                /Info.Recording.sRate * 1000;
+        elseif isfield(SW, 'Ref_StartInd')
+            output = ([SW.Ref_StartInd] - [SW.Ref_EndInd]) ...
                 /Info.Recording.sRate * 1000;
         else
             output = ([SW.Ref_Start] - [SW.Ref_End]) ...
@@ -353,6 +356,6 @@ switch type
         %TODO: correlation between MPP->MNP || MNP->MPP
         
     otherwise
-        fprintf(1, 'Error: %s is not a valid summary type', type);
+        fprintf(1, 'Error: %s is not a valid summary type \n', type);
         return;
 end

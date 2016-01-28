@@ -190,7 +190,7 @@ sample_point = sample_point - window + MNP(min_ind);
 % get all the data based on new sample point
 Data_segment.Raw = Data.Raw(:, sample_point - window : sample_point + window);
 Data_segment.STRef = Data.STRef(2, sample_point - window : sample_point + window);
-Data_segment.CWT = cellfun(@(x) x(2, sample_point - window :sample_point + window),...
+Data_segment.CWT = cellfun(@(x) x(2, sample_point - window : sample_point + window),...
     Data.CWT, 'UniformOutput', false);
 
 % calculate the slope of the data
@@ -202,24 +202,30 @@ refMPP  = find(diff(sign(slopeData)) == -2);
 MNP     = find(diff(sign(slopeCWT)) == 2); 
 MPP     = find(diff(sign(slopeCWT)) == -2);
 
+% if there is no MNP make them at the edges of the window
 if isempty(MPP)
     MPP(1) = 1;
     MPP(2) = window * 2 + 1;
 end
 
-% check for earlier MPP than MNP (but make sure there is at least 1)
-if MNP(1) < MPP(1)
-    if length(MNP) > 1
-        MNP(1) = [];
-    else
+% find MNP closest to click point
+if length(MNP) > 1
+    [a, b] = min(abs(MNP - window));
+    MNP = MNP(b);
+end
+
+% check the MPPs
+if isempty(MPP)
+    MPP(1) = 1;
+    MPP(2) = window * 2 + 1;
+elseif length(MPP) == 1
+    if MPP < MNP
+        MPP(2) = window * 2 + 1;
+    elseif MPP > MNP
         MPP(2) = MPP(1);
         MPP(1) = 1;
     end
-end
-
-% check that last MNP has a later MPP
-if MNP(end) > MPP(end)
-    MNP(end)=[];
+    % TODO: check if more than 2
 end
 
 % peak to peak amp
@@ -238,6 +244,12 @@ ThetaAlpha = max(MPP2MNP, MNP2MPP) / AlphaAmp;
 % find notches over minimal amplitude criterion
 nPeaks = refMNP(refMNP > MPP(1) & refMNP < MPP(2));
 pPeaks = refMPP(refMNP > MPP(1) & refMNP < MPP(2));
+
+% check for some negative peak in the data window
+if isempty(nPeaks)
+    fprintf(1, 'warning: no negative peaks found in data segment \n');
+    return
+end
 
 if nPeaks(1) < pPeaks(1)
     pPeaks = [MPP(1) pPeaks];
@@ -275,6 +287,7 @@ SW(SWid).CWT_End             = MPP(2);
 SW(SWid).CWT_PeakToPeak      = MNP2MPP;
 SW(SWid).CWT_ThetaAlpha      = ThetaAlpha;
 
+
 % find the corresponding channels
 [~, ~, temp_SW]    = swa_FindSTChannels (Data_segment, Info, SW(SWid), 0);
 
@@ -295,8 +308,11 @@ SW(SWid).CWT_Start = SW(SWid).CWT_Start + sample_point - window;
 SW(SWid).CWT_End = SW(SWid).CWT_End + sample_point - window;
 SW(SWid).CWT_NegativePeak = SW(SWid).CWT_NegativePeak + sample_point - window;
 
+
+% travelling parameters...
 % find the traveling parameters
 [Info, SW] = swa_FindSTTravelling(Info, SW, SWid);
+
 
 % re-order the SW structure by timing
 [~, sortId] = sort([SW.Ref_PeakInd]);

@@ -70,9 +70,12 @@ switch type
         Info.Parameters.CWT_StdThresh = 1.75;    % Explore defaults
         Info.Parameters.CWT_AmpThresh = [];
         Info.Parameters.CWT_ThetaAlpha = 1.2;
+        
         Info.Parameters.Burst_Length = 1;       % Maximum time between waves in seconds
-
+        Info.Parameters.Burst_Adjust = 0.75; % Adjust the criteria for wave if found in a burst
+        
         Info.Parameters.Channels_WinSize = 0.060; % in seconds
+        Info.Parameters.Channel_Adjust = 0.9;
 
         Info.Parameters.Travelling_GS = 40; % Gridsize for delay map
         Info.Parameters.Travelling_MinDelay = 20; % minimum travel time in ms
