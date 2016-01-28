@@ -12,8 +12,26 @@ if ~isempty(fileList)
     % Prepend path to files
     fileList = cellfun(@(x) fullfile(dir_name,x),...
         fileList,'UniformOutput',false);
-    matchstart = regexp(fileList, pattern);
-    fileList = fileList(~cellfun(@isempty, matchstart));
+    
+    % check if pattern in string or cell array
+    if ischar(pattern)
+        matchstart = regexp(fileList, pattern);
+        fileList = fileList(~cellfun(@isempty, matchstart));
+            
+    elseif iscell(pattern) 
+        % recursively match to each pattern consecutively
+        for n = 1 : length(pattern)
+            matchstart = regexp(fileList, pattern{n});
+            fileList = fileList(~cellfun(@isempty, matchstart));
+        end
+        
+    else
+        frintf(1, 'pattern must either be a string or cell of strings \n')
+        fileList = [];
+        return        
+        
+    end
+    
 end
 
 % Get a list of the subdirectories
