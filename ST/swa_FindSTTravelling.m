@@ -1,15 +1,19 @@
-function [Info, ST] = swa_FindSTTravelling(Info, ST, indST)
+function [Info, ST] = swa_FindSTTravelling(Info, ST, indST, flag_progress)
 % Calculate the streamlines for each slow wave
 % Use a third input to simply recalculate the travelling parameters for a single wave in ST but remember to change the Travelling_Delays parameter first...
 
+if nargin < 4
+    flag_progress = 1;
+end
+
 if ~isfield(Info.Parameters, 'Travelling_GS');
     Info.Parameters.Travelling_GS = 20; % size of interpolation grid
-    fprintf(1,'Information: Interpolation grid set at 20x20 by default. \n');
+    fprintf(1, 'Information: Interpolation grid set at 20x20 by default. \n');
     Info.Parameters.Travelling_MinDelay = 40; % minimum travel time (ms)
 end
 
-%% Check Electrodes for 2D locations (match to grid)
-if ~isfield(Info.Electrodes, 'x')
+% Check Electrodes for 2D locations (match to grid)
+if ~isfield(Info.Electrodes, 'x') || isempty(Info.Electrodes(1).x)
     Info.Electrodes = swa_add2dlocations(Info.Electrodes, Info.Parameters.Travelling_GS);
     fprintf(1,'Calculation: 2D electrode projections (placed in Info.Electrodes). \n');
 end
@@ -17,7 +21,7 @@ end
 xloc = [Info.Electrodes.x]; xloc=xloc(:);
 yloc = [Info.Electrodes.y]; yloc=yloc(:);
 
-%% Create the plotting mesh
+% Create the plotting mesh
 GS = Info.Parameters.Travelling_GS;
 XYrange = linspace(1, GS, GS);
 XYmesh = XYrange(ones(GS,1),:);
@@ -32,19 +36,31 @@ else
     F = TriScatteredInterp(xloc,yloc,ST(1).Travelling_Delays(:), 'natural');
     ver = 1;
 end
-%% Loop for each ST
+
+
+% Loop for each ST
 if nargin == 3
-    loopRange = indST;    
+    loopRange = indST;
+    flag_progress = 0;
 else
     loopRange = 1:length(ST);
-    h = waitbar(0,'Please wait...', 'Name', 'Finding Streams...');
+end
+
+if flag_progress
+    swa_progress_indicator('initialise', 'calculating streams');
 end
 
 for nST = loopRange
     
+    % update progress
+    if flag_progress
+        swa_progress_indicator('update', nST, length(loopRange));
+    end
+    
+    % take the delays from the structure
     Delays      = ST(nST).Travelling_Delays;
       
-    %% Interpolate delay map [zeros or nans above...]
+    % Interpolate delay map [zeros or nans above...]
     Delays = Delays(:);            % Ensure data is in column format
     
     % Different inputs for scatteredInterpolant and TriScatteredInterp
@@ -62,12 +78,11 @@ for nST = loopRange
         continue
     end
     
-    %% Define Starting Point(s) on the GSxGS grid...
+    % Define Starting Point(s) on the GSxGS grid...
     sx = xloc(ST(nST).Channels_Active);
     sy = yloc(ST(nST).Channels_Active);
       
-    %% Find Streamline(s)
-
+    % Find Streamline(s)
     % Use adstream2 (should optimise by coding entirely in c)
     Streams         = cell(1,length(sx));
     Distances       = cell(1,length(sx));
@@ -78,7 +93,7 @@ for nST = loopRange
         Distances{i}    = [fliplr(DistancesBack), DistancesForw];
     end
              
-    %% Process and save streamlines...
+    % Process and save streamlines...
     Streams(cellfun(@isempty, Streams)) = []; %Remove empty streams
     Distances(cellfun(@isempty, Distances)) = []; %Remove empty streams
     
@@ -108,14 +123,7 @@ for nST = loopRange
     [maxAngle,maxAngleId] = max(streamAngle - streamAngle(maxDispId));
     if maxAngle > 45 || maxAngleId ~= maxDispId || maxAngleId ~= maxDistId
         ST(nST).Travelling_Streams{end+1} = Streams{maxAngleId};
-    end
-    
-    
-    % Update waitbar (if there is one)
-    if exist('h', 'var')
-        waitbar(nST/length(ST),h,sprintf('Saw-Tooth Wave %d of %d',nST, length(ST)))
-    end
-    
+    end    
 end
 
 if exist('h', 'var')

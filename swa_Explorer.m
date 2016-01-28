@@ -57,7 +57,7 @@ handles.java.StatusBar = findjobj(handles.StatusBar);
 
 % first java call may cause 'no appropriate method' error 
 % as handle is not visible
-drawnow; pause(0.2);
+drawnow; pause(0.3);
 
 % set the alignment of the status bar
 handles.java.StatusBar.setVerticalAlignment(javax.swing.SwingConstants.CENTER);
@@ -526,6 +526,10 @@ switch handles.SW_Type
         
         swa_saveOutput(Data, Info, SW, fullfile(savePath, saveName), 1, 0);
         
+    case 'ST'
+        
+        swa_saveOutput(Data, Info, ST, fullfile(savePath, saveName), 1, 0);
+        
     otherwise
         % TODO: use swa_saveOutput for SS and ST as well
         save(fullfile(savePath, saveName), 'Data', 'Info', handles.SW_Type, '-mat');
@@ -882,10 +886,10 @@ elseif handles.java.PlotBox.getSelectedIndex() + 1 == 2;
     
     % plot different data for various wavetypes
     switch handles.SW_Type
-        case 'SS'
-            data_to_plot = handles.SW(nSW).Channels_Peak2PeakAmp;
-        otherwise
+        case 'SW'
             data_to_plot = handles.SW(nSW).Channels_NegAmp;
+        case {'SS', 'ST'}
+            data_to_plot = handles.SW(nSW).Channels_Peak2PeakAmp;
     end
     
     swa_Topoplot...
@@ -1098,7 +1102,6 @@ function fcn_UpdateTravelling(~, ~ , figure_handle)
 % list
 
 % TODO: change to external function
-% TODO: make it work for SW (problem since currently looking for wavelet data)
 
 % get the GUI handles from the original figure
 handles = guidata(figure_handle);
@@ -1131,17 +1134,27 @@ end
 current_data    = Data.Raw(handles.SW(nSW).Channels_Active, range);
 
 % recalculate the wavelets for SS and ST
-if ~strcmp(handles.SW_Type, 'SW')
-    
-    % get the scale range corresponding to the frequencies of interest
-    FreqRange   = handles.Info.Parameters.Filter_hPass(1) : handles.Info.Parameters.Filter_lPass(end);
-    scale       = (centfrq('morl')./ FreqRange) * handles.Info.Recording.sRate;
-    
-    cwtData = zeros(size(current_data));
-    for n = 1:size(current_data,1)
-        cwtData(n,:) = mean(cwt(current_data(n , : ), scale, 'morl' ));
-    end
-    
+switch handles.SW_Type
+    case 'SS'
+        % get the scale range corresponding to the frequencies of interest
+        FreqRange   = handles.Info.Parameters.Filter_hPass(1) : handles.Info.Parameters.Filter_lPass(end);
+        scale       = (centfrq('morl')./ FreqRange) * handles.Info.Recording.sRate;
+        
+        cwtData = zeros(size(current_data));
+        for n = 1:size(current_data,1)
+            cwtData(n,:) = mean(cwt(current_data(n , : ), scale, 'morl' ));
+        end
+        
+    case 'ST'
+        
+         % get the scale range corresponding to the frequencies of interest
+        FreqRange   = handles.Info.Parameters.CWT_hPass(1) : handles.Info.Parameters.CWT_lPass(end);
+        scale       = (centfrq('morl')./ FreqRange) * handles.Info.Recording.sRate;
+        
+        cwtData = zeros(size(current_data));
+        for n = 1:size(current_data,1)
+            cwtData(n,:) = mean(cwt(current_data(n , : ), scale, 'morl' ));
+        end
 end
 
 % Recalculate the delays and peak2peak amplitudes differently for each type
@@ -1217,6 +1230,8 @@ switch handles.SW_Type
         handles.SW(nSW).Travelling_Delays = nan(size(Data.Raw,1),1);
         handles.SW(nSW).Travelling_Delays(handles.SW(nSW).Channels_Active) = Ch_Id - min(Ch_Id);
         
+        % remove old streams
+        handles.SW(nSW).Travelling_Streams = [];
         [handles.Info, handles.SW] = swa_FindSTTravelling(handles.Info, handles.SW, nSW);
 end
 
