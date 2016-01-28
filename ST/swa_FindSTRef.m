@@ -129,20 +129,18 @@ for ref_wave = 1:size(Data.STRef,1)
         %% -- Amplitude Criteria -- %%
         % Test MPP->MNP Amplitude
         MPP2MNP = Data.CWT{1}(ref_wave, MPP(n)) - Data.CWT{1}(ref_wave,MNP(n));
-        
-        % TODO: Burst adjustment ratio should be an external parameter
-        
-        % Check for burst here in order to temporarily lower the threshold...
+                
+        % Check for burst to temporarily lower the threshold...
         if STCount > 1
-            if abs(ST(STCount).CWT_End-MPP(n)) < Info.Recording.sRate*Info.Parameters.Burst_Length
+            if abs(ST(STCount).CWT_End-MPP(n)) < Info.Recording.sRate * Info.Parameters.Burst_Length
                 % if there is a previous wave...
-                if MPP2MNP < Info.Parameters.CWT_AmpThresh(ref_wave)*1.8
+                if MPP2MNP < Info.Parameters.CWT_AmpThresh(ref_wave) * (Info.Parameters.Burst_Adjust + 1)
                     Info.Failed.FailedAtAmp  = Info.Failed.FailedAtAmp+1;
                     continue;
                 end
             else
                 % if the wave is isolated...
-                if MPP2MNP < Info.Parameters.CWT_AmpThresh(ref_wave)*2
+                if MPP2MNP < Info.Parameters.CWT_AmpThresh(ref_wave) * 2
                     Info.Failed.FailedAtAmp  = Info.Failed.FailedAtAmp+1;
                     continue;
                 end
@@ -152,11 +150,11 @@ for ref_wave = 1:size(Data.STRef,1)
         % Test MNP->MPP Amplitude
         MNP2MPP = Data.CWT{1}(ref_wave,MPP(n+1)) - Data.CWT{1}(ref_wave, MNP(n));
         
-                % Check for burst here in order to temporarily lower the threshold...
+        % Check for burst to temporarily lower the threshold...
         if STCount > 1
             if abs(ST(STCount).CWT_End-MPP(n)) < Info.Recording.sRate*Info.Parameters.Burst_Length
                 % if there is a previous wave...
-                if  MNP2MPP < Info.Parameters.CWT_AmpThresh(ref_wave)*1.8
+                if  MNP2MPP < Info.Parameters.CWT_AmpThresh(ref_wave) * (Info.Parameters.Burst_Adjust + 1)
                     Info.Failed.FailedAtAmp  = Info.Failed.FailedAtAmp+1;
                     continue;
                 end
