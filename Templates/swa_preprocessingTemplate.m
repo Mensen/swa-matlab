@@ -117,12 +117,12 @@ EEG = csc_eeg_plotter(EEG);
 EEG.bad_channels{1} = EEG.hidden_channels;
 
 % remove bad channels and trials
-EEG = pop_select(EEG, 'nochannel', EEG.bad_channels);
+EEG = pop_select(EEG, 'nochannel', EEG.bad_channels{1});
 
 % mark the start and end of bad segments using event 1 and event 2
-EEG.bad_segments = [cell2mat(EEG.csc_event_data(1:3, 2)), ...
+EEG.bad_segments{1} = [cell2mat(EEG.csc_event_data(1:3, 2)), ...
     cell2mat(EEG.csc_event_data(4:6, 2))];
-EEG = pop_select(EEG, 'nopoint', EEG.bad_segments);
+EEG = pop_select(EEG, 'nopoint', EEG.bad_segments{1});
    
 
 % ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
