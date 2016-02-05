@@ -12,9 +12,9 @@ Scale_theta = (centfrq('morl')./FreqRange) * Info.Recording.sRate;
 % initialise the wavelet data (single to save memory)
 Channels_Theta = single(zeros(size(Data.Raw)));
 
-swa_progress_indicator('initialise', 'calculating wavelets');
+if flag_progress; swa_progress_indicator('initialise', 'calculating wavelets'); end
 for n = 1 : size(Data.Raw, 1)
-    swa_progress_indicator('update', n, size(Data.Raw, 1));
+    if flag_progress; swa_progress_indicator('update', n, size(Data.Raw, 1)); end
     Channels_Theta(n, :) = mean(cwt(Data.Raw(n, :), Scale_theta, 'morl'));
 end
 

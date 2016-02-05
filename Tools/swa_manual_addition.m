@@ -1,4 +1,5 @@
-function [SW, new_ind] = swa_manual_addition(Data, Info, SW, sample_point, SW_type)
+function [SW, new_ind] = swa_manual_addition(Data, Info, SW,...
+    sample_point, SW_type)
 % wave parameters are calculated from manually selected sample point
 
 switch SW_type
@@ -170,11 +171,17 @@ if min(abs([SW.Ref_PeakInd] - sample_point)) ...
     return;
 end
 
-% extract a smaller segment of data
+% define window of interest
 window = round(0.25 * Info.Recording.sRate);
 
-% TODO: which reference to use | default to central (2)
-ref_wave = 2;
+% determine the likely best reference to use
+sample_range = sample_point - window : sample_point + window;
+[MNP_min, MNP_ind] = min(Data.CWT{1}(:, sample_range)');
+
+% ref wave is strongest negative peak normalised by distance from click
+[~, ref_wave] = min(MNP_min./ abs(MNP_ind - window));
+
+% extract a smaller segment of data
 Data_segment.STRef = Data.STRef(ref_wave, sample_point - window : sample_point + window);
 Data_segment.CWT = Data.CWT{1}(ref_wave, sample_point - window : sample_point + window);
 
@@ -185,33 +192,42 @@ data_slope  = [0, diff(Data_segment.CWT, 1, 2)];
 MNP  = find(diff(sign(data_slope)) == 2);
 [~, min_ind] = min(abs(MNP - window));
 
+% new sample point adjusted
 sample_point = sample_point - window + MNP(min_ind);
-  
+sample_range = sample_point - window : sample_point + window;
+
 % get all the data based on new sample point
-Data_segment.Raw = Data.Raw(:, sample_point - window : sample_point + window);
-Data_segment.STRef = Data.STRef(2, sample_point - window : sample_point + window);
-Data_segment.CWT = cellfun(@(x) x(2, sample_point - window : sample_point + window),...
+Data_segment.Raw = Data.Raw(:, sample_range);
+Data_segment.STRef = Data.STRef(2, sample_range);
+Data_segment.CWT = cellfun(@(x) x(2, sample_range),...
     Data.CWT, 'UniformOutput', false);
 
 % calculate the slope of the data
 slopeData = [0 diff(Data_segment.STRef(1, :))];
 slopeCWT  = [0 diff(Data_segment.CWT{1}(1, :))];
 
-refMNP  = find(diff(sign(slopeData)) == 2); 
-refMPP  = find(diff(sign(slopeData)) == -2);
-MNP     = find(diff(sign(slopeCWT)) == 2); 
-MPP     = find(diff(sign(slopeCWT)) == -2);
-
-% if there is no MNP make them at the edges of the window
-if isempty(MPP)
-    MPP(1) = 1;
-    MPP(2) = window * 2 + 1;
-end
+refMNP = find(diff(sign(slopeData)) == 2); 
+refMPP = find(diff(sign(slopeData)) == -2);
+MNP = find(diff(sign(slopeCWT)) == 2); 
+all_MPP = find(diff(sign(slopeCWT)) == -2);
 
 % find MNP closest to click point
 if length(MNP) > 1
     [a, b] = min(abs(MNP - window));
     MNP = MNP(b);
+end
+
+% find the nearest MPP around the MNP
+MPP = nan(1, 2);
+if isempty(max(all_MPP(all_MPP < MNP) - window) + window)
+    MPP(1) = 1;
+else
+    MPP(1) = max(all_MPP(all_MPP < MNP) - window) + window;
+end
+if isempty(max(all_MPP(all_MPP > MNP) - window) + window)
+    MPP(2) = window * 2;
+else
+    MPP(2) = max(all_MPP(all_MPP > MNP) - window) + window;
 end
 
 % check the MPPs
@@ -225,7 +241,14 @@ elseif length(MPP) == 1
         MPP(2) = MPP(1);
         MPP(1) = 1;
     end
-    % TODO: check if more than 2
+elseif length(MPP) > 2
+    % find closest before MNP
+    [a, b] = max(MPP(MPP < MNP) - MNP);
+    MPP(1) = MPP(b);
+    % find closest after MNP
+    [a, b] = min(MPP(MPP > MNP) - MNP);
+    MPP(2) = MNP + a;
+    MPP(3 : end) = [];
 end
 
 % peak to peak amp
@@ -243,7 +266,7 @@ ThetaAlpha = max(MPP2MNP, MNP2MPP) / AlphaAmp;
 
 % find notches over minimal amplitude criterion
 nPeaks = refMNP(refMNP > MPP(1) & refMNP < MPP(2));
-pPeaks = refMPP(refMNP > MPP(1) & refMNP < MPP(2));
+pPeaks = refMPP(refMPP > MPP(1) & refMPP < MPP(2));
 
 % check for some negative peak in the data window
 if isempty(nPeaks)
@@ -271,9 +294,15 @@ for n = 1 : length(nPeaks);
     notches(end + 1) = nPeaks(n);
 end
 
+% check if SW is empty
+if isempty(SW(1).CWT_Start)
+    SWid = 1;
+else
+    SWid = length(SW) + 1;
+end
+
 % save all the variables
-SWid = length(SW) + 1;
-SW(SWid).Ref_Region          = 2;
+SW(SWid).Ref_Region          = ref_wave;
 SW(SWid).Ref_StartInd        = Ref_StartId + MPP(1);
 SW(SWid).Ref_PeakInd         = Ref_NegPeakId + MPP(1);
 SW(SWid).Ref_EndInd          = Ref_PosPeakId + MNP(1);
