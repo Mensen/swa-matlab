@@ -132,7 +132,7 @@ handles.Ex_SWPlot = uicontrol(...
 set(handles.Ex_SWPlot, 'Callback', @edit_SWPlot)
 
 handles.Title_Delay = uicontrol(...
-    'Parent',   handles.fig,...    ,...
+    'Parent',   handles.fig,...    
     'value', 1 ,...
     'Style',    'text',...    
     'Units',    'normalized',...
@@ -157,6 +157,22 @@ handles.Ex_Delay = uicontrol(...
     'FontName', 'Century Gothic',...
     'FontSize', 11);
 set(handles.Ex_Delay, 'Callback', @pb_XDelay_Callback)
+
+% csc plotter pushbutton
+handles.Ex_Channel_Plot = uicontrol(...
+    'Parent',   handles.fig,...
+    'Style',    'pushbutton',...
+    'String',   'csc',...
+    'Units',    'normalized',...
+    'Position', [0.93 0.925 0.02 0.02],...
+    'FontName', 'Century Gothic',...
+    'FontSize', 11,...
+    'enable', 'off');
+if exist('csc_eeg_plotter', 'file')
+    set(handles.Ex_Channel_Plot, 'enable', 'on');
+    set(handles.Ex_Channel_Plot, 'Callback', @pb_XChannel_Callback)
+end
+
 
 % Checkboxes for Delay
 % ^^^^^^^^^^^^^^^^^^^^
@@ -824,7 +840,6 @@ else
     end
 end
 
-
 function handles = update_SWDelay(handles, nFigure)
 % plot the delay/involvement map
 
@@ -976,6 +991,39 @@ type = handles.java.options_list(axes_number).getSelectedItem;
 swa_wave_summary(handles.SW, handles.Info,...
     type, 1);
 
+function pb_XChannel_Callback(object, ~)
+
+% get the gui handles
+handles = guidata(object);
+
+% get the name of the original set file
+set_file = [handles.Info.Recording.dataFile(1 : end-3), 'set'];
+
+% load the EEG (might be inefficient since data is already loaded from swa)
+EEG = pop_loadset(set_file);
+
+% check for new reference
+EEG = pop_reref(EEG, [handles.Info.Recording.new_reference]);
+
+% delete csc info if present
+if isfield(EEG, 'csc_event_data')
+    EEG = rmfield(EEG, {'csc_montage', 'csc_event_data'});
+end
+
+% create the current saw tooth waves as events
+% pre-allocate the event data
+no_events = length(handles.SW);
+EEG.csc_event_data = cell(sum(no_events), 3);
+
+% deal standard names
+[EEG.csc_event_data(:, 1)] = deal({'ST'});
+[EEG.csc_event_data(:, 3)] = deal({2});
+
+% get latencies into seconds
+all_latencies = [handles.SW.Ref_PeakInd]' / EEG.srate;
+[EEG.csc_event_data(:, 2)] = deal(num2cell(all_latencies));
+
+EEG = csc_eeg_plotter(EEG);
 
 
 % Manually Edit Waves
