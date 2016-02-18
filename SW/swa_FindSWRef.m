@@ -244,7 +244,7 @@ for ref_wave = 1:number_ref_waves
                 end
                 % calculate the positive peak after the zero crossing
                 PosPeakAmp = max(Data.SWRef(ref_wave, sample_range));
-                if strcmp(Info.Parameters.Ref_Method, 'MDC')
+                if strcmp(Info.Parameters.Ref_Method, {'diamond', 'square'})
                     if PosPeakAmp - NegPeakAmp < Info.Parameters.Ref_Peak2Peak
                         continue;
                     end
