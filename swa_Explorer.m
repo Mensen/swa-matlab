@@ -655,10 +655,20 @@ for n = 1:2
     
     if strcmp(selected_label, 'All')
         data_to_plot{n} = Data.Raw(:, range);
+        
     elseif strcmp(selected_label, 'Ref')
-        data_to_plot{n} = Data.SWRef(:, range);
+        % check which reference wave to plot
+        switch handles.SW_Type
+            case 'SW'
+                data_to_plot{n} = mean(Data.SWRef(:, range), 1);
+            case 'SS'
+                data_to_plot{n} = mean(Data.SSRef(:, range), 1);
+            case 'ST'
+                data_to_plot{n} = mean(Data.STRef(:, range), 1);
+        end
+        
     else
-        Ch = handles.java.ChannelBox(n).getSelectedIndex()+1;
+        Ch = handles.java.ChannelBox(n).getSelectedIndex() + 1;
         data_to_plot{n} = Data.Raw(Ch, range);
     end
 end
@@ -1037,14 +1047,20 @@ Data = getappdata(handles.fig, 'Data');
 nSW = handles.java.Spinner.getValue();
 
 % Calculate the range
-if strcmp(handles.SW_Type, 'SS')
-    winLength = floor((2 * handles.Info.Recording.sRate - handles.SW(nSW).Ref_Length) / 2);
-    range = handles.SW(nSW).Ref_Start - winLength  :  handles.SW(nSW).Ref_End + winLength;
-else
-    winLength = floor(2*handles.Info.Recording.sRate);
-    range = handles.SW(nSW).Ref_PeakInd - winLength  :  handles.SW(nSW).Ref_PeakInd + winLength;
+switch handles.SW_Type
+    case 'SW'
+        winLength = floor(2 * handles.Info.Recording.sRate);
+        range = handles.SW(nSW).Ref_PeakInd - winLength  :  handles.SW(nSW).Ref_PeakInd + winLength;
+    case 'SS'
+        winLength = floor((2 * handles.Info.Recording.sRate - handles.SW(nSW).Ref_Length) / 2);
+        range = handles.SW(nSW).Ref_Start - winLength  :  handles.SW(nSW).Ref_End + winLength;
+    case 'ST'
+        winLength = floor(1 * handles.Info.Recording.sRate);
+        range = handles.SW(nSW).Ref_PeakInd - winLength  :  handles.SW(nSW).Ref_PeakInd + winLength;
 end
-range(range<1) = [];
+
+% check that the range is within data limits (set to sample 1 if not)
+range(range < 1 | range > size(Data.Raw, 2)) = 1;
 xaxis = range./handles.Info.Recording.sRate;
 
 % Prepare Figure
