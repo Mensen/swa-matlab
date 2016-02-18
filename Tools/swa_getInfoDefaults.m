@@ -47,7 +47,7 @@ switch type
                 Info.Parameters.Ref_Method = 'Envelope';
 
             case 'mdc'
-                Info.Parameters.Ref_Method = 'MDC';
+                Info.Parameters.Ref_Method = 'diamond';
                 Info.Parameters.Ref_AmplitudeCriteria = 'absolute';
                 Info.Parameters.Ref_InspectionPoint = 'ZC';
                 Info.Parameters.Ref_AmplitudeAbsolute = 80;
