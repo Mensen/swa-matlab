@@ -1,12 +1,17 @@
 function [SW, new_ind] = swa_manual_addition(Data, Info, SW,...
-    sample_point, SW_type)
+    sample_point, SW_type, flag_channels)
 % wave parameters are calculated from manually selected sample point
+% TODO: Channel detection still needs a lot of work
+
+if nargin < 6
+    flag_channels = true;
+end
 
 switch SW_type
     case 'SW'
         [SW, new_ind] = add_SW(Data, Info, SW, sample_point);
     case 'ST'
-        [SW, new_ind] = add_ST(Data, Info, SW, sample_point);
+        [SW, new_ind] = add_ST(Data, Info, SW, sample_point, flag_channels);
 end
 
 function [SW, new_ind] = add_SW(Data, Info, SW, sample_point)
@@ -158,7 +163,7 @@ SW = SW(sortId);
 new_ind = find(sortId == SWid);
 
 
-function [SW, new_ind] = add_ST(Data, Info, SW, sample_point)
+function [SW, new_ind] = add_ST(Data, Info, SW, sample_point, flag_channels)
 
 % define output in case of error
 new_ind = [];
@@ -316,8 +321,20 @@ SW(SWid).CWT_End             = MPP(2);
 SW(SWid).CWT_PeakToPeak      = MNP2MPP;
 SW(SWid).CWT_ThetaAlpha      = ThetaAlpha;
 
-
 % find the corresponding channels
+if ~flag_channels
+    % adjust the reference points using the sampling_point and window
+    SW(SWid).Ref_StartInd = SW(SWid).Ref_StartInd + sample_point - window;
+    SW(SWid).Ref_PeakInd = SW(SWid).Ref_PeakInd + sample_point - window;
+    SW(SWid).Ref_EndInd = SW(SWid).Ref_EndInd + sample_point - window;
+    
+    SW(SWid).CWT_Start = SW(SWid).CWT_Start + sample_point - window;
+    SW(SWid).CWT_End = SW(SWid).CWT_End + sample_point - window;
+    SW(SWid).CWT_NegativePeak = SW(SWid).CWT_NegativePeak + sample_point - window;
+    
+    return
+end
+
 [~, ~, temp_SW]    = swa_FindSTChannels (Data_segment, Info, SW(SWid), 0);
 
 if isempty(temp_SW)
@@ -343,6 +360,7 @@ SW(SWid).CWT_NegativePeak = SW(SWid).CWT_NegativePeak + sample_point - window;
 [Info, SW] = swa_FindSTTravelling(Info, SW, SWid);
 
 
+% -- Burst Calculation -- %
 % re-order the SW structure by timing
 [~, sortId] = sort([SW.Ref_PeakInd]);
 SW = SW(sortId);
