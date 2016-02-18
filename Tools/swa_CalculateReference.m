@@ -20,6 +20,8 @@ end
 % switch reference parameter to lowercase for compatibility
 Info.Parameters.Ref_Method = lower(Info.Parameters.Ref_Method);
 
+fprintf(1, 'Calculating: Canonical wave (%s) \n', Info.Parameters.Ref_Method);
+
 switch Info.Parameters.Ref_Method
     
     case 'envelope'
@@ -39,15 +41,14 @@ switch Info.Parameters.Ref_Method
         
         % Calculate distance from center...
         distances = (x.^2+y.^2).^0.5;
-        insideCh = distances<0.35; %0.35 out of max 0.5 distance from center
+        insideCh = distances < 0.35; %0.35 out of max 0.5 distance from center
         
-        data = data(insideCh,:);
+        data = data(insideCh, :);
         
     end
 
     % get the most negative channels for each sample
     % ``````````````````````````````````````````````
-    fprintf(1, 'Calculation: Negative Envelope \n');
     % Sort each sample to find the lowest values for each time point
     rData   = sort(data);
     % How many channels are the 97.5th percentile (or if < 3 = 3)
@@ -60,7 +61,7 @@ switch Info.Parameters.Ref_Method
         nData = mean(rData(1:nCh,:));
     end
 
-    case 'mdc'
+    case {'square', 'diamond'}
         % Get the electrodes in the four regions
         Th = pi/180*[Info.Electrodes.theta];        % Calculate theta values from x,y,z e_loc
         Rd = [Info.Electrodes.radius];              % Calculate radian values from x,y,z e_loc
@@ -69,12 +70,22 @@ switch Info.Parameters.Ref_Method
         y = Rd.*sin(Th);                            % Calculate 2D projected Y
         
         % Squeeze the coordinates into a -0.5 to 0.5 box
-        intrad = min(1.0,max(abs(Rd))); intrad = max(intrad,0.5); squeezefac = 0.5/intrad;
-        x = x*squeezefac; y = y*squeezefac;
+        intrad = min(1.0,max(abs(Rd))); intrad = max(intrad,0.5); 
+        squeezefac = 0.5/intrad;
+        x = x * squeezefac; y = y * squeezefac;
         
-        r = 0.2; % x and y distance from the center in each direction
-        RegionCenters = [-r, -r, r,  r;...
-                          r, -r, -r, r];
+        distance_from_center = 0.2; % x and y distance from the center in each direction
+        circle_radius = 0.175;
+        switch Info.Parameters.Ref_Method
+            case 'square'
+                RegionCenters = [...
+                    -distance_from_center, -distance_from_center, distance_from_center,  distance_from_center;...
+                    distance_from_center, -distance_from_center, -distance_from_center, distance_from_center];
+            case 'diamond'
+                RegionCenters = [...
+                    distance_from_center, 0, 0, -distance_from_center;...
+                    0, distance_from_center -distance_from_center, 0];
+        end
         
         nData = zeros(4,size(data,2));  
         if flag_plot
@@ -86,10 +97,12 @@ switch Info.Parameters.Ref_Method
                 'markerEdgeColor', [0.5, 0.5, 0.5],...
                 'markerFaceColor', [0.5, 0.5, 0.5]);
         end
-        for i = 1:4 % Each of the four regions
-            distances = ((x+RegionCenters(1,i)).^2 + (y+RegionCenters(2,i)).^2).^0.5;
-            insideCh = distances < 0.175; % 0.2 captures distinct regions
-            nData(i,:) = mean(data(insideCh, :));
+        for n = 1 : 4 % Each of the four regions
+            distances = ((x + RegionCenters(1, n)).^ 2 ...
+                + (y + RegionCenters(2, n)).^ 2).^ 0.5;
+            insideCh = distances < circle_radius;
+            nData(n, :) = mean(data(insideCh, :), 1);
+            
             % plot the regions
             if flag_plot;
                 scatter(y(insideCh),x(insideCh), 90, ...
@@ -99,6 +112,9 @@ switch Info.Parameters.Ref_Method
         end
     
     case 'central'
+        
+        circle_radius = 0.175;
+
         
         % Get the electrodes in the four regions
         Th = pi/180*[Info.Electrodes.theta];        % Calculate theta values from x,y,z e_loc
@@ -112,14 +128,17 @@ switch Info.Parameters.Ref_Method
         x = x*squeezefac; y = y*squeezefac;
         
         distances = (x.^2 + y.^2).^0.5;
-        insideCh = distances < 0.15;
+        insideCh = distances < circle_radius;
         fprintf(1, 'Information: Central using %i channels for reference \n', sum(insideCh));
         % figure('color', 'w'); scatter(y,x); hold on; scatter(y(insideCh),x(insideCh), 'r', 'MarkerFaceColor','r'); axis off;
-        nData = mean(data(insideCh,:));
+        nData = mean(data(insideCh,:), 1);
         
         
     case 'midline'
 
+        distance_from_center = 0.25; % y distance from the center in each direction (25%, 50%, 75% of midline)
+        circle_radius = 0.125;
+        
         % Get the electrodes in the three regions
         Th = pi/180*[Info.Electrodes.theta];        % Calculate theta values from x,y,z e_loc
         Rd = [Info.Electrodes.radius];              % Calculate radian values from x,y,z e_loc
@@ -131,15 +150,14 @@ switch Info.Parameters.Ref_Method
         intrad = min(1.0,max(abs(Rd))); intrad = max(intrad,0.5); squeezefac = 0.5/intrad;
         x = x*squeezefac; y = y*squeezefac;
         
-        r = 0.25; % y distance from the center in each direction (25%, 50%, 75% of midline)
-        RegionCenters = [-r,0, +r; 0,0,0];
+        RegionCenters = [-distance_from_center,0, +distance_from_center; 0,0,0];
         
         nData = zeros(3,size(data,2));              
-        for i = 1:3 % Each of the three regions
-            distances = ((x+RegionCenters(1,i)).^2 + (y+RegionCenters(2,i)).^2).^0.5;
-            insideCh = distances<0.1; %0.2 captures distinct regions
+        for n = 1:3 % Each of the three regions
+            distances = ((x+RegionCenters(1,n)).^2 + (y+RegionCenters(2,n)).^2).^0.5;
+            insideCh = distances < circle_radius; %0.2 captures distinct regions
 %             figure('color', 'w'); scatter(y,x); hold on; scatter(y(insideCh),x(insideCh), 'r', 'MarkerFaceColor','r'); axis off;
-            nData(i,:) = mean(data(insideCh,:));            
+            nData(n, :) = mean(data(insideCh, :), 1);            
         end
 
     otherwise
