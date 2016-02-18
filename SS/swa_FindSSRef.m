@@ -73,8 +73,8 @@ for ref_wave = 1 : size(Data.SSRef, 1)
         scale_full, 'morl'), 1);
     
     % filter window
-    window = ones((Info.Parameters.Filter_Window * Info.Recording.sRate), 1) /...
-        (Info.Parameters.Filter_Window * Info.Recording.sRate);
+    window = ones(floor(Info.Parameters.Filter_Window * Info.Recording.sRate), 1) /...
+        floor(Info.Parameters.Filter_Window * Info.Recording.sRate);
 
     % root mean square
     Data.CWT{1}(ref_wave,:) = cwtData.^ 2;
