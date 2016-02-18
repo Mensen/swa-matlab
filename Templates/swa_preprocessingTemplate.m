@@ -45,8 +45,83 @@ clear all; clc;
 EEG = pop_loadset();
 
 % filter the data
-EEG = pop_eegfiltnew(EEG, 0.3, 30, [], 0, [], 0);
+EEG = pop_eegfiltnew(EEG, 1, 30, [], 0, [], 0);
 
+% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
+% using the csc_eeg_plotter to mark bad channels and events
+% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+% in the plotter clear events and use event 1 and event 2 to mark start and
+% end boundaries of artefact periods
+EEG = csc_eeg_plotter(EEG);
+EEG.bad_channels{1} = EEG.hidden_channels;
+
+% remove bad channels and trials
+EEG = pop_select(EEG, 'nochannel', EEG.bad_channels{1});
+
+% remove epochs
+event_starts = cellfun(@(x) strcmp(x, 'event 1'), EEG.csc_event_data(:, 1));
+
+% sanity check for artifact event markers
+if sum(event_starts) ~= sum(~event_starts)
+   fprintf('\nWarning: uneven number of events, check event_data\n'); 
+end
+
+% use EEGLAB to remove the points
+EEG.bad_segments{1} = [cell2mat(EEG.csc_event_data(event_starts, 2)), ...
+    cell2mat(EEG.csc_event_data(~event_starts, 2))];
+
+% convert the timing from seconds to samples
+EEG.bad_segments{1} = floor(EEG.bad_segments{1} * EEG.srate);
+
+% use EEGLAB to remove the regions
+EEG = pop_select(EEG, 'nopoint', EEG.bad_segments{1});
+
+% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+% independent components analysis 
+% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+% run ICA
+EEG = pop_runica(EEG,...
+    'icatype', 'binica', ...
+    'extended', 1,...
+    'interupt', 'off');
+
+% or use the csc_eeg_tools and use the ica option
+% remove the components (best to do using plot component properties in the GUI)
+csc_eeg_plotter(EEG);
+EEG.good_components = csc_component_plot(EEG);
+
+% save the data so componont removal can be quickly reproduced
+EEG = pop_saveset(EEG);
+
+% pop_prop changes the local EEG variable automatically when marked as reject
+EEG = pop_subcomp( EEG , find(~EEG.good_components));
+EEG = eeg_checkset(EEG);
+
+
+% interpolate the removed channels
+% ````````````````````````````````
+[previousFile, previousPath] = uigetfile('*.set');
+previousEEG = load(fullfile(previousPath, previousFile), '-mat');
+EEG = eeg_interp(EEG, previousEEG.EEG.chanlocs);
+
+% change reference
+% ````````````````
+% average reference
+EEG = pop_reref( EEG, [],...
+    'refloc', EEG.chaninfo.nodatchans(:));
+
+% linked mastoid
+% mastoids = [94, 190];
+% EEG = pop_reref(EEG, mastoids);
+
+% save the data
+% `````````````
+EEG = pop_saveset(EEG);
+
+
+% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
+% using eeglab to mark bad channels and events
+% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 % removing bad data
 % `````````````````
 % take a look at the data manually
@@ -108,22 +183,7 @@ EEG = pop_eegfiltnew(EEG, 0.3, 30, [], 0, [], 0);
     
 % remove the bad_regions
     EEG = pop_select(EEG, 'nopoint', EEG.bad_regions);
-
-
-% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
-% or using the csc_eeg_plotter to mark bad channels and events
-% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-EEG = csc_eeg_plotter(EEG);
-EEG.bad_channels{1} = EEG.hidden_channels;
-
-% remove bad channels and trials
-EEG = pop_select(EEG, 'nochannel', EEG.bad_channels{1});
-
-% mark the start and end of bad segments using event 1 and event 2
-EEG.bad_segments{1} = [cell2mat(EEG.csc_event_data(1:3, 2)), ...
-    cell2mat(EEG.csc_event_data(4:6, 2))];
-EEG = pop_select(EEG, 'nopoint', EEG.bad_segments{1});
-   
+ 
 
 % ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 % independent components analysis 
