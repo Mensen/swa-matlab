@@ -811,6 +811,17 @@ switch eventdata.Key
             [value * -1, 0] * (EEG.swa_scoring.display_channels + 1))
         updateAxes(handles)
         
+    case 'g'
+        % get the current status
+        current_status = get(handles.gridlines(1), 'visible');
+        
+        switch current_status
+            case 'on'
+                set(handles.gridlines, 'visible', 'off');
+            case 'off'
+                set(handles.gridlines, 'visible', 'on');
+        end
+                
 end
 
 % sleep staging
