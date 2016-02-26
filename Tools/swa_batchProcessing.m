@@ -45,12 +45,12 @@ for n = 1:length(fileList)
     [Data, Info] = swa_convertFromEEGLAB([fileName, ext], filePath);
 
     % get the default parameters
-    Info = swa_getInfoDefaults(Info, 'SW', 'envelope');
+    Info = swa_getInfoDefaults(Info, 'SW', 'mdc');
 
-%     % change the defaults
-%     [Data, Info] = swa_changeReference(Data, Info)
-%     Info.Parameters.Ref_Method = 'MDC';
-    
+    % change the defaults
+    [Data, Info] = swa_changeReference(Data, Info);
+    Info.Parameters.Ref_Method = 'diamond';
+    Info.Parameters.Channels_Threshold = 0.60;   
 
     % find the waves
     [Data.SWRef, Info]  = swa_CalculateReference (Data.Raw, Info);
@@ -69,20 +69,8 @@ for n = 1:length(fileList)
 
     if save_file
         % save the results
-        % ````````````````
-        % Replace the data with a file pointer if drive space is a concern
-        Data.Raw = Info.Recording.dataFile;
-
-        % Save filtered to a simple binary file (like fdt)
-        filteredName = [Info.Recording.dataFile(1:end-4), '_filtered.fdt'];
-        if ~exist(filteredName, 'file')
-            swa_save_data(Data.Filtered, fullfile(filePath, filteredName));
-        end
-        Data.Filtered = filteredName;
-
-        % save the data, info and sw files themselves into simple mat
-        saveFile = ['swaFile_', fileName, save_ext, '.mat'];
-        save(fullfile(filePath, saveFile), 'Data', 'Info', 'SW', '-mat');
+        saveFile = ['swaFile_', fileName, '.mat'];
+        swa_saveOutput(Data, Info, SW, saveFile, 1, 0)
     end
 
     if save_output & ~isempty(SW) 
