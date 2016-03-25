@@ -162,7 +162,6 @@ SW = SW(sortId);
 
 new_ind = find(sortId == SWid);
 
-
 function [SW, new_ind] = add_ST(Data, Info, SW, sample_point, flag_channels)
 
 % define output in case of error

@@ -241,7 +241,7 @@ switch type
         end
 
     case 'topo_density'
-        output  = zeros(Info.Recording.dataDim(1),1);
+        output  = zeros(size(SW(1).Channels_Active));
         for n = 1:length(SW)
             output(SW(n).Channels_Active)       = output(SW(n).Channels_Active) +1;
         end
