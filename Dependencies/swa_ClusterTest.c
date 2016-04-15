@@ -133,7 +133,7 @@ thresh = (double*)mxGetPr(prhs[2]);
 ndim = mxGetNumberOfDimensions(prhs[0]);
 ndim2 = mxGetNumberOfDimensions(prhs[1]);
 if (ndim!=2 || ndim2!=2)
-  mxErrMsgTxt("Inputs should be 2D");
+  mexErrMsgTxt("Inputs should be 2D");
 
 dims = mxGetDimensions(prhs[0]);
 dims2 = mxGetDimensions(prhs[1]);
