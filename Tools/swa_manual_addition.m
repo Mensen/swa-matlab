@@ -42,7 +42,7 @@ MNP  = find(diff(sign(data_slope)) == 2);
 sample_point = sample_point - window + MNP(min_ind);
 
 % get all the data based on new sample point
-Data_segment.Raw = Data.Raw(:, sample_point - window : sample_point + window);
+Data_segment.Raw = double(Data.Raw(:, sample_point - window : sample_point + window));
 Data_segment.SWRef = Data.SWRef(1, sample_point - window : sample_point + window);
 
 % calculate the slope of the data
