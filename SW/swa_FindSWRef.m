@@ -82,7 +82,8 @@ for ref_wave = 1:number_ref_waves
             Info.Parameters.Ref_AmplitudeAbsolute(ref_wave) = ...
                 (Info.Recording.Data_Deviation(ref_wave) * Info.Parameters.Ref_AmplitudeRelative)...
                 + abs(median(Data.SWRef(ref_wave, MNP)));
-            fprintf(1, 'Calculation: Amplitude threshold set to %.1fuV\n', Info.Parameters.Ref_AmplitudeAbsolute);
+            fprintf(1, 'Calculation: Amplitude threshold set to %.1fuV for canonical wave %i\n',...
+                Info.Parameters.Ref_AmplitudeAbsolute(ref_wave), ref_wave);
             
         case 'absolute'
             % calculate deviations from mean activity
