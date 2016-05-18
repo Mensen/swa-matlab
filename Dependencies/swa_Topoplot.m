@@ -162,8 +162,11 @@ if exist('colorlimits', 'var')
 end
 
 % Adjust the contour lines to account for the minimum and maximum difference in values
-LevelList   = linspace(min(DelayMap(:)), max(DelayMap(:)), NumContours);
-
+if isnan(min(DelayMap(:)))
+    LevelList = [];
+else
+    LevelList   = linspace(min(DelayMap(:)), max(DelayMap(:)), NumContours);
+end
 
 %% Plot the contour map
 if PlotContour == 1
