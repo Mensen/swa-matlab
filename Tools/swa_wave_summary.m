@@ -353,7 +353,22 @@ switch type
                 'markerFaceColor', [0.8, 0.8, 0.8]);
         end
         
-        %TODO: correlation between MPP->MNP || MNP->MPP
+    case 'topo_amplitude'
+        
+        output = nanmean([SW.Channels_NegAmp], 2);
+        
+         if makePlot
+            h.plt = swa_Topoplot(...
+                [], Info.Electrodes,...
+                'Data',             output                ,...
+                'GS',               Info.Parameters.Travelling_GS,...
+                'Axes',             h.ax                  ,...
+                'NumContours',      10                     ,...
+                'PlotSurface',      0                     );
+            colormap(flipud(parula));
+         end
+        
+    % TODO: correlation between MPP->MNP || MNP->MPP
         
     otherwise
         fprintf(1, 'Error: %s is not a valid summary type \n', type);
