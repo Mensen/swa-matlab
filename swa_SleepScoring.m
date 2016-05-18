@@ -1194,9 +1194,9 @@ EEG     = getappdata(handles.fig, 'EEG');
 
 % set the channel options in the pop-menu
 try
-    set([H.pmCh; H.pmRe], 'String', {EEG.urchanlocs.labels}')
-catch
     set([H.pmCh; H.pmRe], 'String', {EEG.chanlocs.labels}')
+catch
+    set([H.pmCh; H.pmRe], 'String', {EEG.urchanlocs.labels}')
 end
 
 % check if the input already has these files and change them
