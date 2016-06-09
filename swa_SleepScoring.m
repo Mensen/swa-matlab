@@ -585,9 +585,15 @@ current_epoch  = get(handles.current_epoch, 'value');
 range   = (current_epoch*samples_in_epoch-(samples_in_epoch-1)):(current_epoch*samples_in_epoch);
 
 % rereference the data
-data = eegData(EEG.swa_scoring.montage.channels(:,1),range)...
-     - eegData(EEG.swa_scoring.montage.channels(:,2),range);
-          
+negative_up = false;
+if negative_up
+    data = eegData(EEG.swa_scoring.montage.channels(:,2),range)...
+        - eegData(EEG.swa_scoring.montage.channels(:,1),range);
+else
+    data = eegData(EEG.swa_scoring.montage.channels(:,1),range)...
+        - eegData(EEG.swa_scoring.montage.channels(:,2),range);
+end
+ 
 % define accurate spacing
 scale = get(handles.et_Scale, 'value') * -1;
 toAdd = [1:8]' * scale;
