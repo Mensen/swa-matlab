@@ -1268,6 +1268,7 @@ switch handles.SW_Type
         
         % eliminate the old delay map
         handles.SW(nSW).Travelling_DelayMap = [];
+        handles.SW(nSW).Travelling_Streams = [];
         
         % travelling calculation for only the current wave        
         [handles.Info, handles.SW] = swa_FindSTTravelling(handles.Info, handles.SW, nSW);
@@ -1382,6 +1383,12 @@ handles.arrows_Butterfly = text(wave_peaks, ones(1, length(wave_peaks)) * arrow_
 
 % update the handles structure
 guidata(handles.fig, handles);
+
+% check the current wave in case wave was added before
+nSW = handles.java.Spinner.getValue();
+if nSW == new_ind
+    handles.java.Spinner.setValue(nSW + 1);
+end
 
 % set the slider to the newly added wave
 % handles.java.Spinner.setValue(new_ind);
