@@ -47,7 +47,7 @@ else
 end
 
 if flag_progress
-    swa_progress_indicator('initialise', 'calculating streams');
+    swa_progress_indicator('initialise', 'Calculating streams');
 end
 
 for nST = loopRange
