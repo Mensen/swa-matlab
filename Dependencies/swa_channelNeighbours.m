@@ -137,30 +137,10 @@ end
 
 % loop through all the channels
 output = cell(nCh,1);
-for i = 1:nCh
-    
-    % reset the counting variable for the 'if statement' for every channel
-    count = 1;
-    ch = [];
-    
-    % look through all the faces one at a time
-    for j = 1:length(faces)
-        
-       tri = faces(j,:);
-       
-       % see if that particular channel is a member of that face
-       if ismember(i,tri)
-           
-           % if it is then record other channels along with it
-           ch(count,:)   = tri;
-           count         = count + 1;
-           
-       end
-
-    end
-    
-    % eliminate the repeating variables and save the result in a cell
-    output{i} = unique(ch(:))';
+for n = 1 : nCh
+   
+    [r1, ~] = ind2sub(size(faces), find(faces == n));
+    output{n} = unique(faces(r1, :)')';
     
 end
 
@@ -168,14 +148,15 @@ nz=max(cellfun(@numel,output));
 ChN=cell2mat(cellfun(@(a) [a,zeros(1,nz-numel(a))],output,'uni',false));
 
 end
-    %%
-    function d = dist_sph(vec,sensloc)
-        R = vec(end);
-        center = vec(1:end-1);
-        % Average distance between the center if mass and the electrodes
-        diffvert = bsxfun(@minus, sensloc, center);
-        d = mean(abs(sqrt(sum(diffvert.^2,2)) - R));
-    end
+
+
+function d = dist_sph(vec,sensloc)
+R = vec(end);
+center = vec(1:end-1);
+% Average distance between the center if mass and the electrodes
+diffvert = bsxfun(@minus, sensloc, center);
+d = mean(abs(sqrt(sum(diffvert.^2,2)) - R));
+end
 
 
 
