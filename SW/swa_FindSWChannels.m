@@ -140,8 +140,9 @@ switch Info.Parameters.Channels_Detection
             % Cluster Test
             % ````````````
             if Info.Parameters.Channels_ClusterTest
-                % Only take largest single cluster to avoid outliers
-                Clusters = swa_ClusterTest(double(Channels), Info.Recording.ChannelNeighbours, 0.01);
+                % Only take largest single cluster to avoid outliers               
+                Clusters = swa_cluster_test(double(Channels), Info.Recording.ChannelNeighbours, 0.01);
+                Clusters(isnan(Clusters)) = 0;
                 
                 nClusters = unique(Clusters);
                 if length(nClusters) > 2
