@@ -3,30 +3,18 @@
 
 % Importing Data %
 % -------------- %
-% if you have scored the data
-[fileName, filePath] = uigetfile('*.set');
-load(fullfile(filePath, fileName), '-mat');
-keep_samples = EEG.swa_scoring.stages == 2;
-keep_samples(EEG.swa_scoring.arousals) = false;
-EEG = swa_selectStagesEEGLAB(EEG, keep_samples);
-
 % for eeglab files
 [Data, Info] = swa_convertFromEEGLAB();
 
 % or if you have previously analysed some data
 [Data, Info, SS] = swa_load_previous();
 
-% Check for 'N2' name and call it 'Raw'...
-if isfield(Data, 'N2')
-    Data.Raw = Data.N2;
-    Data = rmfield(Data, 'N2');
-end
-
-
 % Spindle Detection %
 % ----------------- %
 % get the default settings for spindle detection
 Info = swa_getInfoDefaults(Info, 'SS');
+
+
 
 % calculate the canonical / reference / prototypical / representative / model / illustrative wave
 [Data.SSRef, Info]  = swa_CalculateReference(Data.Raw, Info);

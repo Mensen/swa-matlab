@@ -17,34 +17,41 @@ if Info.Parameters.Filter_Apply
     end
 end
 
-% parameters for continuous wavelet transform
-freq_range = Info.Parameters.Filter_hPass(1) : 0.5 : Info.Parameters.Filter_lPass(2);
-full_scale = (centfrq('morl')./ freq_range) * Info.Recording.sRate;
+% Wavelet Parameters
+waveName = Info.Parameters.Wavelet_name;
+wavelet_center = centfrq(waveName);
+freqCent = Info.Parameters.Filter_band(1) : 0.5 : Info.Parameters.Filter_band(2);
+scales = wavelet_center./(freqCent./ Info.Recording.sRate);
 
-% filter window
-power_window = ones((Info.Parameters.Filter_Window * Info.Recording.sRate), 1) /...
-    (Info.Parameters.Filter_Window * Info.Recording.sRate);
-    
-% calculate cwt for each channel
-cwtData = zeros(size(Data.Raw));
+% --Continuous Wavelet Transform -- %
+power_data = zeros(size(Data.Raw));
 swa_progress_indicator('initialise', 'channel wavelets');
 for n = 1 : size(Data.Raw, 1)
     swa_progress_indicator('update', n, size(Data.Raw,1));
-    cwtData(n, :) = mean(cwt(Data.Raw(n, :), full_scale, 'morl'));
+    
+    cwtCoeffs = cwt(Data.Raw(n, :), scales, waveName);
+    cwtCoeffs = abs(cwtCoeffs.^ 2);
+    power_data(n, :) = nanmean(cwtCoeffs);
+    
 end
 
-% calculate the power of each cwt
-power_data = cwtData.^ 2;
-power_data = filter(power_window, 1, power_data')';
+% smooth the wavelet power
+window = ones(round(Info.Recording.sRate * Info.Parameters.Filter_Window), 1)...
+    / round(Info.Recording.sRate * Info.Parameters.Filter_Window);
+power_data = filtfilt(window, 1, power_data')';
 
 % calculate individual channel thresholds
+% Calculate power threshold criteria
 if strcmp(Info.Parameters.Ref_AmplitudeCriteria, 'relative')
-    std_wavelets = mad(power_data', 1)';
-    thresholds = (std_wavelets.* Info.Parameters.Ref_AmplitudeRelative * ...
-        Info.Parameters.Channels_Threshold) + median(power_data, 2);
+    % calculate the standard deviation from the median
+    std_wavelet = nanstd(power_data, [], 2);
+    % calculate the absolute threshold for that canonical wave
+    thresholds = ...
+        (std_wavelet * Info.Parameters.Ref_AmplitudeRelative)...
+        + mean(power_data, 2);
 else
-    thresholds = repmat(Info.Parameters.Ref_AmplitudeAbsolute(1) *  Info.Parameters.Channels_Threshold,...
-        size(Data.Raw, 1), 1);
+    thresholds = repmat(Info.Parameters.Ref_AmplitudeAbsolute(1) ...
+        *  Info.Parameters.Channels_Threshold, size(Data.Raw, 1), 1);
 end
 
 % when and for how long does the power cross the threshold

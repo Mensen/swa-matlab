@@ -20,9 +20,9 @@ function [Data, Info, SS] = swa_FindSSRef(Data, Info)
 %% Initialise the SS Structure
 SS = struct(...
     'Ref_Region',               [],...
-    'Ref_Type',                 [],...
     'Ref_Start',                [],...
-    'Ref_End',                  [],...    
+    'Ref_End',                  [],...
+    'Ref_FreqPeak',             [],...
     'Ref_NegativePeak',         [],...
     'Ref_PositivePeak',         [],...
     'Ref_Peak2Peak',            [],...
@@ -48,16 +48,12 @@ if ~isfield(Info, 'Parameters')
 end
 
 % Wavelet Parameters
-frequency_range{1} = Info.Parameters.Filter_hPass(1) : 0.5 : Info.Parameters.Filter_lPass(2);
-frequency_range{2} = Info.Parameters.Filter_hPass(1) : 0.5 : Info.Parameters.Filter_lPass(1);
-frequency_range{3} = Info.Parameters.Filter_hPass(2) : 0.5 : Info.Parameters.Filter_lPass(2);
+waveName = Info.Parameters.Wavelet_name;
+wavelet_center = centfrq(waveName);
+freqCent = Info.Parameters.Filter_band(1) : 0.5 : Info.Parameters.Filter_band(2);
+scales = wavelet_center./(freqCent./ Info.Recording.sRate);
 
-% Get scale values using inverse of pseudo-frequencies
-scale_full = (centfrq('morl')./ frequency_range{1}) * Info.Recording.sRate;
-scale_slow = (centfrq('morl')./ frequency_range{2}) * Info.Recording.sRate;
-scale_fast = (centfrq('morl')./ frequency_range{3}) * Info.Recording.sRate;
-
-%% Loop for each Reference Wave
+% Loop for each Reference Wave
 for ref_wave = 1 : size(Data.SSRef, 1)
     
     % how many spindles have been detected?
@@ -68,26 +64,24 @@ for ref_wave = 1 : size(Data.SSRef, 1)
     end
     
     % --Continuous Wavelet Transform -- %
-    % TODO: normalise the cwt by the scale since power decreases with frequency
-    cwtData = mean(cwt(Data.SSRef(ref_wave,:),...
-        scale_full, 'morl'), 1);
+    cwtCoeffs = cwt(Data.SSRef(ref_wave, :), scales, waveName);
+    cwtCoeffs = abs(cwtCoeffs.^ 2);
+    cwtPower = nanmean(cwtCoeffs);
     
-    % filter window
-    window = ones(floor(Info.Parameters.Filter_Window * Info.Recording.sRate), 1) /...
-        floor(Info.Parameters.Filter_Window * Info.Recording.sRate);
-
-    % root mean square
-    Data.CWT{1}(ref_wave,:) = cwtData.^ 2;
-    Data.CWT{1}(ref_wave,:) = filter(window, 1, Data.CWT{1}(ref_wave, :));
+    % smooth the wavelet power
+    window = ones(round(Info.Recording.sRate * Info.Parameters.Filter_Window), 1)...
+        / round(Info.Recording.sRate * Info.Parameters.Filter_Window);
+    Data.CWT(ref_wave, :) = filtfilt(window, 1, cwtPower);  
     
     % -- Threshold crossings -- %
     % Calculate power threshold criteria
     if strcmp(Info.Parameters.Ref_AmplitudeCriteria, 'relative')
         % calculate the standard deviation from the median
-        std_wavelet = mad(Data.CWT{1}(ref_wave,:), 1);
+        std_wavelet = nanstd(Data.CWT(ref_wave, :), 1);
         % calculate the absolute threshold for that canonical wave
         Info.Parameters.Ref_AmplitudeAbsolute(ref_wave) = ...
-            (std_wavelet * Info.Parameters.Ref_AmplitudeRelative) + median(Data.CWT{1}(ref_wave,:));
+            (std_wavelet * Info.Parameters.Ref_AmplitudeRelative)...
+            + mean(Data.CWT(ref_wave, :));
     else
         % repeat 
         Info.Parameters.Ref_AmplitudeAbsolute = ...
@@ -95,7 +89,7 @@ for ref_wave = 1 : size(Data.SSRef, 1)
     end
     
     % -- Get the times where power data is above threshold --%
-    signData = sign(Data.CWT{1}(ref_wave, :) - Info.Parameters.Ref_AmplitudeAbsolute(ref_wave));
+    signData = sign(Data.CWT(ref_wave, :) - Info.Parameters.Ref_AmplitudeAbsolute(ref_wave));
     power_start = find(diff(signData) == 2);
     power_end = find(diff(signData) == -2);
     
@@ -119,11 +113,12 @@ for ref_wave = 1 : size(Data.SSRef, 1)
     
     % -- find negative troughs in the power signal near the crossings -- %
     % calculate the differential
-    slope_power = [0 diff(Data.CWT{1}(ref_wave, :))];
+    slope_power = [0 diff(Data.CWT(ref_wave, :))];
     % local minima points
     power_MNP = [1, find(diff(sign(slope_power))== 2)];
        
     % Calculate the actual start of the spindle from powerData
+    % TODO: make minimum threshold in case of smooth slope
     actual_start = nan(length(power_start), 1);
     actual_end = nan(length(power_start), 1);
     for n = 1 : length(power_start)
@@ -147,8 +142,9 @@ for ref_wave = 1 : size(Data.SSRef, 1)
     
     % TODO: Check neighbouring frequencies to ensure its spindle specific
 
+    
     % Calculate slope of reference data
-    slope_canonical  = [0 diff(Data.SSRef(ref_wave,:))];
+    slope_canonical  = [0 diff(Data.SSRef(ref_wave, :))];
     
     % Find mid point of all waves calculated so far
     midpoint_SS = [SS.Ref_Start] + [SS.Ref_Length] / 2;
@@ -173,10 +169,25 @@ for ref_wave = 1 : size(Data.SSRef, 1)
             continue;
         end
         
-        % -- check spindle type (fast or slow) -- %
-        slow_data = mean(cwt(Data.SSRef(ref_wave, actual_start(n) : actual_end(n)), scale_slow, 'morl'), 1);
-        fast_data = mean(cwt(Data.SSRef(ref_wave, actual_start(n) : actual_end(n)), scale_fast, 'morl'), 1);
-        [~, type] = max([max(abs(slow_data)), max(abs(fast_data))]);
+        % -- find peak frequency -- %
+        % extract spindle segment with a data buffer
+        spindle_segment = Data.SSRef(ref_wave, ...
+            actual_start(n) - floor(Info.Recording.sRate) / 4 : ...
+            actual_end(n) + floor(Info.Recording.sRate) / 4);
+        
+        % calculate the power spectrum using pwelch
+        [spectrum_segment, freq_range] = pwelch(spindle_segment, ...
+            length(spindle_segment), ...
+            0, ...
+            2 * Info.Recording.sRate,...
+            Info.Recording.sRate);
+        
+        % find the peak in the spindle range
+        [~, max_ind] = max(spectrum_segment(...
+            freq_range >= Info.Parameters.Filter_band(1) & ...
+            freq_range <= Info.Parameters.Filter_band(2)));
+        peak_frequency = Info.Parameters.Filter_band(1) + (max_ind - 1) * 0.5; % because 2s windows in the pwelch
+        
         
         % -- Save Wave to Structure -- %
         % Check if the SS has already been found in another reference channel
@@ -190,7 +201,7 @@ for ref_wave = 1 : size(Data.SSRef, 1)
                     SS(SS_indice).Ref_NegativePeak    =      min(peak_amplitudes);
                     SS(SS_indice).Ref_PositivePeak    =      max(peak_amplitudes);
                     SS(SS_indice).Ref_Peak2Peak       =      peak2peak;
-                    SS(SS_indice).Ref_Type            =      type;
+                    SS(SS_indice).Ref_FreqPeak        =      peak_frequency;
                     SS(SS_indice).Ref_Start           =      actual_start(n);
                     SS(SS_indice).Ref_End             =      actual_end(n);                    
                     SS(SS_indice).Ref_Length          =      SS_lengths(n);
@@ -210,7 +221,7 @@ for ref_wave = 1 : size(Data.SSRef, 1)
         SS(SS_count).Ref_NegativePeak    =      min(peak_amplitudes);
         SS(SS_count).Ref_PositivePeak    =      max(peak_amplitudes);
         SS(SS_count).Ref_Peak2Peak       =      peak2peak;
-        SS(SS_count).Ref_Type            =      type;
+        SS(SS_count).Ref_FreqPeak        =      peak_frequency;
         SS(SS_count).Ref_Start           =      actual_start(n);
         SS(SS_count).Ref_End             =      actual_end(n);
         SS(SS_count).Ref_Length          =      SS_lengths(n);
