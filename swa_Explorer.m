@@ -666,8 +666,8 @@ switch handles.SW_Type
         winLength = floor((30 * handles.Info.Recording.sRate - handles.SW(nSW).Ref_Length) / 2);
         range = handles.SW(nSW).Ref_Start - winLength  :  handles.SW(nSW).Ref_End + winLength;
         
-        wave_peaks = [handles.SW.Ref_Start] + [handles.SW.Ref_Length]./ ...
-            2./ handles.Info.Recording.sRate;
+        wave_peaks = ([handles.SW.Ref_Start] + [handles.SW.Ref_Length]./ ...
+            2) / handles.Info.Recording.sRate;
         start_point = handles.SW(nSW).Ref_Start / handles.Info.Recording.sRate;
         end_point = handles.SW(nSW).Ref_End / handles.Info.Recording.sRate;
 end
@@ -814,9 +814,9 @@ if ~isfield(handles, 'SWPlot')
     switch handles.SW_Type
         case 'SS'
             data_max = ceil(abs(max(max(Data.Raw(handles.SW(nSW).Channels_Active, range))))/10)*10+10;
-            data = Data.CWT{1}(handles.SW(nSW).Ref_Region(1),range);
+            data = Data.CWT(handles.SW(nSW).Ref_Region(1),range);
             handles.SWPlot.CWT(1) = plot(handles.axes_individual_wave,...
-                (data./max(data) * dataMax) - dataMax,...
+                (data./max(data) * data_max) - data_max,...
                 'color', 'b',...
                 'linewidth', 1);
         case 'ST'
@@ -863,7 +863,7 @@ else
     % update the cwt data...
     switch handles.SW_Type
         case 'SS'
-                data = Data.CWT{np}(handles.SW(nSW).Ref_Region(1),range);
+                data = Data.CWT(handles.SW(nSW).Ref_Region(1),range);
                 set(handles.SWPlot.CWT(1),...
                     'yData', (data./max(data) * data_max) - data_max);
         case 'ST'

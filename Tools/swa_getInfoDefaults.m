@@ -89,16 +89,17 @@ switch type
         % Filter Parameters
         Info.Parameters.Filter_Method = 'Chebyshev';      % 'Chebyshev'/'Buttersworth'
         Info.Parameters.Filter_band = [10, 16];
-        Info.Parameters.Filter_checkrange = [3];
+        Info.Parameters.Filter_checkrange = 2;
         Info.Parameters.Filter_Window = 0.150; % length of smoothing window for root mean square of power
         Info.Parameters.Filter_order = 2;
 
         Info.Parameters.Wavelet_name = 'fbsp1-1-3'; % b-spline wavelet; else use 'morl'
         
         % Spindle Criteria       
-        Info.Parameters.Ref_AmplitudeCriteria = 'relative';  % relative/absolute
-        Info.Parameters.Ref_AmplitudeRelative = 3.5;           % Standard deviations from mean negativity
+        Info.Parameters.Ref_AmplitudeCriteria = 'relative'; % relative/absolute
+        Info.Parameters.Ref_AmplitudeRelative = [2, 1];  % Standard deviations from mean negativity [high, low]
         Info.Parameters.Ref_AmplitudeAbsolute = 15;
+        Info.Parameters.Ref_NeighbourRatio = 1; % minimum tolerance for spindle/neighbour power ratio
         
         Info.Parameters.Ref_WaveLength = [0.3 3]; % time above threshold power
         Info.Parameters.Ref_MinWaves = 3; % minimum number of spindle waves
