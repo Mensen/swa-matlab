@@ -813,8 +813,11 @@ if ~isfield(handles, 'SWPlot')
     % plot wavelets
     switch handles.SW_Type
         case 'SS'
-            data_max = ceil(abs(max(max(Data.Raw(handles.SW(nSW).Channels_Active, range))))/10)*10+10;
-            data = Data.CWT(handles.SW(nSW).Ref_Region(1),range);
+            % find the maximum point in the actual data to scale the wavelet power
+            data_max = ceil(abs(max(max(...
+                Data.Raw(handles.SW(nSW).Channels_Active, range))))...
+                / 10) * 10 + 10;
+            data = Data.CWT(handles.SW(nSW).Ref_Region(1), range);
             handles.SWPlot.CWT(1) = plot(handles.axes_individual_wave,...
                 (data./max(data) * data_max) - data_max,...
                 'color', 'b',...
@@ -941,7 +944,8 @@ elseif handles.java.PlotBox.getSelectedIndex() + 1 == 2;
         case 'SW'
             data_to_plot = handles.SW(nSW).Channels_NegAmp;
         case {'SS', 'ST'}
-            data_to_plot = handles.SW(nSW).Channels_Peak2PeakAmp;
+            data_to_plot = handles.SW(nSW).Channels_Power;
+            handles.SW(nSW).Travelling_Streams = [];
     end
     
     swa_Topoplot...
@@ -1312,8 +1316,8 @@ switch handles.SW_Type
         end
         
         % put the peaks back into the SS structure
-        handles.SW(nSW).Channels_Peak2PeakAmp = nan(length(handles.Info.Electrodes),1);
-        handles.SW(nSW).Channels_Peak2PeakAmp(handles.SW(nSW).Channels_Active) = peak2peak;
+        handles.SW(nSW).Channels_Power = nan(length(handles.Info.Electrodes),1);
+        handles.SW(nSW).Channels_Power(handles.SW(nSW).Channels_Active) = peak2peak;
         
     case 'ST'
         % TODO: peak2peak amplitude adjustment for ST

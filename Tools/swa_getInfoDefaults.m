@@ -99,12 +99,13 @@ switch type
         Info.Parameters.Ref_AmplitudeCriteria = 'relative'; % relative/absolute
         Info.Parameters.Ref_AmplitudeRelative = [2, 1];  % Standard deviations from mean negativity [high, low]
         Info.Parameters.Ref_AmplitudeAbsolute = 15;
-        Info.Parameters.Ref_NeighbourRatio = 1; % minimum tolerance for spindle/neighbour power ratio
+        Info.Parameters.Ref_NeighbourRatio = 3; % minimum tolerance for spindle/neighbour power ratio
         
         Info.Parameters.Ref_WaveLength = [0.3 3]; % time above threshold power
         Info.Parameters.Ref_MinWaves = 3; % minimum number of spindle waves
                
-        Info.Parameters.Channels_WinSize = 0.150; % in seconds
-        Info.Parameters.Channels_Threshold = 0.75;
+        Info.Parameters.Channels_Method = 'power'; % wavelet or power (FFT) method
+        Info.Parameters.Channels_WinSize = 0.150; % window around ref spindle to search around (in seconds)
+        Info.Parameters.Channels_Threshold = 0.75; % adjustment to ref criteria
         
 end

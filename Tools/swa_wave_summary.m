@@ -105,7 +105,7 @@ switch type
         if isfield(SW, 'Channels_NegAmp')
             output = min([SW.Channels_NegAmp]);
         else
-            output = max([SW.Channels_Peak2PeakAmp]);
+            output = max([SW.Channels_Power]);
         end
         
         if makePlot
@@ -126,7 +126,7 @@ switch type
             output(1, :)= [SW.Ref_PeakAmp];
             output(2, :)= [SW.Ref_PeakInd];
         else
-            output(1, :)= [SW.Ref_Peak2Peak];
+            output(1, :)= max([SW.Channels_Power]);
             output(2, :)= [SW.Ref_Start];
         end
         
@@ -157,7 +157,7 @@ switch type
             output(1, :)= [SW.Ref_PeakAmp];
             output(2, :)= sum([SW.Channels_Active])/length(SW(1).Channels_Active)*100;
         else
-            output(1, :)= [SW.Ref_Peak2Peak];
+            output(1, :)= max([SW.Channels_Power]);
             output(2, :)= sum([SW.Channels_Active])/length(SW(1).Channels_Active)*100;
         end
 
@@ -360,9 +360,9 @@ switch type
         if isfield(SW, 'Channels_NegAmp')
             % for slow waves
             output = nanmean([SW.Channels_NegAmp], 2);
-        elseif isfield (SW, 'Channels_Peak2PeakAmp')
+        elseif isfield (SW, 'Channels_Power')
             % for saw-tooth waves
-            output = nanmean([SW.Channels_Peak2PeakAmp], 2);
+            output = nanmean([SW.Channels_Power], 2);
         end
         
          if makePlot
@@ -373,7 +373,6 @@ switch type
                 'Axes',             h.ax                  ,...
                 'NumContours',      10                     ,...
                 'PlotSurface',      0                     );
-            colormap(flipud(parula));
          end
         
     % TODO: correlation between MPP->MNP || MNP->MPP
