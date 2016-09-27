@@ -15,7 +15,7 @@ function swa_progress_indicator(type, current, maximum)
 
 switch type
     
-    case {'initialise', 'initialize'}
+    case {'initialise', 'initialize', 'initiate'}
         
         fprintf(1, ['\n', current, ': 00.00 %%']);
         
