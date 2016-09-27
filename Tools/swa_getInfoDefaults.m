@@ -1,7 +1,18 @@
 function Info = swa_getInfoDefaults(Info, type, method)
+% Get the current default detection parameters for slow waves (SW), spindles
+% (SS), or saw-tooth waves (ST)
+
+% 'method' input is only used for slow wave detection where there are distinct
+% defaults for the envelope and "massimini detection criteria" ('mdc');
+
+% check inputs
+if nargin < 3
+    method = 'envelope';
+end
 
 switch type
     case 'SW'
+        
         % filter parameters
         % ^^^^^^^^^^^^^^^^^
         Info.Parameters.Filter_Apply = true;
@@ -12,9 +23,10 @@ switch type
 
         % reference detection        
         % ^^^^^^^^^^^^^^^^^^^
-        Info.Parameters.Ref_Method = [];
-        Info.Parameters.Ref_InspectionPoint = 'MNP';    % 'MNP'/'ZC'
-        Info.Parameters.Ref_UseInside = 1;                % 0/1 Use interior head channels or all
+        Info.Parameters.Ref_Method = []; % canonical wave method ('envelope', 'diamond', 'midline', etc)
+        Info.Parameters.Ref_Electrodes = false; % logical array of electrodes used for each canonical
+        Info.Parameters.Ref_InspectionPoint = 'MNP'; % 'MNP'/'ZC'
+        Info.Parameters.Ref_UseInside = 1; % 0/1 Use interior head channels or all
         Info.Parameters.Ref_UseStages = []; % whether or not to use sleep scoring information
         Info.Parameters.Ref_AmplitudeCriteria = 'relative'; % relative/absolute
         Info.Parameters.Ref_AmplitudeRelative = 5;         % Standard deviations from mean negativity
@@ -61,6 +73,7 @@ switch type
 
         % Reference and Filter Parameters
         Info.Parameters.Ref_Method = 'Midline';
+        Info.Parameters.Ref_Electrodes = []; % logical array of electrodes used for each canonical
         Info.Parameters.Filter_Apply = false; % No filter needed for CWT method...
 
         % Wavelet Parameters for Detection
@@ -84,6 +97,7 @@ switch type
         
         % Reference Parameters
         Info.Parameters.Ref_Method      = 'Midline';
+        Info.Parameters.Ref_Electrodes = []; % logical array of electrodes used for each canonical
         Info.Parameters.Filter_Apply    = false; % No filter needed for CWT method...
                 
         % Filter Parameters

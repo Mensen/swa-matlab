@@ -41,9 +41,9 @@ switch Info.Parameters.Ref_Method
         
         % Calculate distance from center...
         distances = (x.^2+y.^2).^0.5;
-        insideCh = distances < 0.35; %0.35 out of max 0.5 distance from center
+        Info.Parameters.Ref_Electrodes = distances < 0.35; %0.35 out of max 0.5 distance from center
         
-        data = data(insideCh, :);
+        data = data(Info.Parameters.Ref_Electrodes, :);
         
     end
 
@@ -76,6 +76,7 @@ switch Info.Parameters.Ref_Method
         
         distance_from_center = 0.2; % x and y distance from the center in each direction
         circle_radius = 0.175;
+        
         switch Info.Parameters.Ref_Method
             case 'square'
                 RegionCenters = [...
@@ -87,7 +88,6 @@ switch Info.Parameters.Ref_Method
                     0, distance_from_center -distance_from_center, 0];
         end
         
-        nData = zeros(4,size(data,2));  
         if flag_plot
             figure('color', [0.2, 0.2, 0.2]);
             axes('nextplot', 'add', 'Color', 'none');
@@ -97,15 +97,21 @@ switch Info.Parameters.Ref_Method
                 'markerEdgeColor', [0.5, 0.5, 0.5],...
                 'markerFaceColor', [0.5, 0.5, 0.5]);
         end
+        
+        % pre-allocate
+        nData = zeros(4, size(data,2));  
+        Info.Parameters.Ref_Electrodes = false(1, length(x));
+        
         for n = 1 : 4 % Each of the four regions
             distances = ((x + RegionCenters(1, n)).^ 2 ...
                 + (y + RegionCenters(2, n)).^ 2).^ 0.5;
-            insideCh = distances < circle_radius;
-            nData(n, :) = mean(data(insideCh, :), 1);
+            Info.Parameters.Ref_Electrodes(n, :) = distances < circle_radius;
+            nData(n, :) = mean(data(Info.Parameters.Ref_Electrodes(n, :), :), 1);
             
             % plot the regions
             if flag_plot;
-                scatter(y(insideCh),x(insideCh), 90, ...
+                scatter(y(Info.Parameters.Ref_Electrodes(n, :)), ...
+                    x(Info.Parameters.Ref_Electrodes(n, :)), 90, ...
                     'markerEdgeColor', [0.8, 0.8, 0.8],...
                     'markerFaceColor', [0.8, 0.8, 0.8]);
             end
@@ -128,10 +134,11 @@ switch Info.Parameters.Ref_Method
         x = x*squeezefac; y = y*squeezefac;
         
         distances = (x.^2 + y.^2).^0.5;
-        insideCh = distances < circle_radius;
-        fprintf(1, 'Information: Central using %i channels for reference \n', sum(insideCh));
+        Info.Parameters.Ref_Electrodes = distances < circle_radius;
+        fprintf(1, 'Information: Central using %i channels for reference \n',...
+            sum(Info.Parameters.Ref_Electrodes));
         % figure('color', 'w'); scatter(y,x); hold on; scatter(y(insideCh),x(insideCh), 'r', 'MarkerFaceColor','r'); axis off;
-        nData = mean(data(insideCh,:), 1);
+        nData = mean(data(Info.Parameters.Ref_Electrodes, :), 1);
         
         
     case 'midline'
@@ -152,12 +159,15 @@ switch Info.Parameters.Ref_Method
         
         RegionCenters = [-distance_from_center,0, +distance_from_center; 0,0,0];
         
-        nData = zeros(3,size(data,2));              
-        for n = 1:3 % Each of the three regions
+        % pre-allocate
+        nData = zeros(3,size(data,2));  
+        Info.Parameters.Ref_Electrodes = false(1, length(x));
+        
+        for n = 1 : 3 % Each of the three regions
             distances = ((x+RegionCenters(1,n)).^2 + (y+RegionCenters(2,n)).^2).^0.5;
-            insideCh = distances < circle_radius; %0.2 captures distinct regions
+            Info.Parameters.Ref_Electrodes(n, :) = distances < circle_radius; %0.2 captures distinct regions
 %             figure('color', 'w'); scatter(y,x); hold on; scatter(y(insideCh),x(insideCh), 'r', 'MarkerFaceColor','r'); axis off;
-            nData(n, :) = mean(data(insideCh, :), 1);            
+            nData(n, :) = mean(data(Info.Parameters.Ref_Electrodes(n, :), :), 1);            
         end
 
     otherwise
