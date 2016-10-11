@@ -5,7 +5,7 @@ if nargin < 3
 end
 
 if ~isfield(Info, 'Electrodes');
-	error('Error: No electrode information found in Info')
+    error('Error: No electrode information found in Info')
 end
 
 if ~isfield(Info.Recording, 'sRate');
@@ -22,58 +22,59 @@ Info.Parameters.Ref_Method = lower(Info.Parameters.Ref_Method);
 
 fprintf(1, 'Calculating: Canonical wave (%s) \n', Info.Parameters.Ref_Method);
 
+% adjust the electrode coordinates
+Th = pi/180*[Info.Electrodes.theta];        % Calculate theta values from x,y,z e_loc
+Rd = [Info.Electrodes.radius];              % Calculate radian values from x,y,z e_loc
+
+x = Rd.*cos(Th);                            % Calculate 2D projected X
+y = Rd.*sin(Th);                            % Calculate 2D projected Y
+
+% Squeeze the coordinates into a -0.5 to 0.5 box
+intrad = min(1.0,max(abs(Rd))); intrad = max(intrad,0.5);
+squeezefac = 0.5/intrad;
+x = x * squeezefac; y = y * squeezefac;
+
+% plot all the electrodes
+if flag_plot
+    figure('color', [0.2, 0.2, 0.2]);
+    axes('nextplot', 'add', 'Color', 'none');
+    axis off;
+    % mark the electrodes
+    scatter(y, x, 30, ...
+        'markerEdgeColor', [0.5, 0.5, 0.5],...
+        'markerFaceColor', [0.5, 0.5, 0.5]);
+end
+
 switch Info.Parameters.Ref_Method
     
     case 'envelope'
+        % Use the e_loc to avoid outer channels in noisy datasets
+        if ~isfield(Info.Parameters, 'Ref_UseInside') || Info.Parameters.Ref_UseInside == true
+            % Calculate distance from center...
+            distances = (x.^2+y.^2).^0.5;
+            Info.Parameters.Ref_Electrodes = distances < 0.35; %0.35 out of max 0.5 distance from center
+            
+            data = data(Info.Parameters.Ref_Electrodes, :);
+            
+        end
         
-    % Use the e_loc to avoid outer channels in noisy datasets
-    if ~isfield(Info.Parameters, 'Ref_UseInside') || Info.Parameters.Ref_UseInside == true
+        % get the most negative channels for each sample
+        % ``````````````````````````````````````````````
+        % Sort each sample to find the lowest values for each time point
+        rData   = sort(data);
+        % How many channels are the 97.5th percentile (or if < 3 = 3)
+        nCh     = max(3, floor(length(Info.Electrodes)*0.025));
+        % Get the mean of the most negative channels
+        % if there are more than 3 channels skip the most negative since it could be artifact
+        if nCh > 3
+            nData = mean(rData(2:nCh,:));
+        else
+            nData = mean(rData(1:nCh,:));
+        end
         
-        Th = pi/180*[Info.Electrodes.theta];        % Calculate theta values from x,y,z e_loc
-        Rd = [Info.Electrodes.radius];              % Calculate radian values from x,y,z e_loc
-        
-        x = Rd.*cos(Th);                            % Calculate 2D projected X
-        y = Rd.*sin(Th);                            % Calculate 2D projected Y
-        
-        % Squeeze the coordinates into a -0.5 to 0.5 box
-        intrad = min(1.0,max(abs(Rd))); intrad = max(intrad,0.5); squeezefac = 0.5/intrad;
-        x = x*squeezefac; y = y*squeezefac;
-        
-        % Calculate distance from center...
-        distances = (x.^2+y.^2).^0.5;
-        Info.Parameters.Ref_Electrodes = distances < 0.35; %0.35 out of max 0.5 distance from center
-        
-        data = data(Info.Parameters.Ref_Electrodes, :);
-        
-    end
-
-    % get the most negative channels for each sample
-    % ``````````````````````````````````````````````
-    % Sort each sample to find the lowest values for each time point
-    rData   = sort(data);
-    % How many channels are the 97.5th percentile (or if < 3 = 3)
-    nCh     = max(3, floor(length(Info.Electrodes)*0.025));  
-    % Get the mean of the most negative channels
-    % if there are more than 3 channels skip the most negative since it could be artifact
-    if nCh > 3
-        nData = mean(rData(2:nCh,:));
-    else
-        nData = mean(rData(1:nCh,:));
-    end
-
     case {'square', 'diamond'}
-        % Get the electrodes in the four regions
-        Th = pi/180*[Info.Electrodes.theta];        % Calculate theta values from x,y,z e_loc
-        Rd = [Info.Electrodes.radius];              % Calculate radian values from x,y,z e_loc
-
-        x = Rd.*cos(Th);                            % Calculate 2D projected X
-        y = Rd.*sin(Th);                            % Calculate 2D projected Y
         
-        % Squeeze the coordinates into a -0.5 to 0.5 box
-        intrad = min(1.0,max(abs(Rd))); intrad = max(intrad,0.5); 
-        squeezefac = 0.5/intrad;
-        x = x * squeezefac; y = y * squeezefac;
-        
+        % region parameters
         distance_from_center = 0.2; % x and y distance from the center in each direction
         circle_radius = 0.175;
         
@@ -88,18 +89,8 @@ switch Info.Parameters.Ref_Method
                     0, distance_from_center -distance_from_center, 0];
         end
         
-        if flag_plot
-            figure('color', [0.2, 0.2, 0.2]);
-            axes('nextplot', 'add', 'Color', 'none');
-            axis off;
-            % mark the electrodes
-            scatter(y, x,...
-                'markerEdgeColor', [0.5, 0.5, 0.5],...
-                'markerFaceColor', [0.5, 0.5, 0.5]);
-        end
-        
         % pre-allocate
-        nData = zeros(4, size(data,2));  
+        nData = zeros(4, size(data,2));
         Info.Parameters.Ref_Electrodes = false(1, length(x));
         
         for n = 1 : 4 % Each of the four regions
@@ -107,75 +98,78 @@ switch Info.Parameters.Ref_Method
                 + (y + RegionCenters(2, n)).^ 2).^ 0.5;
             Info.Parameters.Ref_Electrodes(n, :) = distances < circle_radius;
             nData(n, :) = mean(data(Info.Parameters.Ref_Electrodes(n, :), :), 1);
-            
-            % plot the regions
-            if flag_plot;
-                scatter(y(Info.Parameters.Ref_Electrodes(n, :)), ...
-                    x(Info.Parameters.Ref_Electrodes(n, :)), 90, ...
-                    'markerEdgeColor', [0.8, 0.8, 0.8],...
-                    'markerFaceColor', [0.8, 0.8, 0.8]);
-            end
         end
-    
+        
+    case 'grid'
+        
+        distance_from_center = 0.225; % x and y distance from the center in each direction
+        circle_radius = 0.10;
+        
+        centers_x = meshgrid(-1:1) * distance_from_center;
+        centers_y = centers_x';
+        
+        % pre-allocate
+        nData = zeros(9, size(data,2));
+        Info.Parameters.Ref_Electrodes = false(1, length(x));
+        
+        % loop for each region
+        for n = 1 : 9
+            % calculate distance to center for each electrode
+            distances = ((x + centers_x(n)).^ 2 ...
+                + (y + centers_y(n)).^ 2).^ 0.5;
+            % take electrodes within maximum distance
+            Info.Parameters.Ref_Electrodes(n, :) = distances < circle_radius;
+            % get the mean data of those electrodes
+            nData(n, :) = mean(data(Info.Parameters.Ref_Electrodes(n, :), :), 1);
+        end
+        
     case 'central'
         
+        % region parameters
         circle_radius = 0.175;
-
-        
-        % Get the electrodes in the four regions
-        Th = pi/180*[Info.Electrodes.theta];        % Calculate theta values from x,y,z e_loc
-        Rd = [Info.Electrodes.radius];              % Calculate radian values from x,y,z e_loc
-        
-        x = Rd.*cos(Th);                            % Calculate 2D projected X
-        y = Rd.*sin(Th);                            % Calculate 2D projected Y
-        
-        % Squeeze the coordinates into a -0.5 to 0.5 box
-        intrad = min(1.0,max(abs(Rd))); intrad = max(intrad,0.5); squeezefac = 0.5/intrad;
-        x = x*squeezefac; y = y*squeezefac;
-        
         distances = (x.^2 + y.^2).^0.5;
+        
         Info.Parameters.Ref_Electrodes = distances < circle_radius;
         fprintf(1, 'Information: Central using %i channels for reference \n',...
             sum(Info.Parameters.Ref_Electrodes));
         % figure('color', 'w'); scatter(y,x); hold on; scatter(y(insideCh),x(insideCh), 'r', 'MarkerFaceColor','r'); axis off;
         nData = mean(data(Info.Parameters.Ref_Electrodes, :), 1);
         
-        
     case 'midline'
 
+        % region parameters
         distance_from_center = 0.25; % y distance from the center in each direction (25%, 50%, 75% of midline)
         circle_radius = 0.125;
-        
-        % Get the electrodes in the three regions
-        Th = pi/180*[Info.Electrodes.theta];        % Calculate theta values from x,y,z e_loc
-        Rd = [Info.Electrodes.radius];              % Calculate radian values from x,y,z e_loc
-        
-        x = Rd.*cos(Th);                            % Calculate 2D projected X
-        y = Rd.*sin(Th);                            % Calculate 2D projected Y
-        
-        % Squeeze the coordinates into a -0.5 to 0.5 box
-        intrad = min(1.0,max(abs(Rd))); intrad = max(intrad,0.5); squeezefac = 0.5/intrad;
-        x = x*squeezefac; y = y*squeezefac;
         
         RegionCenters = [-distance_from_center,0, +distance_from_center; 0,0,0];
         
         % pre-allocate
-        nData = zeros(3,size(data,2));  
+        nData = zeros(3,size(data,2));
         Info.Parameters.Ref_Electrodes = false(1, length(x));
         
         for n = 1 : 3 % Each of the three regions
             distances = ((x+RegionCenters(1,n)).^2 + (y+RegionCenters(2,n)).^2).^0.5;
             Info.Parameters.Ref_Electrodes(n, :) = distances < circle_radius; %0.2 captures distinct regions
-%             figure('color', 'w'); scatter(y,x); hold on; scatter(y(insideCh),x(insideCh), 'r', 'MarkerFaceColor','r'); axis off;
-            nData(n, :) = mean(data(Info.Parameters.Ref_Electrodes(n, :), :), 1);            
+            nData(n, :) = mean(data(Info.Parameters.Ref_Electrodes(n, :), :), 1);
         end
-
+        
     otherwise
         error('Unrecognised reference method type (check spelling/case)');
 end
 
+% plot the regions
+if flag_plot
+    no_regions = size(Info.Parameters.Ref_Electrodes, 1);
+    color_scheme = parula(no_regions);
+    for n = 1 : size(Info.Parameters.Ref_Electrodes, 1)
+        scatter(y(Info.Parameters.Ref_Electrodes(n, :)), ...
+            x(Info.Parameters.Ref_Electrodes(n, :)), 90, ...
+            'markerEdgeColor', [0.8, 0.8, 0.8],...
+            'markerFaceColor', color_scheme(n, :));
+    end
+end
 
-% Filter the data 
+% Filter the data
 % ~~~~~~~~~~~~~~~
 if Info.Parameters.Filter_Apply
     
@@ -187,7 +181,7 @@ if Info.Parameters.Filter_Apply
         Info.Parameters.Filter_lPass = 4;
         Info.Parameters.Filter_order = 2;
     end
-        
+    
     % filter the data
     fprintf(1, 'Calculation: Applying %s filter for [%0.1f, %0.1f] Hz...', Info.Parameters.Filter_Method, Info.Parameters.Filter_hPass, Info.Parameters.Filter_lPass);
     filtData = swa_filter_data(nData, Info);
@@ -197,7 +191,7 @@ else
     % just return the calculated reference
     filtData = nData;
 end
-    
+
 % plot 10 seconds of data from references
 if flag_plot
     random_sample = randi(Info.Recording.dataDim(2), 1);
@@ -207,15 +201,16 @@ if flag_plot
     axes('nextplot', 'add');
     for n = 1:size(filtData, 1)
         if strcmp(Info.Parameters.Ref_Method, 'envelope')
-%             plot(time_range, data(:, sample_range),...
-%                 'color', [0.7, 0.7, 0.7]);
+            %             plot(time_range, data(:, sample_range),...
+            %                 'color', [0.7, 0.7, 0.7]);
             plot(time_range, filtData(n, sample_range),...
                 'color', [0.2, 0.2, 0.2],...
                 'linewidth', 3);
         else
             plot(time_range, filtData(n, sample_range) - (n - 1) * 40,...
-                'linewidth', 2);
+                'linewidth', 2, ...
+                'color', color_scheme(n, :));
         end
     end
 end
-    
+
