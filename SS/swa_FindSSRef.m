@@ -62,7 +62,6 @@ for ref_wave = 1 : size(Data.SSRef, 1)
     else
         original_count = length(SS);
     end
-            
 
     % --Continuous Wavelet Transform -- %
     cwtCoeffs = cwt(Data.SSRef(ref_wave, :), scales, waveName);
@@ -83,15 +82,32 @@ for ref_wave = 1 : size(Data.SSRef, 1)
     
     % Calculate power threshold criteria
     if strcmp(Info.Parameters.Ref_AmplitudeCriteria, 'relative')
-        % calculate the standard deviation from the median
-        std_wavelet = nanstd(Data.CWT(ref_wave, :), 1);
-        % calculate the absolute threshold for that canonical wave
-        Info.Parameters.Ref_AmplitudeAbsolute(ref_wave) = ...
-            (std_wavelet * Info.Parameters.Ref_AmplitudeRelative(1))...
-            + mean(Data.CWT(ref_wave, :));
-        threshold_hard = Info.Parameters.Ref_AmplitudeAbsolute(ref_wave);
-        threshold_soft = (std_wavelet * Info.Parameters.Ref_AmplitudeRelative(2))...
-            + mean(Data.CWT(ref_wave, :));
+                
+        switch Info.Parameters.Ref_AmplitudeMetric
+            case 'mean'
+                % calculate the standard deviation from the mean
+                std_wavelet = nanstd(Data.CWT(ref_wave, :), 1);
+                
+                % calculate the absolute threshold for that canonical wave
+                Info.Parameters.Ref_AmplitudeAbsolute(ref_wave) = ...
+                    (std_wavelet * Info.Parameters.Ref_AmplitudeRelative(1))...
+                    + mean(Data.CWT(ref_wave, :));
+                threshold_hard = Info.Parameters.Ref_AmplitudeAbsolute(ref_wave);
+                threshold_soft = (std_wavelet * Info.Parameters.Ref_AmplitudeRelative(2))...
+                    + mean(Data.CWT(ref_wave, :));
+                
+            case 'median'
+                % calculate the standard deviation from the mean
+                std_wavelet = mad(Data.CWT(ref_wave, :), 1);
+                
+                % calculate the absolute threshold for that canonical wave
+                Info.Parameters.Ref_AmplitudeAbsolute(ref_wave) = ...
+                    (std_wavelet * Info.Parameters.Ref_AmplitudeRelative(1))...
+                    + median(Data.CWT(ref_wave, :));
+                threshold_hard = Info.Parameters.Ref_AmplitudeAbsolute(ref_wave);
+                threshold_soft = (std_wavelet * Info.Parameters.Ref_AmplitudeRelative(2))...
+                    + median(Data.CWT(ref_wave, :));
+        end
     else
         % repeat 
         Info.Parameters.Ref_AmplitudeAbsolute = ...
@@ -127,12 +143,25 @@ for ref_wave = 1 : size(Data.SSRef, 1)
     % above soft threshold points
     signData = sign(Data.CWT(ref_wave, :) - threshold_soft);
     soft_start = find(diff(signData) == 2);
-    soft_end = find(diff(signData) == -2);   
+    soft_end = find(diff(signData) == -2); 
+    
+    % loop over each (potential) spindle and find "true" start
     for n = 1 : length(power_start)
         % advance/delay each start/end based on soft threshold
         advance = min(power_start(n) - soft_start(soft_start < power_start(n)));
+        
+        % check for very early spindle with no soft start
+        if isempty(advance)
+            advance = 0;
+        end
         spindle_start(n) = power_start(n) - advance;
-        delay = min(soft_end(soft_end > power_end(n)) - power_end(n));
+        
+        % look for soft threshold cross after hard threshold
+        delay = min(soft_end(soft_end > power_end(n)) - power_end(n));        
+        % check that power crosses low threshold before recording end
+        if isempty(delay)
+            delay = 0;
+        end
         spindle_end(n) = power_end(n) + delay;
     end
     
@@ -222,6 +251,10 @@ for ref_wave = 1 : size(Data.SSRef, 1)
         % Check if the SS has already been found in another reference channel
         % TODO: double check this is still some doubling occurring
         if ref_wave > 1
+            
+            if ref_wave == 5
+                x = 1;
+            end
             
             % check whether current spindle is between start and end of another
             SS_indice = find((mean([all_starts; all_ends]) > spindle_start(n) ...
