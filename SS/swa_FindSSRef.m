@@ -17,6 +17,11 @@ function [Data, Info, SS] = swa_FindSSRef(Data, Info)
 % - performing an additional wavelet transform to determine whether the 
 %   spindle is best classified as a slow or fast variant
 
+% set breakpoint to look for specific spindle
+%         if spindle_start(n) > 38000 & spindle_start(n) < 38500
+%             x = 1;
+%         end
+
 %% Initialise the SS Structure
 SS = struct(...
     'Ref_Region',               [],...
@@ -143,7 +148,7 @@ for ref_wave = 1 : size(Data.SSRef, 1)
     % above soft threshold points
     signData = sign(Data.CWT(ref_wave, :) - threshold_soft);
     soft_start = find(diff(signData) == 2);
-    soft_end = find(diff(signData) == -2); 
+    soft_end = find(diff(signData) == -2);
     
     % loop over each (potential) spindle and find "true" start
     for n = 1 : length(power_start)
@@ -165,6 +170,11 @@ for ref_wave = 1 : size(Data.SSRef, 1)
         spindle_end(n) = power_end(n) + delay;
     end
     
+    % make sure spindle starts are unique 
+    % NOTE: could have been double hard crossing without soft crossing
+    spindle_start = unique(spindle_start);
+    spindle_end = unique(spindle_end);
+    
     % Check Hard Minimum Length %
     SS_lengths = spindle_end - spindle_start;
     minimum_length = Info.Parameters.Ref_WaveLength(1) * Info.Recording.sRate;
@@ -181,20 +191,9 @@ for ref_wave = 1 : size(Data.SSRef, 1)
     
     % Calculate slope of reference data
     slope_canonical  = [0 diff(Data.SSRef(ref_wave, :))];
-    
-    % Find mid point of all waves calculated so far
-    all_starts = [SS.Ref_Start];
-    all_ends = [SS.Ref_End];
-    midpoint_SS = [SS.Ref_Start] + [SS.Ref_Length] / 2;
-
-    
+       
     % Loop through each spindle found
     for n = 1 : length(spindle_start)
-           
-        % set breakpoint to look for specific spindle
-%         if spindle_start(n) > 78000 & spindle_start(n) < 82000
-%             x = 1;
-%         end
         
         % -- Find the local peaks and troughs -- %
         % Calculate the slope of the original wave
@@ -251,10 +250,10 @@ for ref_wave = 1 : size(Data.SSRef, 1)
         % Check if the SS has already been found in another reference channel
         % TODO: double check this is still some doubling occurring
         if ref_wave > 1
-            
-            if ref_wave == 5
-                x = 1;
-            end
+                       
+            % Find mid point of all waves calculated so far
+            all_starts = [SS.Ref_Start];
+            all_ends = [SS.Ref_End];
             
             % check whether current spindle is between start and end of another
             SS_indice = find((mean([all_starts; all_ends]) > spindle_start(n) ...
@@ -263,13 +262,31 @@ for ref_wave = 1 : size(Data.SSRef, 1)
                     & mean([spindle_start(n); spindle_end(n)]) < all_ends));
             
             % sometimes new spindle crosses two previously found ones
-            % just take the earliest one for now...
+            % then we want to merge the two together
             if length(SS_indice) > 1
-                SS_indice = SS_indice(1);
+                earlier_spindle = SS_indice(1);
+                
+                % take the largest amplitude and longest durations                
+                SS(earlier_spindle).Ref_Region = unique([SS(SS_indice).Ref_Region]);
+                
+                SS(earlier_spindle).Ref_Start = min([SS(SS_indice).Ref_Start]);
+                SS(earlier_spindle).Ref_End = max([SS(SS_indice).Ref_End]);
+
+                SS(earlier_spindle).Ref_NegativePeak = min([SS(SS_indice).Ref_NegativePeak]);
+                SS(earlier_spindle).Ref_PositivePeak = max([SS(SS_indice).Ref_PositivePeak]);
+                SS(earlier_spindle).Ref_Peak2Peak = max([SS(SS_indice).Ref_Peak2Peak]);
+                SS(earlier_spindle).Ref_PeakFreq = mean([SS(SS_indice).Ref_PeakFreq]);
+                SS(earlier_spindle).Ref_PeakPower =  max([SS(SS_indice).Ref_PeakPower]);
+                % NOTE: if merged number of waves and symmetry is no longer easy to calculate
+                
+                % delete the other spindle(s)
+                SS(SS_indice(2:end)) = [];
+                SS_count = SS_count - length(SS_indice(2:end));
+                SS_indice(2:end) = [];
             end
                 
+            % add new spindle parameters to the SS structure
             if ~isempty(SS_indice)
-    
                 % Check which region has the bigger P2P wave...
                 if peak2peak > SS(SS_indice).Ref_Peak2Peak
                     % If the new region does then overwrite previous data with larger reference
@@ -279,19 +296,24 @@ for ref_wave = 1 : size(Data.SSRef, 1)
                     SS(SS_indice).Ref_Peak2Peak       =      peak2peak;
                     SS(SS_indice).Ref_PeakFreq        =      peak_frequency;
                     SS(SS_indice).Ref_PeakPower       =      peak_power;
-                    SS(SS_indice).Ref_Start           =      spindle_start(n);
-                    SS(SS_indice).Ref_End             =      spindle_end(n);
-                    SS(SS_indice).Ref_Length          =      SS_lengths(n);
                     SS(SS_indice).Ref_NumberOfWaves   =      length(peak_amplitudes)/2;
                     SS(SS_indice).Ref_Symmetry        =      max_indice/(length(peak_amplitudes)-1);
                 else
-                    SS(SS_indice).Ref_Region(end+1)   = ref_wave;
+                    % if the previous spindle is larger just add the reference
+                    SS(SS_indice).Ref_Region(end + 1) = ref_wave;
                 end
                 
+                % always take the earliest and latest out of the two for duration
+                SS(SS_indice).Ref_Start = min(spindle_start(n), SS(SS_indice).Ref_Start);
+                SS(SS_indice).Ref_End = max(spindle_end(n), SS(SS_indice).Ref_End);
+                SS(SS_indice).Ref_Length = SS(SS_indice).Ref_End - SS(SS_indice).Ref_Start;
+                
+                % skip adding new spindle with these parameters and go to the next
                 continue;
             end
         end
         
+        % if no previous spindle matches create a new one
         SS_count = SS_count + 1;
 
         SS(SS_count).Ref_Region          =      ref_wave;
