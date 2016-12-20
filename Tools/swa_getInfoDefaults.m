@@ -111,7 +111,8 @@ switch type
         
         % Spindle Criteria       
         Info.Parameters.Ref_AmplitudeCriteria = 'relative'; % relative/absolute
-        Info.Parameters.Ref_AmplitudeRelative = [2, 1];  % Standard deviations from mean negativity [high, low]
+        Info.Parameters.Ref_AmplitudeMetric = 'median';
+        Info.Parameters.Ref_AmplitudeRelative = [4, 2];  % Standard deviations from mean negativity [high, low]
         Info.Parameters.Ref_AmplitudeAbsolute = 15;
         Info.Parameters.Ref_NeighbourRatio = 3; % minimum tolerance for spindle/neighbour power ratio
         

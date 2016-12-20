@@ -9,6 +9,12 @@ elseif nargin < 5
     axes_handle = [];
 end
 
+% check for save type input (SS and ST)
+if isfield (SW, 'Channels_Power')
+    Info.Parameters.Travelling_GS = 40;
+end          
+
+
 % if function is called with a single 'return options' argument then return
 % the list of current available summary options
 if isa(SW, 'char')
