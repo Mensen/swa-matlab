@@ -183,6 +183,12 @@ function fcn_select_options(~, ~, object)
 % get the handles from the figure
 handles = guidata(object);
 
+% check if spindle or slow wave
+wave_type = 'SW';
+if ~isfield(handles.dataset{1}, 'SW')
+    wave_type = 'SS';
+end
+
 % clear whatever is on the current axes
 for n = 1:4
     cla(handles.axes(n), 'reset');
@@ -194,32 +200,48 @@ property_name = handles.java.options_list(1).getSelectedItem;
 % draw the selected summary statistic on the axes
 % get summary measures for each type
 if sum(handles.unique_indices{1}) > 0
-    swa_wave_summary(handles.dataset{1}.SW(handles.unique_indices{1}),...
+    swa_wave_summary(handles.dataset{1}.(wave_type)(handles.unique_indices{1}),...
         handles.dataset{1}.Info, property_name, 1, handles.axes(1));
 end
 if sum(handles.unique_indices{2}) > 0
-    swa_wave_summary(handles.dataset{2}.SW(handles.unique_indices{2}),...
+    swa_wave_summary(handles.dataset{2}.(wave_type)(handles.unique_indices{2}),...
         handles.dataset{2}.Info, property_name, 1, handles.axes(2));
 end
 if sum(~handles.unique_indices{1}) > 0
-    swa_wave_summary(handles.dataset{1}.SW(~handles.unique_indices{1}),...
+    swa_wave_summary(handles.dataset{1}.(wave_type)(~handles.unique_indices{1}),...
         handles.dataset{1}.Info, property_name, 1, handles.axes(3));
-    swa_wave_summary(handles.dataset{2}.SW(~handles.unique_indices{2}),...
+    swa_wave_summary(handles.dataset{2}.(wave_type)(~handles.unique_indices{2}),...
         handles.dataset{2}.Info, property_name, 1, handles.axes(4));
 end
 
 function unique_indices = fcn_find_common_waves(handles)
 
-% get the SW structure out of the dataset structure
-SW{1} = handles.dataset{1}.SW;
-SW{2} = handles.dataset{2}.SW;
+% check if spindle or slow wave
+if isfield(handles.dataset{1}, 'SW')
+    % get the SW structure out of the dataset structure
+    SW{1} = handles.dataset{1}.SW;
+    SW{2} = handles.dataset{2}.SW;
+    
+    % get all the peak indices
+    peaks{1} = [SW{1}.Ref_PeakInd];
+    peaks{2} = [SW{2}.Ref_PeakInd];
+    
+    tolerance_time = 0.100;
 
-% get all the peak indices
-peaks{1} = [SW{1}.Ref_PeakInd];
-peaks{2} = [SW{2}.Ref_PeakInd];
+elseif isfield(handles.dataset{1}, 'SS')
+    
+    SS{1} = handles.dataset{1}.SS;
+    SS{2} = handles.dataset{2}.SS;
+    
+    peaks{1} = [SS{1}.Ref_Start];
+    peaks{2} = [SS{2}.Ref_Start];
+    
+    tolerance_time = 0.500;
+
+end
 
 % define the tolerance in samples
-tol = ceil(0.100 * handles.dataset{1}.Info.Recording.sRate);
+tol = ceil(tolerance_time * handles.dataset{1}.Info.Recording.sRate);
 a_bin = floor(peaks{1} / tol); 
 b_bin = floor(peaks{2} / tol); 
 
