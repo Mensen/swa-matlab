@@ -1,29 +1,46 @@
-function [table_data, handles] = swa_sleep_statistics(EEG, flag_plot)
+function [table_data, handles] = swa_sleep_statistics(EEG, flag_plot,language)
 % calculate basic statistics from sleep scoring
 
 if nargin < 2
+    language = 'german';
     flag_plot = false;
-    handles = [];
 end
+handles = [];
 
 % initialise the table
 table_data = cell(11, 3);
 
 % define the categories
-table_data{1, 1} = 'total recording time';
-table_data{2, 1} = 'total sleep';
-table_data{3, 1} = 'total wake';
-table_data{4, 1} = 'total N1';
-table_data{5, 1} = 'total N2';
-table_data{6, 1} = 'total N3';
-table_data{7, 1} = 'total REM';
-table_data{8, 1} = 'latency N1';
-table_data{9, 1} = 'latency N2';
-table_data{10, 1} = 'latency N3';
-table_data{11, 1} = 'latency REM';
-table_data{12, 1} = 'no. transitions';
-table_data{13, 1} = 'no. arousals';
-
+switch lower(language)
+    case {'german', 'deutsch'}
+        table_data{1, 1} = 'Total Aufnehmungszeit (min)';
+        table_data{2, 1} = 'Total Schlaf (min)';
+        table_data{3, 1} = 'Total Wach (min)';
+        table_data{4, 1} = 'Total Stadium 1 (min)';
+        table_data{5, 1} = 'Total Stadium 2 (min)';
+        table_data{6, 1} = 'Total Stadium 3 (min)';
+        table_data{7, 1} = 'Total Stadium REM (min)';
+        table_data{8, 1} = 'Latenz zu S1 (min)';
+        table_data{9, 1} = 'Latenz zu S2 (min)';
+        table_data{10, 1} = 'Latenz zu S3 (min)';
+        table_data{11, 1} = 'Latenz zu REM (min)';
+        table_data{12, 1} = 'Stadienwechsel';
+        table_data{13, 1} = 'Erregungen aus dem Schlaf';
+    case 'english'
+        table_data{1, 1} = 'total recording time';
+        table_data{2, 1} = 'total sleep';
+        table_data{3, 1} = 'total wake';
+        table_data{4, 1} = 'total N1';
+        table_data{5, 1} = 'total N2';
+        table_data{6, 1} = 'total N3';
+        table_data{7, 1} = 'total REM';
+        table_data{8, 1} = 'latency N1';
+        table_data{9, 1} = 'latency N2';
+        table_data{10, 1} = 'latency N3';
+        table_data{11, 1} = 'latency REM';
+        table_data{12, 1} = 'no. transitions';
+        table_data{13, 1} = 'no. arousals';
+end
 
 % calculate the borders of sleep
 wake_end = find(diff([1, EEG.swa_scoring.stages == 0 | EEG.swa_scoring.stages == 6]) == -1);
