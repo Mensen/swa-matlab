@@ -4,7 +4,6 @@ function swa_SleepScoring(varargin)
 % processing (e.g. travelling waves analysis)
 
 % Author: Armand Mensen
-
 DefineInterface
 
 function DefineInterface
@@ -26,7 +25,7 @@ handles.fig = figure(...
     'MenuBar',      'none',...
     'Units',        'normalized',...
     'Outerposition',[0 0.04 .5 0.96]);
-% set(handles.fig, 'CloseRequestFcn', {@fcn_close_request});
+set(handles.fig, 'CloseRequestFcn', {@fcn_close_request});
 
 %% Menus
 handles.menu.File = uimenu(handles.fig, 'Label', 'File');

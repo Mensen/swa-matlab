@@ -311,6 +311,7 @@ handles.StatusBar = uicontrol(...
 handles.java.StatusBar = findjobj(handles.StatusBar); 
 
 % set the alignment of the status bar
+pause(0.5); drawnow % pause to let java objects load (reduces random java error)
 handles.java.StatusBar.setVerticalAlignment(javax.swing.SwingConstants.CENTER);
 handles.java.StatusBar.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
 
@@ -515,7 +516,9 @@ options_list = swa_wave_summary('return options');
 
 % check for wavetype since no travelling parameters are created for SS
 if strcmp(handles.SW_Type, 'SS')
-    bad_options = ismember(options_list, {'distances', 'anglemap'});
+    bad_options = ismember(options_list,...
+        {'distances', 'anglemap', 'topo_origins', ...
+        'topo_streams', 'topo_meandelay', 'topo_streamorigins'});
     options_list(bad_options) = [];
 end
 
