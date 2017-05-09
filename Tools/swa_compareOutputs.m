@@ -97,6 +97,14 @@ set(handles.java.options_list(1),...
 % get the currently available options
 options_list = swa_wave_summary('return options');
 
+% eliminate options for spindle comparisons (no travelling parameters)
+if ~isfield(handles.dataset{1}, 'SW')
+    bad_options = ismember(options_list,...
+        {'distances', 'anglemap', 'topo_origins', ...
+        'topo_streams', 'topo_meandelay', 'topo_streamorigins'});
+    options_list(bad_options) = [];
+end
+
 % create and set the java models for the options list
 model1 = javax.swing.DefaultComboBoxModel(options_list);
 handles.java.options_list(1).setModel(model1);
