@@ -157,23 +157,30 @@ for ref_wave = 1 : size(Data.SSRef, 1)
         
         % check for very early spindle with no soft start
         if isempty(advance)
-            advance = 0;
+            spindle_start(n) = 1;
+        else
+            spindle_start(n) = power_start(n) - advance;
         end
-        spindle_start(n) = power_start(n) - advance;
         
         % look for soft threshold cross after hard threshold
         delay = min(soft_end(soft_end > power_end(n)) - power_end(n));        
         % check that power crosses low threshold before recording end
         if isempty(delay)
-            delay = 0;
+            spindle_end(n) = length(signData);
+        else
+            spindle_end(n) = power_end(n) + delay;
         end
-        spindle_end(n) = power_end(n) + delay;
     end
     
     % make sure spindle starts are unique 
     % NOTE: could have been double hard crossing without soft crossing
     spindle_start = unique(spindle_start);
     spindle_end = unique(spindle_end);
+    
+    % re-check lengths
+    if length(spindle_end) > length(spindle_start)
+        spindle_end(end) = [];
+    end
     
     % Check Hard Minimum Length %
     SS_lengths = spindle_end - spindle_start;
