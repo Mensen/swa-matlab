@@ -31,6 +31,7 @@ switch type
         Info.Parameters.Ref_AmplitudeCriteria = 'relative'; % relative/absolute
         Info.Parameters.Ref_AmplitudeRelative = 5;         % Standard deviations from mean negativity
         Info.Parameters.Ref_AmplitudeAbsolute = 60;
+        Info.Parameters.Ref_AmplitudeMax = 250; % maximum amplitude in case of artefacts
         Info.Parameters.Ref_WaveLength = [0.25 1.25];      % Length criteria between zero crossings
         Info.Parameters.Ref_SlopeMin = 0.90;             % Percentage cut-off for slopes
         Info.Parameters.Ref_Peak2Peak = [];               % Only for channel thresholding

@@ -191,9 +191,12 @@ for ref_wave = 1:number_ref_waves
             DZC = find(diff(signData) == -2); 
             UZC = find(diff(signData) == 2);
             
+            % make the UZC the sample after the zero-crossing
+            UZC = UZC + 1;
+            
             % Calculate xth percentile slope
             x = sort(slopeData);
-            slopeThresh = x(round(length(x) * Info.Parameters.Ref_SlopeMin));
+            slopeThresh = prctile(x(x>0), Info.Parameters.Ref_SlopeMin * 100);
             
             % Check for earlier initial UZC than DZC
             if DZC(1)>UZC(1)
@@ -231,18 +234,18 @@ for ref_wave = 1:number_ref_waves
                 % ```````````````````````````````
                 [NegPeakAmp, NegPeakId] = min(Data.SWRef(ref_wave, DZC(n):UZC(n)));
                 if NegPeakAmp > -Info.Parameters.Ref_AmplitudeAbsolute(ref_wave) || ...
-                    NegPeakAmp < -220
+                    NegPeakAmp < -Info.Parameters.Ref_AmplitudeMax
                     continue;
                 end
-                NegPeakId = NegPeakId + DZC(n);
+                
+                % adjust negative peak indice on DZ
+                NegPeakId = NegPeakId + DZC(n) - 1;
                 
                 % Test for peak to peak amplitude
                 % ```````````````````````````````
-                sample_range = UZC(n):UZC(n) + 2 * Info.Recording.sRate;
-                % make sure range is within end border
-                if sample_range(end) > size(Data.SWRef, 2)
-                    sample_range = UZC(n):size(Data.SWRef, 2);
-                end
+                sample_range = UZC(n):UZC(n) + 1 * Info.Recording.sRate;
+                sample_range(sample_range > size(Data.SWRef, 2)) = []; % adjust in case it hits the end sample
+                
                 % calculate the positive peak after the zero crossing
                 PosPeakAmp = max(Data.SWRef(ref_wave, sample_range));
                 if strcmp(Info.Parameters.Ref_Method, {'diamond', 'square'})
@@ -253,17 +256,19 @@ for ref_wave = 1:number_ref_waves
                 
                 % Test for positive slope
                 % ```````````````````````````````
-                MaxPosSlope = max(slopeData(1,DZC(n):UZC(n)));
+                MaxPosSlope = max(slopeData (1, DZC(n) : UZC(n)));
                 if MaxPosSlope < slopeThresh
                     continue;
                 end
-                
+                                   
                 % Check if the SW has already been found in another reference channel
                 % ```````````````````````````````
                 if ref_wave > 1
                     [c, SWid] = max(double(AllPeaks > DZC(n)) + double(AllPeaks < UZC(n)));
                     if c == 2
                         % Check which region has the bigger P2P wave...
+                        % TODO: slow wave down should be earliest, and up
+                        % the latest
                         if Data.SWRef(ref_wave, NegPeakId) < SW(SWid).Ref_PeakAmp
                             % If the new region does then overwrite previous data with larger reference
                             SW(SWid).Ref_Region    = [ref_wave, SW(SWid).Ref_Region];
