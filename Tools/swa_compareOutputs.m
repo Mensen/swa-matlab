@@ -310,8 +310,10 @@ for n = 1:length(info_fields)
         diff_count = diff_count +1;
         different_fields{diff_count, 1} = info_fields{n};
         temp = handles.dataset{1}.Info.Parameters.(info_fields{n});
-        if isa(temp, 'double') & numel(temp) > 1
+        if isa(temp, 'double') && numel(temp) > 1
             different_fields{diff_count, 2} = max(temp);
+        elseif isa(temp, 'logical') && numel(temp) > 1
+            different_fields{diff_count, 2} = length(temp);
         else
             different_fields{diff_count, 2} = temp;
         end
@@ -319,6 +321,8 @@ for n = 1:length(info_fields)
         temp = handles.dataset{2}.Info.Parameters.(info_fields{n});
         if isa(temp, 'double') & numel(temp) > 1
             different_fields{diff_count, 3} = max(temp);
+        elseif isa(temp, 'logical') && numel(temp) > 1
+            different_fields{diff_count, 2} = length(temp);
         else
             different_fields{diff_count, 3} = temp;
         end        
