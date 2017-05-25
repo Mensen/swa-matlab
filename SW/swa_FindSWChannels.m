@@ -130,7 +130,7 @@ switch Info.Parameters.Channels_Detection
             
             % Minimum amplitude threshold (10% of maximum)
             % ````````````````````````````````````````````
-            SW(nSW).Channels_NegAmp = nan(length(Info.Recording.dataDim(1)),1);
+            SW(nSW).Channels_NegAmp = nan(Info.Recording.dataDim(1), 1);
             % TODO: make shortData only reflect the best correlating
             % portion as currently it could find another negative peak to
             % test minimum amp that doesn't correspond to peak of interest
@@ -187,7 +187,6 @@ switch Info.Parameters.Channels_Detection
             % eliminate the potentially false channels from the cluster test
             % in the negative amplitudes variable 
             SW(nSW).Channels_NegAmp(~Channels) = nan;
-
             
             % Delay Calculation
             % `````````````````

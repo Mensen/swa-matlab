@@ -199,7 +199,7 @@ for ref_wave = 1:number_ref_waves
             slopeThresh = prctile(x(x>0), Info.Parameters.Ref_SlopeMin * 100);
             
             % Check for earlier initial UZC than DZC
-            if DZC(1)>UZC(1)
+            if DZC(1) >= UZC(1)
                 UZC(1)=[];
                 % in case the last DZC does not have a corresponding UZC then delete it
                 if length(DZC) ~= length(UZC)

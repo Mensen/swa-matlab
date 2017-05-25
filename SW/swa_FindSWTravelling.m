@@ -31,18 +31,20 @@ if ~isfield(Info.Parameters, 'Travelling_GS');
 end
 
 %% Check Electrodes for 2D locations (match to grid)
-Info.Electrodes = swa_add2dlocations(Info.Electrodes, Info.Parameters.Travelling_GS);
-fprintf(1,'Calculation: 2D electrode projections (Info.Electrodes). \n');
 
-xloc = [Info.Electrodes.x]; xloc=xloc(:);
-yloc = [Info.Electrodes.y]; yloc=yloc(:);
-
-%% Create the plotting mesh
-GS = Info.Parameters.Travelling_GS; 
-XYrange = linspace(1, GS, GS);
-XYmesh = XYrange(ones(GS,1),:);
-
-    % Check Matlab version for interpolant...
+if Info.Parameters.Travelling_RecalculateDelay
+    Info.Electrodes = swa_add2dlocations(Info.Electrodes, Info.Parameters.Travelling_GS);
+    fprintf(1,'Calculation: 2D electrode projections (Info.Electrodes). \n');
+    
+    xloc = [Info.Electrodes.x]; xloc=xloc(:);
+    yloc = [Info.Electrodes.y]; yloc=yloc(:);
+    
+    % create the plotting mesh
+    GS = Info.Parameters.Travelling_GS;
+    XYrange = linspace(1, GS, GS);
+    XYmesh = XYrange(ones(GS,1),:);
+    
+    % check Matlab version for interpolant...
     if exist('scatteredInterpolant', 'file')
         % If its available use the newest function
         F = scatteredInterpolant(xloc, yloc, SW(1).Travelling_Delays(:),...
@@ -55,6 +57,19 @@ XYmesh = XYrange(ones(GS,1),:);
         interp_version = 0;
     end
     
+else
+    
+    % check if the delay map is already included in the SW structure
+    if isempty(SW(1).Travelling_DelayMap)
+        error('User requested no map calculation, but no maps were found in the structure');
+    end
+    
+    % calculate necessary parameters
+    XYrange = linspace(1, ...
+        size(SW(1).Travelling_DelayMap, 1), size(SW(1).Travelling_DelayMap, 2));
+
+end
+
 %% Loop for each SW
 if isempty(indSW)
     loopRange = 1:length(SW);
@@ -68,42 +83,58 @@ end
 
 for nSW = loopRange
     
-    Delays      = SW(nSW).Travelling_Delays;
-    
-    % Check for minimum travel time...
-    if max(Delays) < Info.Parameters.Travelling_MinDelay * Info.Recording.sRate/1000
-        continue
-    end
-    
-    %% Interpolate delay map [zeros or nans above...]
-    Delays = Delays(:);            % Ensure data is in column format
-    % check interpolation function
-    if interp_version
-        F.Values = Delays;
+    if Info.Parameters.Travelling_RecalculateDelay
+        Delays      = SW(nSW).Travelling_Delays;
+        
+        % Check for minimum travel time...
+        if max(Delays) < Info.Parameters.Travelling_MinDelay * Info.Recording.sRate/1000
+            continue
+        end
+        
+        % Interpolate delay map [zeros or nans above...]
+        Delays = Delays(:); % ensure data is in column format
+        
+        % check interpolation function
+        if interp_version
+            F.Values = Delays;
+        else
+            F.V = Delays;
+        end
+        SW(nSW).Travelling_DelayMap = F(XYmesh, XYmesh'); % Delay map (with zeros)
+        
+        % Define Starting Point(s) on the GSxGS grid...
+        sx = xloc(SW(nSW).Channels_Active);
+        sy = yloc(SW(nSW).Channels_Active);
+        
     else
-        F.V = Delays;
+        % get the starting x/y positions from the struct directly
+        sx = Info.Electrodes.x(SW(nSW).Channels_Active);
+        sy = Info.Electrodes.y(SW(nSW).Channels_Active);
     end
-    SW(nSW).Travelling_DelayMap = F(XYmesh, XYmesh'); % Delay map (with zeros)
+    
+    % calculate the gradients over the delay map
     [u,v] = gradient(SW(nSW).Travelling_DelayMap);
-
-    %% Define Starting Point(s) on the GSxGS grid...
-    sx = xloc(SW(nSW).Channels_Active);
-    sy = yloc(SW(nSW).Channels_Active);
-      
-    %% Find Streamline(s)
-
+    
+    % Find Streamline(s)
+    % ''''''''''''''''''
     % Use adstream2 
     % TODO: optimise by coding entire loop in C
     Streams         = cell(1,length(sx));
     Distances       = cell(1,length(sx));
-    for i = 1:length(sx)
-        [StreamsBack, DistancesBack,~] = adstream2b(XYrange,XYrange,-u,-v,sx(i),sy(i), cosd(45), 0.1, 1000);
-        [StreamsForw, DistancesForw,~] = adstream2b(XYrange,XYrange,u,v,sx(i),sy(i), cosd(45), 0.1, 1000);
-        Streams{i}      = [fliplr(StreamsBack), StreamsForw];
-        Distances{i}    = [fliplr(DistancesBack), DistancesForw];
+    for n = 1:length(sx)
+        % find streams backwards from current point
+        [StreamsBack, DistancesBack,~] = adstream2b(...
+            XYrange,XYrange,-u,-v,sx(n),sy(n), cosd(45), 0.1, 1000);
+        % find streams forward from current point
+        [StreamsForw, DistancesForw,~] = adstream2b(...
+            XYrange,XYrange,u,v,sx(n),sy(n), cosd(45), 0.1, 1000);
+        % combine the two directions for continuous stream
+        Streams{n}      = [fliplr(StreamsBack), StreamsForw];
+        Distances{n}    = [fliplr(DistancesBack), DistancesForw];
     end
        
-    %% Process and save streamlines...
+    % Process and save streamlines...
+    % '''''''''''''''''''''''''''''''
     Streams(cellfun(@isempty, Streams)) = []; %Remove empty streams
     Distances(cellfun(@isempty, Distances)) = []; %Remove empty streams
     

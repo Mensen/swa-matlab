@@ -47,6 +47,7 @@ switch type
         % ^^^^^^^^^^^^^^^^^^^^^        
         Info.Parameters.Travelling_GS = 40; % size of interpolation grid
         Info.Parameters.Travelling_MinDelay = 40; % minimum travel time (ms)
+        Info.Parameters.Travelling_RecalculateDelay = true; % set to false if delay maps are manually calculated outside of algorith (e.g. smoothing)
 
         % option specific defaults
         % ^^^^^^^^^^^^^^^^^^^^^^^^        

@@ -1,9 +1,13 @@
 %% Add 2D coordinates to electrode file...
-
 function eloc = swa_add2dlocations(eloc, GS)
 
 if nargin < 2
    GS = 40; 
+end
+
+% check the theta coordinates exist
+if ~isfield(eloc, 'theta')
+    error('Could not find a "theta" field in the eloc structure');
 end
 
 Th = pi/180*[eloc.theta];      % Calculate theta values from x,y,z e_loc
