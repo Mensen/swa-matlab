@@ -37,7 +37,9 @@ fprintf(1, 'done \n');
 if isfield(EEG, 'swa_scoring')
     if isfield(EEG.swa_scoring, 'stages')
         Data.sleep_stages = EEG.swa_scoring.stages;
-        % convert the arousal samples to artefact
-        Data.sleep_stages(EEG.swa_scoring.arousals) = 6;
+        if isfield(EEG.swa_scoring, 'arousals')
+            % convert the arousal samples to artefact
+            Data.sleep_stages(EEG.swa_scoring.arousals) = 6;
+        end
     end
 end

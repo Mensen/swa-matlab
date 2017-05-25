@@ -7,6 +7,8 @@ function swa_saveOutput(Data, Info, SW, save_name, flag_raw, flag_filtered)
 if flag_raw
     % Replace the data with a file pointer if drive space is a concern
     Data.Raw = Info.Recording.dataFile;
+else
+    fprintf(1, 'Will save all the data into the new Mat file; this may take some time and memory\n');
 end
 
 if flag_filtered
@@ -38,4 +40,4 @@ switch wave_type
 end
 
 % save in a simple mat file
-save(save_name, 'Data', 'Info', wave_type, '-mat');
+save(save_name, 'Data', 'Info', wave_type, '-mat', '-v7.3');

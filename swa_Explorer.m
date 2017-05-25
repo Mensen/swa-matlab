@@ -680,6 +680,7 @@ range(range < 1 | range > size(Data.Raw, 2)) = 1;
 xaxis = range./handles.Info.Recording.sRate;
 
 % check for special selected channels
+data_to_plot = cell(2, 1);
 for n = 1:2
     selected_label = handles.java.ChannelBox(n).getSelectedItem;
     
