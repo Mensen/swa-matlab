@@ -41,6 +41,13 @@ handles.menu.SaveData = uimenu(handles.menu.File,...
     'Accelerator', 'S');
 set(handles.menu.SaveData, 'Callback', {@menu_SaveData});
 
+% view menu
+handles.menu.View = uimenu(handles.fig, 'label', 'View');
+handles.menu.filter_toggle = uimenu(handles.menu.View, ...
+    'label', 'filter toggle', ...
+    'checked', 'on', ...
+    'callback', {@fcn_options, 'filter_toggle'});
+
 
 % Plot Titles and Export Button
 % ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -504,6 +511,10 @@ handles.java.Slider.setMinorTickSpacing(5);
 handles.java.Slider.setMajorTickSpacing(20);
 handles.java.Slider.setPaintTicks(true);
 
+% prepare filter for later
+handles.filter_design = designfilt('lowpassiir', 'DesignMethod', 'cheby2', ...
+    'StopbandFrequency', 20, 'PassbandFrequency', 16, ...
+    'SampleRate', handles.Info.Recording.sRate);
 
 % Update handles structure
 guidata(handles.fig, handles);
@@ -660,8 +671,10 @@ nSW = handles.java.Spinner.getValue();
 % Calculate the range / wave peaks and start points
 switch handles.SW_Type
     case {'SW', 'ST'}
-        winLength = floor(10*handles.Info.Recording.sRate);
-        range = handles.SW(nSW).Ref_PeakInd - winLength  :  handles.SW(nSW).Ref_PeakInd + winLength;
+        winLength = floor(15 * handles.Info.Recording.sRate);
+        range = handles.SW(nSW).Ref_PeakInd - winLength  ...
+            :  handles.SW(nSW).Ref_PeakInd + winLength;
+        % calculate points for arrows and zoom lines
         wave_peaks = [handles.SW.Ref_PeakInd]./ handles.Info.Recording.sRate;
         start_point = handles.SW(nSW).Ref_PeakInd / handles.Info.Recording.sRate;
         end_point = handles.SW(nSW).Ref_PeakInd / handles.Info.Recording.sRate;
@@ -699,10 +712,20 @@ for n = 1:2
         end
         
     else
+        % - channel selected (most cases) - %
         Ch = handles.java.ChannelBox(n).getSelectedIndex() + 1;
         data_to_plot{n} = Data.Raw(Ch, range);
     end
 end
+
+% check for filter toggle
+if strcmp(get(handles.menu.filter_toggle, 'checked'), 'on')
+    for n = 1 : 2
+        data_to_plot{n} = filtfilt(...
+            handles.filter_design, double(data_to_plot{n})')';
+    end
+end
+
 
 % define plot_method
 if ~isfield(handles, 'lines_eeg_channel')
@@ -797,6 +820,14 @@ end
 % check that the range is within data limits (set to sample 1 if not)
 range(range < 1 | range > size(Data.Raw, 2)) = 1;
 
+% check for filter toggle
+if strcmp(get(handles.menu.filter_toggle, 'checked'), 'off')
+    data_to_plot = Data.Raw(:, range);
+else
+    data_to_plot = filtfilt(...
+        handles.filter_design, double(Data.Raw(:, range))')';    
+end
+
 % initial plot
 % ^^^^^^^^^^^^
 % check if the plot already exists
@@ -804,7 +835,7 @@ if ~isfield(handles, 'SWPlot')
     cla(handles.axes_individual_wave);
     
     % plot all the channels but hide them
-    handles.SWPlot.All = plot(handles.axes_individual_wave, Data.Raw(:, range)',...
+    handles.SWPlot.All = plot(handles.axes_individual_wave, data_to_plot',...
         'color', [0.6 0.6 0.6],...
         'linewidth', 1,...
         'visible', 'off');
@@ -851,7 +882,7 @@ if ~isfield(handles, 'SWPlot')
 else
     for n = 1:size(Data.Raw,1)
         set(handles.SWPlot.All(n),...
-            'yData', Data.Raw(n, range),...
+            'yData', data_to_plot(n, :),...
             'color', [0.6 0.6 0.6],...
             'linewidth', 1,...
             'visible', 'off');
