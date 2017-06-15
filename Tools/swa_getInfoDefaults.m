@@ -38,6 +38,7 @@ switch type
 
         % channel detection
         % ^^^^^^^^^^^^^^^^^        
+        Info.Parameters.Channels_Correlate2 = 'mean'; % which canonical wave (main, mean, or all)
         Info.Parameters.Channels_Detection = 'correlation'; % correlation/threshold
         Info.Parameters.Channels_Threshold = 0.9;             % amount to adjust threshold if using threshold method
         Info.Parameters.Channels_ClusterTest = true;
