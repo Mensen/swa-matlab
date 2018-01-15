@@ -71,24 +71,33 @@ for ref_wave = 1:number_ref_waves
     % get the local minima and maxima (and eliminate small notches)
     [MNP, MPP] = swa_get_peaks(slopeData, Info, 1);
     
+    % delete peaks that are out of stage of interest
+    if ~isempty(Info.Parameters.Ref_UseStages) && isfield(Data, 'sleep_stages')
+        fprintf(1, 'Information: Using only pre-defined stage information \n');
+        good_peaks = ismember(Data.sleep_stages(MNP), Info.Parameters.Ref_UseStages);
+    else
+        good_peaks = true(length(MNP), 1);
+    end
+    
     % calculate amplitude threshold criteria
     % ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     % absolute deviation from the median (to avoid outliers)
-    Info.Recording.Data_Deviation(ref_wave) = mad(Data.SWRef(ref_wave, MNP), 1);
+    Info.Recording.Data_Median(ref_wave) = abs(median(Data.SWRef(ref_wave, MNP(good_peaks))));
+    Info.Recording.Data_Deviation(ref_wave) = mad(Data.SWRef(ref_wave, MNP(good_peaks)), 1);
     
     switch Info.Parameters.Ref_AmplitudeCriteria
         case 'relative'
             % calculate new threshold
             Info.Parameters.Ref_AmplitudeAbsolute(ref_wave) = ...
                 (Info.Recording.Data_Deviation(ref_wave) * Info.Parameters.Ref_AmplitudeRelative)...
-                + abs(median(Data.SWRef(ref_wave, MNP)));
+                + Info.Recording.Data_Median(ref_wave);
             fprintf(1, 'Calculation: Amplitude threshold set to %.1fuV for canonical wave %i\n',...
                 Info.Parameters.Ref_AmplitudeAbsolute(ref_wave), ref_wave);
             
         case 'absolute'
             % calculate deviations from mean activity
             Info.Parameters.Ref_AmplitudeRelative(ref_wave) =  (Info.Parameters.Ref_AmplitudeAbsolute(ref_wave)...
-                - abs(median(Data.SWRef(ref_wave, MNP)))) / Info.Recording.Data_Deviation(ref_wave);
+                - Info.Recording.Data_Median(ref_wave)) / Info.Recording.Data_Deviation(ref_wave);
             fprintf(1, 'Information: Threshold is %.1f deviations from median activity \n', Info.Parameters.Ref_AmplitudeRelative(ref_wave));
     end
     
@@ -107,6 +116,11 @@ for ref_wave = 1:number_ref_waves
             % Define badWaves
             badWaves = false(1, length(MNP));
 
+            % mark waves outside stages of interest as bad
+            if ~isempty(Info.Parameters.Ref_UseStages) && isfield(Data, 'sleep_stages')
+                badWaves(~good_peaks) = true;
+            end
+            
             % Wavelength criteria
             % ```````````````````
             % MPP->MPP length
