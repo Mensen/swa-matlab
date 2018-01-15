@@ -42,7 +42,7 @@ switch type
         Info.Parameters.Channels_Detection = 'correlation'; % correlation/threshold
         Info.Parameters.Channels_Threshold = 0.9;             % amount to adjust threshold if using threshold method
         Info.Parameters.Channels_ClusterTest = true;
-        Info.Parameters.Channels_WinSize = 0.10;
+        Info.Parameters.Channels_WinSize = 0.100;
 
         % travelling parameters
         % ^^^^^^^^^^^^^^^^^^^^^        
@@ -98,11 +98,12 @@ switch type
         
     case 'SS'
         
-        % Reference Parameters
+        % Reference / Canonical Parameters
         Info.Parameters.Ref_Method      = 'Midline';
         Info.Parameters.Ref_Electrodes = []; % logical array of electrodes used for each canonical
         Info.Parameters.Filter_Apply    = false; % No filter needed for CWT method...
-                
+        Info.Parameters.Ref_UseStages = []; % whether or not to use sleep scoring information
+            
         % Filter Parameters
         Info.Parameters.Filter_Method = 'Chebyshev';      % 'Chebyshev'/'Buttersworth'
         Info.Parameters.Filter_band = [10, 16];
@@ -111,6 +112,7 @@ switch type
         Info.Parameters.Filter_order = 2;
 
         Info.Parameters.Wavelet_name = 'fbsp1-1-3'; % b-spline wavelet; else use 'morl'
+        Info.Parameters.Wavelet_norm = 1; % normalise according to median entire time coefficients
         
         % Spindle Criteria       
         Info.Parameters.Ref_AmplitudeCriteria = 'relative'; % relative/absolute
