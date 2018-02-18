@@ -1,6 +1,7 @@
 function [sleep_tpm, stage_count] = swa_transition_probabilities(stages)
 % swa_transition_probabilities
 % TODO: ignore stage 4 (artefact)
+% NOTE: the sleep stages already ignore stage 4
 
 % pre-allocate tpms
 stage_count = nan(6);

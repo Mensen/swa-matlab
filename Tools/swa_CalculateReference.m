@@ -36,7 +36,8 @@ x = x * squeezefac; y = y * squeezefac;
 
 % plot all the electrodes
 if flag_plot
-    figure('color', [0.2, 0.2, 0.2]);
+%     figure('color', [0.2, 0.2, 0.2]);
+    figure('color', 'w');
     axes('nextplot', 'add', 'Color', 'none');
     axis off;
     % mark the electrodes
@@ -164,7 +165,7 @@ if flag_plot
     for n = 1 : size(Info.Parameters.Ref_Electrodes, 1)
         scatter(y(Info.Parameters.Ref_Electrodes(n, :)), ...
             x(Info.Parameters.Ref_Electrodes(n, :)), 90, ...
-            'markerEdgeColor', [0.8, 0.8, 0.8],...
+            'markerEdgeColor', [0.3, 0.3, 0.3],...
             'markerFaceColor', color_scheme(n, :));
     end
 end
@@ -195,7 +196,7 @@ end
 % plot 10 seconds of data from references
 if flag_plot
     random_sample = randi(Info.Recording.dataDim(2), 1);
-    sample_range = random_sample : random_sample + 4 * Info.Recording.sRate - 1;
+    sample_range = random_sample : random_sample + 15 * Info.Recording.sRate - 1;
     time_range = [1:size(sample_range, 2)] / Info.Recording.sRate;
     figure('color', 'w');
     axes('nextplot', 'add');
@@ -207,7 +208,7 @@ if flag_plot
                 'color', [0.2, 0.2, 0.2],...
                 'linewidth', 3);
         else
-            plot(time_range, filtData(n, sample_range) - (n - 1) * 40,...
+            plot(time_range, filtData(n, sample_range) - (n - 1) * 60,...
                 'linewidth', 2, ...
                 'color', color_scheme(n, :));
         end
