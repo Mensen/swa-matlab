@@ -1,43 +1,40 @@
-function g = swa_plot_average_wave(Data, Info, SW)
+function [g, all_slow_wave] = swa_plot_average_wave(data_in, Info, SW, time_window, flag_plot)
 % plot the average slow wave
 
+% check inputs
+if nargin < 5
+    flag_plot = true;
+end
+
+if nargin < 4
+    time_window = 0.5;
+end
+
 number_of_sw = length(SW);
+g = [];
 
 % define ERP range
-time_range = linspace(-0.5, 0.5, Info.Recording.sRate);
+time_range = linspace(-time_window, time_window, Info.Recording.sRate);
 sample_range = floor(time_range * Info.Recording.sRate);
 time_range = time_range * 1000; % turn time range into ms
 
-all_slow_wave = cell(size(Data.SWRef, 1), 1);
-wave_type = nan( [number_of_sw - 2] * 3, 1);
-for nc = 1 : size(Data.SWRef, 1)
+% pre-allocate trial data
+all_slow_wave = nan(number_of_sw, length(sample_range));
+
+% get each slow wave
+for n = 1 : number_of_sw
     
-    all_slow_wave{nc} = zeros(number_of_sw - 2, size(sample_range, 2));
+    current_range = sample_range + SW(n).Ref_PeakInd;
+    current_range(current_range < 1) = 1;
     
-    for n = 2 : number_of_sw - 1
-        
-        current_range = sample_range + SW(n).Ref_PeakInd;
-        
-        all_slow_wave{nc}(n, :) = Data.SWRef(nc, current_range);
-        
-    end
-    
-    % eliminate first slow wave
-    all_slow_wave{nc}(1, :) = [];
-    
-    wave_type ([number_of_sw - 2] * [nc - 1] + 1 : [number_of_sw - 2] * nc) = nc;
+    all_slow_wave(n, :) = data_in(1, current_range);
     
 end
 
-% convert to matrix
-stack_waves = cell2mat(all_slow_wave);
-
 % use gramm to plot
-g = gramm('y', stack_waves(:, :), ...
-    'x', time_range, ...
-    'color', wave_type);
-g.stat_summary('type', 'sem');
-g.draw;
-
-% g.facet_axes_handles.YLim = ([-1250, 1000]);
-saveas(gcf, 'slow_wave_average.svg')
+if flag_plot
+    g = gramm('y', all_slow_wave(:, :), ...
+        'x', time_range);
+    g.stat_summary('type', 'std');
+    g.draw;
+end

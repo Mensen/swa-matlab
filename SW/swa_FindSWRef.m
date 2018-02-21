@@ -71,33 +71,37 @@ for ref_wave = 1:number_ref_waves
     % get the local minima and maxima (and eliminate small notches)
     [MNP, MPP] = swa_get_peaks(slopeData, Info, 1);
     
-    % delete peaks that are out of stage of interest
-    if ~isempty(Info.Parameters.Ref_UseStages) && isfield(Data, 'sleep_stages')
-        fprintf(1, 'Information: Using only pre-defined stage information \n');
-        good_peaks = ismember(Data.sleep_stages(MNP), Info.Parameters.Ref_UseStages);
+    % eliminate the MNP in non used stages
+    if ~isempty(Info.Parameters.Ref_UseStages)
+        selected_peaks = ismember(Data.sleep_stages(MNP), ...
+            Info.Parameters.Ref_UseStages);
+        
+        % eliminate peaks outside stages of interest
+        relevant_MNP = MNP(~selected_peaks);
     else
-        good_peaks = true(length(MNP), 1);
+        selected_peaks = true(length(MNP), 1);
+        relevant_MNP = MNP;
     end
     
     % calculate amplitude threshold criteria
     % ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     % absolute deviation from the median (to avoid outliers)
-    Info.Recording.Data_Median(ref_wave) = abs(median(Data.SWRef(ref_wave, MNP(good_peaks))));
-    Info.Recording.Data_Deviation(ref_wave) = mad(Data.SWRef(ref_wave, MNP(good_peaks)), 1);
+    Info.Recording.Data_Deviation(ref_wave) = ...
+        mad(Data.SWRef(ref_wave, relevant_MNP), 1);
     
     switch Info.Parameters.Ref_AmplitudeCriteria
         case 'relative'
             % calculate new threshold
             Info.Parameters.Ref_AmplitudeAbsolute(ref_wave) = ...
                 (Info.Recording.Data_Deviation(ref_wave) * Info.Parameters.Ref_AmplitudeRelative)...
-                + Info.Recording.Data_Median(ref_wave);
+                + abs(median(Data.SWRef(ref_wave, relevant_MNP)));
             fprintf(1, 'Calculation: Amplitude threshold set to %.1fuV for canonical wave %i\n',...
                 Info.Parameters.Ref_AmplitudeAbsolute(ref_wave), ref_wave);
             
         case 'absolute'
             % calculate deviations from mean activity
             Info.Parameters.Ref_AmplitudeRelative(ref_wave) =  (Info.Parameters.Ref_AmplitudeAbsolute(ref_wave)...
-                - Info.Recording.Data_Median(ref_wave)) / Info.Recording.Data_Deviation(ref_wave);
+                - abs(median(Data.SWRef(ref_wave, relevant_MNP)))) / Info.Recording.Data_Deviation(ref_wave);
             fprintf(1, 'Information: Threshold is %.1f deviations from median activity \n', Info.Parameters.Ref_AmplitudeRelative(ref_wave));
     end
     
@@ -115,12 +119,10 @@ for ref_wave = 1:number_ref_waves
         case 'MNP'
             % Define badWaves
             badWaves = false(1, length(MNP));
-
-            % mark waves outside stages of interest as bad
-            if ~isempty(Info.Parameters.Ref_UseStages) && isfield(Data, 'sleep_stages')
-                badWaves(~good_peaks) = true;
-            end
             
+            % eliminate waves in non specified stages
+            badWaves(~selected_peaks) = true;
+
             % Wavelength criteria
             % ```````````````````
             % MPP->MPP length
@@ -196,14 +198,17 @@ for ref_wave = 1:number_ref_waves
                 
             end
             
+            
         % Zero crossing detection method
         % ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         case 'ZC'
             % Get Downward and Upward Zero Crossings (DZC and UZC)
             signData    = sign(Data.SWRef(ref_wave,:));
-                % -2 indicates when the sign goes from 1 to -1
-            DZC = find(diff(signData) == -2); 
-            UZC = find(diff(signData) == 2);
+            % fix rare issue where slope is exactly 0
+            signData(signData == 0) = 1;
+            % -2 indicates when the sign goes from 1 to -1
+            DZC = find(diff(signData) < 0); 
+            UZC = find(diff(signData) > 0);
             
             % make the UZC the sample after the zero-crossing
             UZC = UZC + 1;
@@ -226,6 +231,16 @@ for ref_wave = 1:number_ref_waves
                 DZC(end) = [];
             end
             
+            % if DZC is in non_specified stage then skip
+            if ~isempty(Info.Parameters.Ref_UseStages)
+                selected_peaks = ismember(Data.sleep_stages(DZC), ...
+                    Info.Parameters.Ref_UseStages);
+                
+                % remove crossings in irrelevant stages
+                DZC(~selected_peaks) = [];
+                UZC(~selected_peaks) = [];
+            end
+            
             % Test Wavelength
             % ```````````````
             % Get all the wavelengths
@@ -237,12 +252,12 @@ for ref_wave = 1:number_ref_waves
             % Eliminate the indices
             UZC(BadZC) = [];
             DZC(BadZC) = [];
-
+            
             % To check differences between next peaks found...
             AllPeaks = [SW.Ref_PeakInd];
             
             % Loop through each DZC for criteria
-            for n = 1:length(DZC)
+            for n = 1:length(DZC)               
                 
                 % Test for negative amplitude
                 % ```````````````````````````````
