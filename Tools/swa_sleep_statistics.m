@@ -57,7 +57,7 @@ end
 wake_start = find(diff([0, EEG.swa_scoring.stages == 0 | EEG.swa_scoring.stages == 6]) == 1);
 wake_end = find(diff([0, EEG.swa_scoring.stages == 0 | EEG.swa_scoring.stages == 6]) == -1);
 lights_off = wake_start(1);
-sleep_onset = wake_end(1) -lights_off;
+sleep_onset = wake_end(1) - lights_off;
 
 % check for last stage sleep
 % calculate how much wake time there is after sleep finishes
@@ -84,15 +84,19 @@ end
 % calculate the total time and percentages
 table_data{1, 2} = [length(EEG.swa_scoring.stages) - lights_off - artefact_time] / EEG.srate / 60;
 
+% N1 latency
+N1_starts = find(diff([1, EEG.swa_scoring.stages == 1]) == 1) - 1;
+table_data{8, 2} = [N1_starts(1) - lights_off] / EEG.srate / 60;
+
 % total sleep
-table_data{2, 2} = [sum(EEG.swa_scoring.stages > 0) - lights_off - artefact_time] / EEG.srate / 60;
+table_data{2, 2} = [sum(EEG.swa_scoring.stages > 0) - artefact_time] / EEG.srate / 60;
 table_data{2, 3} = table_data{2, 2} / table_data{1, 2} * 100;
-table_data{2, 4} = table_data{2, 2} / (table_data{1, 2} - adjustment_prepost_sleep) * 100;
+table_data{2, 4} = table_data{2, 2} / (table_data{1, 2} - adjustment_prepost_sleep - table_data{8, 2}) * 100;
 
 % total wake
 table_data{3, 2} = sum(EEG.swa_scoring.stages == 0) / EEG.srate / 60;
 table_data{3, 3} = table_data{3, 2} / table_data{1, 2} * 100;
-table_data{3, 4} = (table_data{3, 2} - adjustment_prepost_sleep) / (table_data{1, 2} - adjustment_prepost_sleep) * 100;
+table_data{3, 4} = (table_data{3, 2} - adjustment_prepost_sleep) / (table_data{1, 2} - adjustment_prepost_sleep - - table_data{8, 2}) * 100;
 
 % total N1
 table_data{4, 2} = sum(EEG.swa_scoring.stages == 1) / EEG.srate / 60;
@@ -115,11 +119,7 @@ table_data{7, 3} = table_data{7, 2}/table_data{1, 2} * 100;
 table_data{7, 4} = table_data{7, 2}/table_data{2, 2} * 100;
 
 
-% calculate latencies
-% N1 latency
-N1_starts = find(diff([1, EEG.swa_scoring.stages == 1]) == 1) - 1;
-table_data{8, 2} = [N1_starts(1) - lights_off] / EEG.srate / 60;
-
+% -- calculate latencies -- %
 % N2 latency
 N2_starts = find(diff([1, EEG.swa_scoring.stages == 2]) == 1) - 1;
 if ~isempty(N2_starts)
