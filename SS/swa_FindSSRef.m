@@ -29,6 +29,7 @@ SS = struct(...
     'Ref_End',                  [],...
     'Ref_PeakFreq',             [],...
     'Ref_PeakPower',            [],...
+    'Ref_PeakWavelet',          [],...
     'Ref_NegativePeak',         [],...
     'Ref_PositivePeak',         [],...
     'Ref_Peak2Peak',            [],...
@@ -80,7 +81,7 @@ for ref_wave = 1 : size(Data.SSRef, 1)
     
     % -- Threshold crossings -- %
     % if no soft threshold specified make 50% of first
-    if length(Info.Parameters.Ref_AmplitudeRelative) == 1;
+    if length(Info.Parameters.Ref_AmplitudeRelative) == 1
         Info.Parameters.Ref_AmplitudeRelative(2) = ...
             Info.Parameters.Ref_AmplitudeRelative(1) * 0.5;
     end
@@ -110,13 +111,25 @@ for ref_wave = 1 : size(Data.SSRef, 1)
                     (std_wavelet * Info.Parameters.Ref_AmplitudeRelative(1))...
                     + median(Data.CWT(ref_wave, :));
                 threshold_hard = Info.Parameters.Ref_AmplitudeAbsolute(ref_wave);
+                % TODO: save soft thresholds for later standardisation of absolute thresholds
                 threshold_soft = (std_wavelet * Info.Parameters.Ref_AmplitudeRelative(2))...
                     + median(Data.CWT(ref_wave, :));
         end
     else
-        % repeat 
-        Info.Parameters.Ref_AmplitudeAbsolute = ...
-            repmat(Info.Parameters.Ref_AmplitudeAbsolute, 1, size(Data.SSRef, 1));
+        % check if single or multiple defined power values
+        if ~length(Info.Parameters.Ref_AmplitudeAbsolute) == size(Data.SSRef, 1)
+            % repeat single threshold
+            Info.Parameters.Ref_AmplitudeAbsolute = ...
+                repmat(Info.Parameters.Ref_AmplitudeAbsolute, 1, size(Data.SSRef, 1));
+        end
+        % define hard and soft absolute thresholds
+        threshold_hard = Info.Parameters.Ref_AmplitudeAbsolute(ref_wave);
+        
+        % soft thresholds will not be identical as those calculated above
+        % since the median of the signal is disregarded here, so the ratio
+        % of the selected medians is used as a percentage of absolute
+        threshold_soft = Info.Parameters.Ref_AmplitudeAbsolute(ref_wave) / ...
+            [Info.Parameters.Ref_AmplitudeRelative(1) / Info.Parameters.Ref_AmplitudeRelative(2)];
     end
     
     % -- Get the times where power data is above high threshold --%
@@ -238,7 +251,7 @@ for ref_wave = 1 : size(Data.SSRef, 1)
         spindle_range = freq_range >= Info.Parameters.Filter_band(1) & ...
             freq_range <= Info.Parameters.Filter_band(2);
         [peak_power, max_ind] = max(spectrum_segment(spindle_range));
-        peak_frequency = Info.Parameters.Filter_band(1) + (max_ind - 1) * 0.5; % because 2s windows in the pwelch
+        peak_frequency = Info.Parameters.Filter_band(1) + (max_ind - 1) * 0.5;
         
         % check neighbouring power to ensure its spindle specific
         neighbour_range = ...
@@ -252,6 +265,12 @@ for ref_wave = 1 : size(Data.SSRef, 1)
             mean(spectrum_segment(neighbour_range)) * Info.Parameters.Ref_NeighbourRatio
             continue
         end
+        
+        
+        % -- calculate the power using the wavelet -- %
+        spindle_wavelet = Data.CWT (ref_wave, sample_range);
+        peak_wavelet = max(spindle_wavelet);
+
         
         % -- Save Wave to Structure -- %
         % Check if the SS has already been found in another reference channel
@@ -284,6 +303,7 @@ for ref_wave = 1 : size(Data.SSRef, 1)
                 SS(earlier_spindle).Ref_Peak2Peak = max([SS(SS_indice).Ref_Peak2Peak]);
                 SS(earlier_spindle).Ref_PeakFreq = mean([SS(SS_indice).Ref_PeakFreq]);
                 SS(earlier_spindle).Ref_PeakPower =  max([SS(SS_indice).Ref_PeakPower]);
+                SS(earlier_spindle).Ref_PeakPower =  max([SS(SS_indice).Ref_PeakWavelet]);
                 % NOTE: if merged number of waves and symmetry is no longer easy to calculate
                 
                 % delete the other spindle(s)
@@ -303,6 +323,7 @@ for ref_wave = 1 : size(Data.SSRef, 1)
                     SS(SS_indice).Ref_Peak2Peak       =      peak2peak;
                     SS(SS_indice).Ref_PeakFreq        =      peak_frequency;
                     SS(SS_indice).Ref_PeakPower       =      peak_power;
+                    SS(SS_indice).Ref_PeakWavelet     =      peak_wavelet;
                     SS(SS_indice).Ref_NumberOfWaves   =      length(peak_amplitudes)/2;
                     SS(SS_indice).Ref_Symmetry        =      max_indice/(length(peak_amplitudes)-1);
                 else
@@ -329,6 +350,7 @@ for ref_wave = 1 : size(Data.SSRef, 1)
         SS(SS_count).Ref_Peak2Peak       =      peak2peak;
         SS(SS_count).Ref_PeakFreq        =      peak_frequency;
         SS(SS_count).Ref_PeakPower       =      peak_power;
+        SS(SS_count).Ref_PeakWavelet     =      peak_wavelet;
         SS(SS_count).Ref_Start           =      spindle_start(n);
         SS(SS_count).Ref_End             =      spindle_end(n);
         SS(SS_count).Ref_Length          =      SS_lengths(n);
