@@ -234,8 +234,8 @@ for ref_wave = 1 : size(Data.SSRef, 1)
         
         % -- find peak frequency -- %
         % extract spindle segment with a data buffer
-        sample_range = spindle_start(n) - floor(Info.Recording.sRate) / 4 : ...
-                spindle_end(n) + floor(Info.Recording.sRate) / 4;
+        sample_range = spindle_start(n) - floor(Info.Recording.sRate / 4) : ...
+                spindle_end(n) + floor(Info.Recording.sRate / 4);
         sample_range(sample_range < 1) = [];
         sample_range(sample_range > length(Data.SSRef(ref_wave, :))) = [];
         spindle_segment = Data.SSRef(ref_wave, sample_range);

@@ -30,6 +30,10 @@ if ~isfield(Info.Parameters, 'Travelling_GS');
     Info.Parameters.Travelling_MinDelay = 40; % minimum travel time (ms)
 end
 
+if ~isfield(Info.Parameters, 'Travelling_RecalculateDeley')
+    Info.Parameters.Travelling_RecalculateDelay = true; % consistency with previous versions
+end
+
 %% Check Electrodes for 2D locations (match to grid)
 
 if Info.Parameters.Travelling_RecalculateDelay
