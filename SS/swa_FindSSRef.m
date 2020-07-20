@@ -251,7 +251,7 @@ for ref_wave = 1 : size(Data.SSRef, 1)
         spindle_range = freq_range >= Info.Parameters.Filter_band(1) & ...
             freq_range <= Info.Parameters.Filter_band(2);
         [peak_power, max_ind] = max(spectrum_segment(spindle_range));
-        peak_frequency = Info.Parameters.Filter_band(1) + (max_ind - 1) * 0.5;
+        peak_frequency = freq_range(find(spindle_range, 1, 'first') + (max_ind - 1));
         
         % check neighbouring power to ensure its spindle specific
         neighbour_range = ...
@@ -303,7 +303,7 @@ for ref_wave = 1 : size(Data.SSRef, 1)
                 SS(earlier_spindle).Ref_Peak2Peak = max([SS(SS_indice).Ref_Peak2Peak]);
                 SS(earlier_spindle).Ref_PeakFreq = mean([SS(SS_indice).Ref_PeakFreq]);
                 SS(earlier_spindle).Ref_PeakPower =  max([SS(SS_indice).Ref_PeakPower]);
-                SS(earlier_spindle).Ref_PeakPower =  max([SS(SS_indice).Ref_PeakWavelet]);
+                SS(earlier_spindle).Ref_Wavelet =  max([SS(SS_indice).Ref_PeakWavelet]);
                 % NOTE: if merged number of waves and symmetry is no longer easy to calculate
                 
                 % delete the other spindle(s)
