@@ -170,6 +170,29 @@ for nSW = loopRange
         SW(nSW).Travelling_Streams{end+1} = Streams{maxAngleId};
     end
 
+    %% ADDED BY ANNA
+    % find stream delays   % TODO (optimize the code)
+    y = []; x1 = []; x2 = [];
+    for x = 1 : Info.Parameters.Travelling_GS
+        for k = 1 : Info.Parameters.Travelling_GS
+            y(end + 1) = SW(nSW).Travelling_DelayMap(x, k);
+            x1(end + 1) = x;
+            x2(end + 1) = k;
+        end
+    end
+    tw = SW(nSW).Travelling_Streams{1}';
+    x1(isnan(y)) = [];
+    x2(isnan(y)) = [];
+    y (isnan(y)) = [];
+    Function = scatteredInterpolant(x1',x2',y');
+    SW(nSW).Stream_Travelling_Delay = Function(tw);
+    
+    % 3D projection & compute local speed
+    % TODO: scaleFactor: find relationship between EEG net model and real head size
+    scaleFactor = 2;
+    [SW(nSW).Stream_Coord, SW(nSW).Stream_Speed] = swa_Project3DSpeed(Info, SW(nSW), scaleFactor, 0);
+    
+
     % Update waitbar
     if flag_wait
         waitbar(nSW/length(SW),h,sprintf('Slow Wave %d of %d',nSW, length(SW)))
